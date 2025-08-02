@@ -44,8 +44,7 @@ env:
   RUST_BACKTRACE: 1
   IS_DEV_BUILD: "true" # Set "true" to speed up builds for CI testing
 
-jobs:
-          
+jobs:          
   job-nextest:
     runs-on: ubuntu-latest
     steps:
@@ -104,8 +103,7 @@ jobs:
 
       - name: Cargo Nextest
         run: |
-          cargo nextest run --features "burn","hypors","polars","ndarray"
-        working-directory: ./rust
+          cargo nextest run
 
       - name: Show sccache stats
         run: sccache --show-stats
@@ -166,11 +164,9 @@ jobs:
       - name: Cargo Build
         run: |
           cargo build --locked
-        working-directory: ./rust
 
       - name: Cargo Clippy
-        run: cargo clippy --locked --features "burn","hypors","polars","ndarray"
-        working-directory: ./rust
+        run: cargo clippy --locked
 
       - name: Show sccache stats
         run: sccache --show-stats

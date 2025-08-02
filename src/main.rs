@@ -1,9 +1,13 @@
 //! Model Control Protocol (MCP) for Cargo with asynchronous respon handling to allow the LLM to continue processing while waiting for responses.
 
 mod cargo_command;
+mod cargo_tools;
 
+use crate::cargo_tools::AsyncCargo;
 use anyhow::Result;
 use clap::Parser;
+use rmcp::{ServiceExt, transport::stdio};
+use tracing_subscriber::{self, EnvFilter};
 
 /// Async Cargo MCP Server
 ///
@@ -28,7 +32,8 @@ struct Args {
     /// Some LLMs may require synchronous mode for compatibility.
     #[arg(
         long,
-        default_value = "true",
+        default_value_t = true,
+        action = clap::ArgAction::Set,
         help = "Enable asynchronous command execution"
     )]
     spawn: bool,
@@ -39,12 +44,24 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let spawn = args.spawn;
 
-    println!(
-        "async_cargo_mcp v{version}",
-        version = env!("CARGO_PKG_VERSION")
-    );
-    println!("Spawn mode: {spawn}");
+    // Initialize the tracing subscriber with file and stdout logging
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::DEBUG.into()))
+        .with_writer(std::io::stderr)
+        .with_ansi(false)
+        .init();
 
+    tracing::info!(
+        "async_cargo_mcp v{v} started, spawn mode: {spawn}",
+        v = env!("CARGO_PKG_VERSION"),
+    );
+
+    // Create an instance of our counter router
+    let service = AsyncCargo::new().serve(stdio()).await.inspect_err(|e| {
+        tracing::error!("serving error: {:?}", e);
+    })?;
+
+    service.waiting().await?;
     println!("async_cargo_mcp stopped");
 
     Ok(())

@@ -13,6 +13,7 @@ path = "src/client.rs"
 
 [dependencies]
 anyhow = "1.0.98"
+async-trait = "0.1"
 axum = "0.8.4"
 clap = { version = "4.5", features = ["derive"] }
 rmcp = { version = "0.3", features = ["server", "client", "macros", "transport-io", "transport-child-process"] }
@@ -20,7 +21,9 @@ schemars = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tempdir = "0.3.7"
+thiserror = "1.0"
 tokio = { version = "1.47", features = ["full"] }
+tokio-util = "0.7"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",

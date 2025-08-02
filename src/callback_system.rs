@@ -1,0 +1,314 @@
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use tokio::sync::mpsc;
+
+/// Represents different types of progress updates during cargo operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum ProgressUpdate {
+    /// Operation has started
+    Started {
+        operation_id: String,
+        command: String,
+        description: String,
+    },
+    /// Progress update with optional percentage and message
+    Progress {
+        operation_id: String,
+        message: String,
+        percentage: Option<f64>,
+        current_step: Option<String>,
+    },
+    /// Output line from the cargo command
+    Output {
+        operation_id: String,
+        line: String,
+        is_stderr: bool,
+    },
+    /// Operation completed successfully
+    Completed {
+        operation_id: String,
+        message: String,
+        duration_ms: u64,
+    },
+    /// Operation failed with error
+    Failed {
+        operation_id: String,
+        error: String,
+        duration_ms: u64,
+    },
+    /// Operation was cancelled
+    Cancelled {
+        operation_id: String,
+        message: String,
+        duration_ms: u64,
+    },
+}
+
+impl fmt::Display for ProgressUpdate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProgressUpdate::Started {
+                operation_id,
+                command,
+                description,
+            } => {
+                write!(
+                    f,
+                    "[{}] Started: {} - {}",
+                    operation_id, command, description
+                )
+            }
+            ProgressUpdate::Progress {
+                operation_id,
+                message,
+                percentage,
+                current_step,
+            } => {
+                let progress_str = match percentage {
+                    Some(p) => format!(" ({:.1}%)", p),
+                    None => String::new(),
+                };
+                let step_str = match current_step {
+                    Some(s) => format!(" [{}]", s),
+                    None => String::new(),
+                };
+                write!(
+                    f,
+                    "[{}] Progress{}: {}{}",
+                    operation_id, progress_str, message, step_str
+                )
+            }
+            ProgressUpdate::Output {
+                operation_id,
+                line,
+                is_stderr,
+            } => {
+                let stream = if *is_stderr { "stderr" } else { "stdout" };
+                write!(f, "[{}] {}: {}", operation_id, stream, line)
+            }
+            ProgressUpdate::Completed {
+                operation_id,
+                message,
+                duration_ms,
+            } => {
+                write!(
+                    f,
+                    "[{}] ✅ Completed in {}ms: {}",
+                    operation_id, duration_ms, message
+                )
+            }
+            ProgressUpdate::Failed {
+                operation_id,
+                error,
+                duration_ms,
+            } => {
+                write!(
+                    f,
+                    "[{}] ❌ Failed after {}ms: {}",
+                    operation_id, duration_ms, error
+                )
+            }
+            ProgressUpdate::Cancelled {
+                operation_id,
+                message,
+                duration_ms,
+            } => {
+                write!(
+                    f,
+                    "[{}] 🚫 Cancelled after {}ms: {}",
+                    operation_id, duration_ms, message
+                )
+            }
+        }
+    }
+}
+
+/// Trait for sending progress updates during cargo operations
+/// This allows for different callback implementations (MCP notifications, logging, etc.)
+#[async_trait]
+pub trait CallbackSender: Send + Sync {
+    /// Send a progress update
+    async fn send_progress(&self, update: ProgressUpdate) -> Result<(), CallbackError>;
+
+    /// Check if the operation should be cancelled
+    async fn should_cancel(&self) -> bool;
+
+    /// Send multiple progress updates in sequence
+    async fn send_batch(&self, updates: Vec<ProgressUpdate>) -> Result<(), CallbackError> {
+        for update in updates {
+            self.send_progress(update).await?;
+        }
+        Ok(())
+    }
+}
+
+/// Errors that can occur when sending callbacks
+#[derive(Debug, thiserror::Error)]
+pub enum CallbackError {
+    #[error("Failed to send progress update: {0}")]
+    SendFailed(String),
+    #[error("Callback receiver disconnected")]
+    Disconnected,
+    #[error("Operation was cancelled")]
+    Cancelled,
+    #[error("Callback timeout: {0}")]
+    Timeout(String),
+}
+
+/// Channel-based callback sender for async communication
+pub struct ChannelCallbackSender {
+    sender: mpsc::UnboundedSender<ProgressUpdate>,
+    cancellation_token: tokio_util::sync::CancellationToken,
+}
+
+impl ChannelCallbackSender {
+    pub fn new(
+        sender: mpsc::UnboundedSender<ProgressUpdate>,
+        cancellation_token: tokio_util::sync::CancellationToken,
+    ) -> Self {
+        Self {
+            sender,
+            cancellation_token,
+        }
+    }
+}
+
+#[async_trait]
+impl CallbackSender for ChannelCallbackSender {
+    async fn send_progress(&self, update: ProgressUpdate) -> Result<(), CallbackError> {
+        self.sender
+            .send(update)
+            .map_err(|_| CallbackError::Disconnected)?;
+        Ok(())
+    }
+
+    async fn should_cancel(&self) -> bool {
+        self.cancellation_token.is_cancelled()
+    }
+}
+
+/// No-op callback sender for when progress updates are not needed
+pub struct NoOpCallbackSender;
+
+#[async_trait]
+impl CallbackSender for NoOpCallbackSender {
+    async fn send_progress(&self, _update: ProgressUpdate) -> Result<(), CallbackError> {
+        Ok(())
+    }
+
+    async fn should_cancel(&self) -> bool {
+        false
+    }
+}
+
+/// Logging callback sender that writes progress to the log
+pub struct LoggingCallbackSender {
+    operation_name: String,
+}
+
+impl LoggingCallbackSender {
+    pub fn new(operation_name: String) -> Self {
+        Self { operation_name }
+    }
+}
+
+#[async_trait]
+impl CallbackSender for LoggingCallbackSender {
+    async fn send_progress(&self, update: ProgressUpdate) -> Result<(), CallbackError> {
+        tracing::info!("{}: {}", self.operation_name, update);
+        Ok(())
+    }
+
+    async fn should_cancel(&self) -> bool {
+        false
+    }
+}
+
+/// Utility function to create a no-op callback sender
+pub fn no_callback() -> Box<dyn CallbackSender> {
+    Box::new(NoOpCallbackSender)
+}
+
+/// Utility function to create a logging callback sender
+pub fn logging_callback(operation_name: String) -> Box<dyn CallbackSender> {
+    Box::new(LoggingCallbackSender::new(operation_name))
+}
+
+/// Utility function to create a channel-based callback sender with receiver
+pub fn channel_callback(
+    cancellation_token: tokio_util::sync::CancellationToken,
+) -> (
+    Box<dyn CallbackSender>,
+    mpsc::UnboundedReceiver<ProgressUpdate>,
+) {
+    let (sender, receiver) = mpsc::unbounded_channel();
+    let callback = Box::new(ChannelCallbackSender::new(sender, cancellation_token));
+    (callback, receiver)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::time::{Duration, timeout};
+
+    #[tokio::test]
+    async fn test_no_op_callback() {
+        let callback = no_callback();
+        let update = ProgressUpdate::Started {
+            operation_id: "test".to_string(),
+            command: "cargo build".to_string(),
+            description: "Building project".to_string(),
+        };
+
+        assert!(callback.send_progress(update).await.is_ok());
+        assert!(!callback.should_cancel().await);
+    }
+
+    #[tokio::test]
+    async fn test_channel_callback() {
+        let token = tokio_util::sync::CancellationToken::new();
+        let (callback, mut receiver) = channel_callback(token.clone());
+
+        let update = ProgressUpdate::Progress {
+            operation_id: "test".to_string(),
+            message: "Building...".to_string(),
+            percentage: Some(50.0),
+            current_step: Some("Compiling".to_string()),
+        };
+
+        callback.send_progress(update.clone()).await.unwrap();
+
+        let received = timeout(Duration::from_millis(100), receiver.recv())
+            .await
+            .unwrap()
+            .unwrap();
+
+        match (&update, &received) {
+            (
+                ProgressUpdate::Progress {
+                    operation_id: id1, ..
+                },
+                ProgressUpdate::Progress {
+                    operation_id: id2, ..
+                },
+            ) => {
+                assert_eq!(id1, id2);
+            }
+            _ => panic!("Unexpected update type"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cancellation() {
+        let token = tokio_util::sync::CancellationToken::new();
+        let (callback, _receiver) = channel_callback(token.clone());
+
+        assert!(!callback.should_cancel().await);
+
+        token.cancel();
+
+        assert!(callback.should_cancel().await);
+    }
+}

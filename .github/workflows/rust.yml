@@ -69,7 +69,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/.package-cache
             ~/.cargo/bin
-            ./rust/target
+            ./target
           key: cargo-nextest-target-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
           restore-keys: |
             cargo-nextest-target-${{ runner.os }}-
@@ -135,7 +135,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/.package-cache
             ~/.cargo/bin
-            ./rust/target
+            ./target
           key: cargo-build-target-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
           restore-keys: |
             cargo-build-target-${{ runner.os }}-

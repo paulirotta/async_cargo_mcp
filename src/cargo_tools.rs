@@ -38,6 +38,13 @@ impl AsyncCargo {
         RawResource::new(uri, name.to_string()).no_annotation()
     }
 
+    /// Increment the counter and return the new value
+    async fn next_operation_id(&self) -> i32 {
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+        *counter
+    }
+
     #[tool(description = "Increment the counter by 1")]
     async fn increment(&self) -> Result<CallToolResult, McpError> {
         tracing::info!("=== INCREMENT TOOL CALLED ===");
@@ -92,10 +99,7 @@ impl AsyncCargo {
     async fn build(&self) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
-        let mut counter = self.counter.lock().await;
-        *counter += 1;
-        let build_id = *counter;
-        drop(counter);
+        let build_id = self.next_operation_id().await;
 
         let output = Command::new("cargo")
             .arg("build")
@@ -113,11 +117,13 @@ impl AsyncCargo {
                 "Build #{} completed successfully.\nOutput: {}",
                 build_id, stdout
             )
+            .replace("#{}", &format!("#{}", build_id))
         } else {
             format!(
                 "Build #{} failed.\nStderr: {}\nStdout: {}",
                 build_id, stderr, stdout
             )
+            .replace("#{}", &format!("#{}", build_id))
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
@@ -127,10 +133,7 @@ impl AsyncCargo {
     async fn run(&self) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
-        let mut counter = self.counter.lock().await;
-        *counter += 1;
-        let run_id = *counter;
-        drop(counter);
+        let run_id = self.next_operation_id().await;
 
         let output = Command::new("cargo")
             .arg("run")
@@ -144,15 +147,9 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let result_msg = if output.status.success() {
-            format!(
-                "Run #{} completed successfully.\nOutput: {}",
-                run_id, stdout
-            )
+            format!("Run #{run_id} completed successfully.\nOutput: {stdout}")
         } else {
-            format!(
-                "Run #{} failed.\nStderr: {}\nStdout: {}",
-                run_id, stderr, stdout
-            )
+            format!("Run #{run_id} failed.\nStderr: {stderr}\nStdout: {stdout}")
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
@@ -162,10 +159,7 @@ impl AsyncCargo {
     async fn test(&self) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
-        let mut counter = self.counter.lock().await;
-        *counter += 1;
-        let test_id = *counter;
-        drop(counter);
+        let test_id = self.next_operation_id().await;
 
         let output = Command::new("cargo")
             .arg("test")
@@ -179,15 +173,9 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let result_msg = if output.status.success() {
-            format!(
-                "Test #{} completed successfully.\nOutput: {}",
-                test_id, stdout
-            )
+            format!("Test #{test_id} completed successfully.\nOutput: {stdout}")
         } else {
-            format!(
-                "Test #{} failed.\nStderr: {}\nStdout: {}",
-                test_id, stderr, stdout
-            )
+            format!("Test #{test_id} failed.\nStderr: {stderr}\nStdout: {stdout}")
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
@@ -197,10 +185,7 @@ impl AsyncCargo {
     async fn check(&self) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
-        let mut counter = self.counter.lock().await;
-        *counter += 1;
-        let check_id = *counter;
-        drop(counter);
+        let check_id = self.next_operation_id().await;
 
         let output = Command::new("cargo")
             .arg("check")
@@ -214,32 +199,22 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let result_msg = if output.status.success() {
-            format!(
-                "Check #{} completed successfully.\nOutput: {}",
-                check_id, stdout
-            )
+            format!("Check #{check_id} completed successfully.\nOutput: {stdout}")
         } else {
-            format!(
-                "Check #{} failed.\nStderr: {}\nStdout: {}",
-                check_id, stderr, stdout
-            )
+            format!("Check #{check_id} failed.\nStderr: {stderr}\nStdout: {stdout}")
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
-    #[tool(description = "Add a dependency to the Rust project using cargo add")]
+    #[tool(description = "'cargo add depedency_name' to the Rust project using cargo add")]
     async fn add(&self) -> Result<CallToolResult, McpError> {
-        let mut counter = self.counter.lock().await;
-        *counter += 1;
-        let add_id = *counter;
-        drop(counter);
+        let add_id = self.next_operation_id().await;
 
         // Note: This is a simple implementation. In a real scenario, you'd want to accept
         // the dependency name as a parameter
         let result_msg = format!(
-            "Add #{} - This tool needs to be called with a dependency name parameter",
-            add_id
+            "Add #{add_id} - This tool needs to be called with a dependency name parameter"
         );
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
@@ -247,16 +222,12 @@ impl AsyncCargo {
 
     #[tool(description = "Remove a dependency from the Rust project using cargo remove")]
     async fn remove(&self) -> Result<CallToolResult, McpError> {
-        let mut counter = self.counter.lock().await;
-        *counter += 1;
-        let remove_id = *counter;
-        drop(counter);
+        let remove_id = self.next_operation_id().await;
 
         // Note: This is a simple implementation. In a real scenario, you'd want to accept
         // the dependency name as a parameter
         let result_msg = format!(
-            "Remove #{} - This tool needs to be called with a dependency name parameter",
-            remove_id
+            "Remove #{remove_id} - This tool needs to be called with a dependency name parameter"
         );
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
@@ -266,10 +237,7 @@ impl AsyncCargo {
     async fn update(&self) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
-        let mut counter = self.counter.lock().await;
-        *counter += 1;
-        let update_id = *counter;
-        drop(counter);
+        let update_id = self.next_operation_id().await;
 
         let output = Command::new("cargo")
             .arg("update")
@@ -283,15 +251,9 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let result_msg = if output.status.success() {
-            format!(
-                "Update #{} completed successfully.\nOutput: {}",
-                update_id, stdout
-            )
+            format!("Update #{update_id} completed successfully.\nOutput: {stdout}")
         } else {
-            format!(
-                "Update #{} failed.\nStderr: {}\nStdout: {}",
-                update_id, stderr, stdout
-            )
+            format!("Update #{update_id} failed.\nStderr: {stderr}\nStdout: {stdout}")
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))

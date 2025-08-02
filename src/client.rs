@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rmcp::{
     ServiceExt,
-    model::{CallToolRequestParam},
+    model::CallToolRequestParam,
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
@@ -93,6 +93,28 @@ async fn main() -> Result<()> {
         })
         .await?;
     tracing::info!("Tool result for sum: {tool_result:#?}");
+
+    // Test cargo build with async notifications
+    let tool_result = client
+        .call_tool(CallToolRequestParam {
+            name: "build".into(),
+            arguments: Some(object!({ "enable_async_notifications": true })),
+        })
+        .await?;
+    tracing::info!("Tool result for cargo build with async notifications: {tool_result:#?}");
+
+    // Test cargo add with async notifications
+    let tool_result = client
+        .call_tool(CallToolRequestParam {
+            name: "add".into(),
+            arguments: Some(object!({
+                "name": "serde",
+                "version": "1.0",
+                "enable_async_notifications": true
+            })),
+        })
+        .await?;
+    tracing::info!("Tool result for cargo add with async notifications: {tool_result:#?}");
 
     client.cancel().await?;
 

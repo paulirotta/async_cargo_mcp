@@ -1,0 +1,176 @@
+name: Async Cargo MCP Rust
+# Heavy use of multi-layer caching to speed builds
+# Github Actions caches grow since they do not forget unused files from old versions
+#
+# We rotate to a new cache every day, loading from the previous day's cache and
+# then saving the fresh cache only containing the current files. We also work off of
+# the 'main' banch. Github caching has special rules to fall back to 'main' from
+# other branches. We also do not make new caches with every push to reduce clutter.
+# There is an inherent performance tradeoff with this approach between slowly making
+# new caches frequently (for example if we build new caches each time the git hash
+# changes) and caches being too stupid to save updates if the name has not changed,
+# thus forcing re-builds of any changes for the rest of the current day. Daily cache
+# rotation is a good compromise.
+#
+# Caches still grow and slow things down. Run the following from command line if you
+# want to delete caches, perhaps different types at different times:
+#   gh cache delete --all
+#   gh cache delete cargo-
+#   gh cache delete sccache-
+#   gh cache delete gradle-
+#
+# Avoid pull requests- they cause needless double builds. Instead rebase from 'main'
+# to your branch to give priority to your changes. Then rebase from your branch back
+# to 'main', test, then push.
+
+concurrency:
+  group: build # Only one build at a time, otherwise cache is not used effectively
+  cancel-in-progress: false
+
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+      branches: [main, production]
+  
+env:
+  RUSTUP_MAX_RETRIES: 10
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+  CARGO_NET_RETRY: 10
+  CARGO_PROFILE_DEV_BUILD_OVERRIDE_DEBUG: false
+  RUSTFLAGS: -C debuginfo=0 # Do not produce debug symbols to keep memory usage down
+  RUST_BACKTRACE: 1
+  IS_DEV_BUILD: "true" # Set "true" to speed up builds for CI testing
+
+jobs:
+          
+  job-nextest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install Linux dependencies in background
+        run: sudo apt update && sudo apt-get install -y pkg-config libfontconfig1-dev &
+      
+      - name: Get current day number
+        id: day-number
+        run: echo "day=$(date +%j)" >> $GITHUB_OUTPUT
+
+      - name: Cache Cargo build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/.package-cache
+            ~/.cargo/bin
+            ./rust/target
+          key: cargo-nextest-target-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
+          restore-keys: |
+            cargo-nextest-target-${{ runner.os }}-
+            
+      - name: Cache sccache artifacts
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/sccache
+          key: sccache-nextest-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
+          restore-keys: |
+            sccache-nextest-${{ runner.os }}-
+      
+      - name: Setup Cargo Binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install sccache
+        run: |
+          if ! command -v sccache &> /dev/null; then
+            echo "sccache not found, installing..."
+            cargo binstall sccache --no-confirm || cargo install sccache
+          else
+            echo "sccache is already installed"
+          fi
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          sccache --show-stats
+
+      - name: Add Cargo Bin to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - uses: taiki-e/install-action@nextest
+
+      - name: Cargo Nextest
+        run: |
+          cargo nextest run --features "burn","hypors","polars","ndarray"
+        working-directory: ./rust
+
+      - name: Show sccache stats
+        run: sccache --show-stats
+
+
+  #######################################
+          
+  job-cargo-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies in background
+        run: sudo apt update && sudo apt-get install -y pkg-config libfontconfig1-dev &
+      
+      - name: Get current day number
+        id: day-number
+        run: echo "day=$(date +%j)" >> $GITHUB_OUTPUT
+
+      - name: Cache Cargo build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/.package-cache
+            ~/.cargo/bin
+            ./rust/target
+          key: cargo-build-target-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
+          restore-keys: |
+            cargo-build-target-${{ runner.os }}-
+            
+      - name: Cache sccache artifacts
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/sccache
+          key: sccache-build-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
+          restore-keys: |
+            sccache-build-${{ runner.os }}-
+      
+      - uses: cargo-bins/cargo-binstall@main
+            
+      - name: Install sccache
+        run: |
+          if ! command -v sccache &> /dev/null; then
+            echo "sccache not found, installing..."
+            cargo binstall sccache --no-confirm || cargo install sccache
+          else
+            echo "sccache is already installed"
+          fi
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          sccache --show-stats
+
+      - name: Cargo Build
+        run: |
+          cargo build --locked
+        working-directory: ./rust
+
+      - name: Cargo Clippy
+        run: cargo clippy --locked --features "burn","hypors","polars","ndarray"
+        working-directory: ./rust
+
+      - name: Show sccache stats
+        run: sccache --show-stats

@@ -18,7 +18,7 @@ pub struct StructRequest {
     pub b: i32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AsyncCargo {
     counter: Arc<Mutex<i32>>,
     tool_router: ToolRouter<AsyncCargo>,
@@ -40,11 +40,13 @@ impl AsyncCargo {
 
     #[tool(description = "Increment the counter by 1")]
     async fn increment(&self) -> Result<CallToolResult, McpError> {
+        tracing::info!("=== INCREMENT TOOL CALLED ===");
         let mut counter = self.counter.lock().await;
         *counter += 1;
-        Ok(CallToolResult::success(vec![Content::text(
-            counter.to_string(),
-        )]))
+        let result = CallToolResult::success(vec![Content::text(counter.to_string())]);
+        tracing::info!("Increment result: {:?}", result);
+        tracing::info!("=== INCREMENT TOOL RETURNING ===");
+        Ok(result)
     }
 
     #[tool(description = "Decrement the counter by 1")]
@@ -84,6 +86,215 @@ impl AsyncCargo {
         Ok(CallToolResult::success(vec![Content::text(
             (a + b).to_string(),
         )]))
+    }
+
+    #[tool(description = "Build the Rust project using cargo build")]
+    async fn build(&self) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+        let build_id = *counter;
+        drop(counter);
+
+        let output = Command::new("cargo")
+            .arg("build")
+            .output()
+            .await
+            .map_err(|e| {
+                McpError::internal_error(format!("Failed to execute cargo build: {}", e), None)
+            })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "Build #{} completed successfully.\nOutput: {}",
+                build_id, stdout
+            )
+        } else {
+            format!(
+                "Build #{} failed.\nStderr: {}\nStdout: {}",
+                build_id, stderr, stdout
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(description = "Run the Rust project using cargo run")]
+    async fn run(&self) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+        let run_id = *counter;
+        drop(counter);
+
+        let output = Command::new("cargo")
+            .arg("run")
+            .output()
+            .await
+            .map_err(|e| {
+                McpError::internal_error(format!("Failed to execute cargo run: {}", e), None)
+            })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "Run #{} completed successfully.\nOutput: {}",
+                run_id, stdout
+            )
+        } else {
+            format!(
+                "Run #{} failed.\nStderr: {}\nStdout: {}",
+                run_id, stderr, stdout
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(description = "Run tests for the Rust project using cargo test")]
+    async fn test(&self) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+        let test_id = *counter;
+        drop(counter);
+
+        let output = Command::new("cargo")
+            .arg("test")
+            .output()
+            .await
+            .map_err(|e| {
+                McpError::internal_error(format!("Failed to execute cargo test: {}", e), None)
+            })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "Test #{} completed successfully.\nOutput: {}",
+                test_id, stdout
+            )
+        } else {
+            format!(
+                "Test #{} failed.\nStderr: {}\nStdout: {}",
+                test_id, stderr, stdout
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(description = "Check the Rust project for errors using cargo check")]
+    async fn check(&self) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+        let check_id = *counter;
+        drop(counter);
+
+        let output = Command::new("cargo")
+            .arg("check")
+            .output()
+            .await
+            .map_err(|e| {
+                McpError::internal_error(format!("Failed to execute cargo check: {}", e), None)
+            })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "Check #{} completed successfully.\nOutput: {}",
+                check_id, stdout
+            )
+        } else {
+            format!(
+                "Check #{} failed.\nStderr: {}\nStdout: {}",
+                check_id, stderr, stdout
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(description = "Add a dependency to the Rust project using cargo add")]
+    async fn add(&self) -> Result<CallToolResult, McpError> {
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+        let add_id = *counter;
+        drop(counter);
+
+        // Note: This is a simple implementation. In a real scenario, you'd want to accept
+        // the dependency name as a parameter
+        let result_msg = format!(
+            "Add #{} - This tool needs to be called with a dependency name parameter",
+            add_id
+        );
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(description = "Remove a dependency from the Rust project using cargo remove")]
+    async fn remove(&self) -> Result<CallToolResult, McpError> {
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+        let remove_id = *counter;
+        drop(counter);
+
+        // Note: This is a simple implementation. In a real scenario, you'd want to accept
+        // the dependency name as a parameter
+        let result_msg = format!(
+            "Remove #{} - This tool needs to be called with a dependency name parameter",
+            remove_id
+        );
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(description = "Update dependencies in the Rust project using cargo update")]
+    async fn update(&self) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let mut counter = self.counter.lock().await;
+        *counter += 1;
+        let update_id = *counter;
+        drop(counter);
+
+        let output = Command::new("cargo")
+            .arg("update")
+            .output()
+            .await
+            .map_err(|e| {
+                McpError::internal_error(format!("Failed to execute cargo update: {}", e), None)
+            })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "Update #{} completed successfully.\nOutput: {}",
+                update_id, stdout
+            )
+        } else {
+            format!(
+                "Update #{} failed.\nStderr: {}\nStdout: {}",
+                update_id, stderr, stdout
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 }
 
@@ -202,14 +413,24 @@ impl ServerHandler for AsyncCargo {
 
     async fn initialize(
         &self,
-        _request: InitializeRequestParam,
+        request: InitializeRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<InitializeResult, McpError> {
+        tracing::info!("=== INITIALIZE METHOD CALLED ===");
+        tracing::info!("Initialize request: {:?}", request);
+        tracing::info!("Request context: {:?}", context);
+
         if let Some(http_request_part) = context.extensions.get::<axum::http::request::Parts>() {
             let initialize_headers = &http_request_part.headers;
             let initialize_uri = &http_request_part.uri;
             tracing::info!(?initialize_headers, %initialize_uri, "initialize from http server");
+        } else {
+            tracing::info!("No HTTP request parts found - this is stdio transport");
         }
-        Ok(self.get_info())
+
+        let result = self.get_info();
+        tracing::info!("Initialize result: {:?}", result);
+        tracing::info!("=== INITIALIZE METHOD RETURNING ===");
+        Ok(result)
     }
 }

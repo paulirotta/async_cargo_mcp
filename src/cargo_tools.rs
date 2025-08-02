@@ -18,6 +18,46 @@ pub struct StructRequest {
     pub b: i32,
 }
 
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct DependencyRequest {
+    pub name: String,
+    pub version: Option<String>,
+    pub features: Option<Vec<String>>,
+    pub optional: Option<bool>,
+    pub working_directory: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct RemoveDependencyRequest {
+    pub name: String,
+    pub working_directory: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct BuildRequest {
+    pub working_directory: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct RunRequest {
+    pub working_directory: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TestRequest {
+    pub working_directory: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct CheckRequest {
+    pub working_directory: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct UpdateRequest {
+    pub working_directory: Option<String>,
+}
+
 #[derive(Clone, Debug)]
 pub struct AsyncCargo {
     counter: Arc<Mutex<i32>>,
@@ -96,164 +136,382 @@ impl AsyncCargo {
     }
 
     #[tool(description = "Build the Rust project using cargo build")]
-    async fn build(&self) -> Result<CallToolResult, McpError> {
+    async fn build(
+        &self,
+        Parameters(req): Parameters<BuildRequest>,
+    ) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
         let build_id = self.next_operation_id().await;
 
-        let output = Command::new("cargo")
-            .arg("build")
-            .output()
-            .await
-            .map_err(|e| {
-                McpError::internal_error(format!("Failed to execute cargo build: {}", e), None)
-            })?;
+        // TODO: Add asynchronous callback mechanism here for build progress updates
+        // Implementation plan:
+        // 1. Use tokio::process::Command::spawn() instead of output() to get a Child process
+        // 2. Read stdout/stderr streams line by line using BufReader
+        // 3. Send progress messages via MCP notifications or progress callbacks to the LLM
+        // 4. Include compilation warnings, errors, and progress percentage if available
+        // 5. Allow LLM to receive real-time feedback during long compilation processes
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("build");
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo build: {}", e), None)
+        })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
         let result_msg = if output.status.success() {
             format!(
-                "Build #{} completed successfully.\nOutput: {}",
-                build_id, stdout
+                "✅ Build operation #{build_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
             )
-            .replace("#{}", &format!("#{}", build_id))
         } else {
             format!(
-                "Build #{} failed.\nStderr: {}\nStdout: {}",
-                build_id, stderr, stdout
+                "❌ Build operation #{build_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             )
-            .replace("#{}", &format!("#{}", build_id))
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
     #[tool(description = "Run the Rust project using cargo run")]
-    async fn run(&self) -> Result<CallToolResult, McpError> {
+    async fn run(
+        &self,
+        Parameters(req): Parameters<RunRequest>,
+    ) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
         let run_id = self.next_operation_id().await;
 
-        let output = Command::new("cargo")
-            .arg("run")
-            .output()
-            .await
-            .map_err(|e| {
-                McpError::internal_error(format!("Failed to execute cargo run: {}", e), None)
-            })?;
+        // TODO: Add asynchronous callback mechanism here for runtime output streaming
+        // Implementation plan:
+        // 1. Use tokio::process::Command::spawn() to start the process without blocking
+        // 2. Stream stdout/stderr in real-time to provide live output to the LLM
+        // 3. Handle long-running processes that might need user interaction
+        // 4. Provide option to terminate running processes via MCP commands
+        // 5. Support for interactive applications through bidirectional communication
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("run");
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo run: {}", e), None)
+        })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
         let result_msg = if output.status.success() {
-            format!("Run #{run_id} completed successfully.\nOutput: {stdout}")
+            format!(
+                "✅ Run operation #{run_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+            )
         } else {
-            format!("Run #{run_id} failed.\nStderr: {stderr}\nStdout: {stdout}")
+            format!(
+                "❌ Run operation #{run_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
     #[tool(description = "Run tests for the Rust project using cargo test")]
-    async fn test(&self) -> Result<CallToolResult, McpError> {
+    async fn test(
+        &self,
+        Parameters(req): Parameters<TestRequest>,
+    ) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
         let test_id = self.next_operation_id().await;
 
-        let output = Command::new("cargo")
-            .arg("test")
-            .output()
-            .await
-            .map_err(|e| {
-                McpError::internal_error(format!("Failed to execute cargo test: {}", e), None)
-            })?;
+        // TODO: Add asynchronous callback mechanism here for test progress updates
+        // Implementation plan:
+        // 1. Stream test execution results in real-time as they complete
+        // 2. Provide progress indicators for test suites (e.g., "Running 15/30 tests")
+        // 3. Send immediate notifications for test failures with detailed error info
+        // 4. Allow LLM to see which specific tests are running/passing/failing
+        // 5. Support for parallel test execution feedback
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("test");
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo test: {}", e), None)
+        })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
         let result_msg = if output.status.success() {
-            format!("Test #{test_id} completed successfully.\nOutput: {stdout}")
+            format!(
+                "✅ Test operation #{test_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+            )
         } else {
-            format!("Test #{test_id} failed.\nStderr: {stderr}\nStdout: {stdout}")
+            format!(
+                "❌ Test operation #{test_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
     #[tool(description = "Check the Rust project for errors using cargo check")]
-    async fn check(&self) -> Result<CallToolResult, McpError> {
+    async fn check(
+        &self,
+        Parameters(req): Parameters<CheckRequest>,
+    ) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
         let check_id = self.next_operation_id().await;
 
-        let output = Command::new("cargo")
-            .arg("check")
-            .output()
-            .await
-            .map_err(|e| {
-                McpError::internal_error(format!("Failed to execute cargo check: {}", e), None)
-            })?;
+        // TODO: Add asynchronous callback mechanism here for check progress updates
+        // Implementation plan:
+        // 1. Stream compilation check results as they become available
+        // 2. Send immediate warnings and errors to the LLM during checking
+        // 3. Provide progress indicators for large projects
+        // 4. Allow early termination on first error if requested
+        // 5. Include suggestion hints from compiler alongside error messages
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("check");
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo check: {}", e), None)
+        })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
         let result_msg = if output.status.success() {
-            format!("Check #{check_id} completed successfully.\nOutput: {stdout}")
+            format!(
+                "✅ Check operation #{check_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+            )
         } else {
-            format!("Check #{check_id} failed.\nStderr: {stderr}\nStdout: {stdout}")
+            format!(
+                "❌ Check operation #{check_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
-    #[tool(description = "'cargo add depedency_name' to the Rust project using cargo add")]
-    async fn add(&self) -> Result<CallToolResult, McpError> {
+    #[tool(description = "Add a dependency to the Rust project using cargo add")]
+    async fn add(
+        &self,
+        Parameters(req): Parameters<DependencyRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
         let add_id = self.next_operation_id().await;
 
-        // Note: This is a simple implementation. In a real scenario, you'd want to accept
-        // the dependency name as a parameter
-        let result_msg = format!(
-            "Add #{add_id} - This tool needs to be called with a dependency name parameter"
-        );
+        // TODO: Add asynchronous callback mechanism here for real-time progress updates
+        // Implementation plan:
+        // 1. Stream dependency resolution and download progress to the LLM
+        // 2. Show real-time progress for fetching crates and building dependencies
+        // 3. Provide detailed error messages if dependency resolution fails
+        // 4. Allow cancellation of long-running dependency installations
+        // 5. Show version conflict warnings and resolution suggestions
+        // This would allow streaming command output back to the LLM during long operations
+
+        let mut cmd = Command::new("cargo");
+
+        // Build the dependency specification
+        let dep_spec = if let Some(version) = &req.version {
+            format!("{}@{}", req.name, version)
+        } else {
+            req.name.clone()
+        };
+
+        cmd.arg("add").arg(&dep_spec);
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        // Add optional features
+        if let Some(features) = &req.features {
+            if !features.is_empty() {
+                cmd.arg("--features").arg(features.join(","));
+            }
+        }
+
+        // Add optional flag
+        if req.optional.unwrap_or(false) {
+            cmd.arg("--optional");
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo add: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
+        let result_msg = if output.status.success() {
+            format!(
+                "✅ Add operation #{add_id} completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
+                req.name
+            )
+        } else {
+            format!(
+                "❌ Add operation #{add_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                req.name
+            )
+        };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
     #[tool(description = "Remove a dependency from the Rust project using cargo remove")]
-    async fn remove(&self) -> Result<CallToolResult, McpError> {
+    async fn remove(
+        &self,
+        Parameters(req): Parameters<RemoveDependencyRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
         let remove_id = self.next_operation_id().await;
 
-        // Note: This is a simple implementation. In a real scenario, you'd want to accept
-        // the dependency name as a parameter
-        let result_msg = format!(
-            "Remove #{remove_id} - This tool needs to be called with a dependency name parameter"
-        );
+        // TODO: Add asynchronous callback mechanism here for progress updates
+        // Implementation plan:
+        // 1. Provide real-time feedback on dependency removal process
+        // 2. Show which files are being updated during removal
+        // 3. Alert about any conflicts or issues during removal
+        // 4. Allow early termination if removal encounters problems
+        // Useful for informing the LLM about dependency removal progress
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("remove").arg(&req.name);
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo remove: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
+        let result_msg = if output.status.success() {
+            format!(
+                "✅ Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
+                req.name
+            )
+        } else {
+            format!(
+                "❌ Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                req.name
+            )
+        };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
     #[tool(description = "Update dependencies in the Rust project using cargo update")]
-    async fn update(&self) -> Result<CallToolResult, McpError> {
+    async fn update(
+        &self,
+        Parameters(req): Parameters<UpdateRequest>,
+    ) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
         let update_id = self.next_operation_id().await;
 
-        let output = Command::new("cargo")
-            .arg("update")
-            .output()
-            .await
-            .map_err(|e| {
-                McpError::internal_error(format!("Failed to execute cargo update: {}", e), None)
-            })?;
+        // TODO: Add asynchronous callback mechanism here for dependency update progress
+        // Implementation plan:
+        // 1. Stream update progress and version changes to the LLM in real-time
+        // 2. Show which dependencies are being updated and to what versions
+        // 3. Provide warnings about breaking changes or compatibility issues
+        // 4. Allow selective updates if the LLM requests specific package updates
+        // This would allow streaming update progress and version changes to the LLM
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("update");
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo update: {}", e), None)
+        })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
         let result_msg = if output.status.success() {
-            format!("Update #{update_id} completed successfully.\nOutput: {stdout}")
+            format!(
+                "✅ Update operation #{update_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+            )
         } else {
-            format!("Update #{update_id} failed.\nStderr: {stderr}\nStdout: {stdout}")
+            format!(
+                "❌ Update operation #{update_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))

@@ -3,6 +3,7 @@
 //! This module exposes the client functionality for integration tests
 
 pub mod cargo_tools;
+pub mod test_cargo_tools;
 
 use anyhow::Result;
 use rmcp::{

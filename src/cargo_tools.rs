@@ -1,6 +1,4 @@
-#![allow(dead_code)]
-use std::sync::Arc;
-
+use crate::callback_system::{CallbackSender, ProgressUpdate, no_callback};
 use rmcp::{
     ErrorData as McpError, RoleServer, ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::Parameters},
@@ -10,7 +8,10 @@ use rmcp::{
     tool, tool_handler, tool_router,
 };
 use serde_json::json;
+use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::Mutex;
+// use crate::callback_system::{CallbackSender, ProgressUpdate, no_callback};
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct StructRequest {
@@ -652,5 +653,269 @@ impl ServerHandler for AsyncCargo {
         tracing::info!("Initialize result: {:?}", result);
         tracing::info!("=== INITIALIZE METHOD RETURNING ===");
         Ok(result)
+    }
+}
+
+/// Async cargo operations with callback support
+impl AsyncCargo {
+    /// Add a dependency with optional async callback notifications
+    pub async fn add_with_callback(
+        &self,
+        req: DependencyRequest,
+        callback: Option<Box<dyn CallbackSender>>,
+    ) -> Result<String, String> {
+        use tokio::process::Command;
+
+        let operation_id = self.next_operation_id().await.to_string();
+        let start_time = Instant::now();
+
+        let callback = callback.unwrap_or_else(|| no_callback());
+
+        // Send start notification
+        let cmd_str = format!("cargo add {}", req.name);
+        let _ = callback
+            .send_progress(ProgressUpdate::Started {
+                operation_id: operation_id.clone(),
+                command: cmd_str.clone(),
+                description: format!("Adding dependency: {}", req.name),
+            })
+            .await;
+
+        let mut cmd = Command::new("cargo");
+
+        // Build the dependency specification
+        let dep_spec = if let Some(version) = &req.version {
+            format!("{}@{}", req.name, version)
+        } else {
+            req.name.clone()
+        };
+
+        cmd.arg("add").arg(&dep_spec);
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        // Add optional features
+        if let Some(features) = &req.features {
+            if !features.is_empty() {
+                cmd.arg("--features").arg(features.join(","));
+            }
+        }
+
+        // Add optional flag
+        if req.optional.unwrap_or(false) {
+            cmd.arg("--optional");
+        }
+
+        // Execute command and collect full output
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo add: {}", e))?;
+
+        let duration_ms = start_time.elapsed().as_millis() as u64;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
+        if output.status.success() {
+            let success_msg = format!(
+                "✅ Add operation completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
+                req.name
+            );
+
+            // Send completion notification
+            let _ = callback
+                .send_progress(ProgressUpdate::Completed {
+                    operation_id,
+                    message: success_msg.clone(),
+                    duration_ms,
+                })
+                .await;
+
+            Ok(success_msg)
+        } else {
+            let error_msg = format!(
+                "❌ Add operation failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                req.name
+            );
+
+            // Send failure notification
+            let _ = callback
+                .send_progress(ProgressUpdate::Failed {
+                    operation_id,
+                    error: error_msg.clone(),
+                    duration_ms,
+                })
+                .await;
+
+            Err(error_msg)
+        }
+    }
+
+    /// Remove a dependency with optional async callback notifications
+    pub async fn remove_with_callback(
+        &self,
+        req: RemoveDependencyRequest,
+        callback: Option<Box<dyn CallbackSender>>,
+    ) -> Result<String, String> {
+        use tokio::process::Command;
+
+        let operation_id = self.next_operation_id().await.to_string();
+        let start_time = Instant::now();
+
+        let callback = callback.unwrap_or_else(|| no_callback());
+
+        // Send start notification
+        let cmd_str = format!("cargo remove {}", req.name);
+        let _ = callback
+            .send_progress(ProgressUpdate::Started {
+                operation_id: operation_id.clone(),
+                command: cmd_str.clone(),
+                description: format!("Removing dependency: {}", req.name),
+            })
+            .await;
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("remove").arg(&req.name);
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        // Execute command and collect full output
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo remove: {}", e))?;
+
+        let duration_ms = start_time.elapsed().as_millis() as u64;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
+        if output.status.success() {
+            let success_msg = format!(
+                "✅ Remove operation completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
+                req.name
+            );
+
+            // Send completion notification
+            let _ = callback
+                .send_progress(ProgressUpdate::Completed {
+                    operation_id,
+                    message: success_msg.clone(),
+                    duration_ms,
+                })
+                .await;
+
+            Ok(success_msg)
+        } else {
+            let error_msg = format!(
+                "❌ Remove operation failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                req.name
+            );
+
+            // Send failure notification
+            let _ = callback
+                .send_progress(ProgressUpdate::Failed {
+                    operation_id,
+                    error: error_msg.clone(),
+                    duration_ms,
+                })
+                .await;
+
+            Err(error_msg)
+        }
+    }
+
+    /// Build project with optional async callback notifications
+    pub async fn build_with_callback(
+        &self,
+        req: BuildRequest,
+        callback: Option<Box<dyn CallbackSender>>,
+    ) -> Result<String, String> {
+        use tokio::process::Command;
+
+        let operation_id = self.next_operation_id().await.to_string();
+        let start_time = Instant::now();
+
+        let callback = callback.unwrap_or_else(|| no_callback());
+
+        // Send start notification
+        let _ = callback
+            .send_progress(ProgressUpdate::Started {
+                operation_id: operation_id.clone(),
+                command: "cargo build".to_string(),
+                description: "Building project".to_string(),
+            })
+            .await;
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("build");
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        // Execute command and collect full output
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo build: {}", e))?;
+
+        let duration_ms = start_time.elapsed().as_millis() as u64;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
+        if output.status.success() {
+            let success_msg =
+                format!("✅ Build completed successfully{working_dir_msg}.\nOutput: {stdout}");
+
+            // Send completion notification
+            let _ = callback
+                .send_progress(ProgressUpdate::Completed {
+                    operation_id,
+                    message: success_msg.clone(),
+                    duration_ms,
+                })
+                .await;
+
+            Ok(success_msg)
+        } else {
+            let error_msg =
+                format!("❌ Build failed{working_dir_msg}.\nError: {stderr}\nOutput: {stdout}");
+
+            // Send failure notification
+            let _ = callback
+                .send_progress(ProgressUpdate::Failed {
+                    operation_id,
+                    error: error_msg.clone(),
+                    duration_ms,
+                })
+                .await;
+
+            Err(error_msg)
+        }
     }
 }

@@ -1,10 +1,7 @@
 //! Model Control Protocol (MCP) for Cargo with asynchronous respon handling to allow the LLM to continue processing while waiting for responses.
 
-//mod cargo_command;
-mod cargo_tools;
-
-use crate::cargo_tools::AsyncCargo;
 use anyhow::Result;
+use async_cargo_mcp::cargo_tools::AsyncCargo;
 use rmcp::{ServiceExt, transport::stdio};
 use tracing_subscriber::{self, EnvFilter};
 

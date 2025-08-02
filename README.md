@@ -1,6 +1,6 @@
 # Async Cargo MCP
 
-[![CI](https://github.com/paulirotta/async_cargo_mcp/workflows/Async%20Cargo%20MCP%20Rust/badge.svg)](https://github.com/paulirotta/async_cargo_mcp/actions)
+[![CI](https://github.com/paulirotta/async_cargo_mcp/actions/workflows/rust.yml/badge.svg)](https://github.com/paulirotta/async_cargo_mcp/actions/workflows/rust.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org/)
 

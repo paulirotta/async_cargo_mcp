@@ -10,15 +10,21 @@ use anyhow::Result;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
-    object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
+use serde_json::json;
+use std::fs;
+use tempdir::TempDir;
 use tokio::process::Command;
 use tokio::time::{Duration, sleep};
 
 /// Comprehensive test that replicates test-mcp.sh functionality
 #[tokio::test]
 async fn test_mcp_protocol_comprehensive() -> Result<()> {
+    // Create a temporary project for testing add/remove operations
+    let temp_project = create_test_cargo_project().await?;
+    let temp_project_path = temp_project.path().to_str().unwrap();
+
     // Create client connection to our MCP server
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
@@ -42,9 +48,8 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     );
 
     // Define the complete set of expected cargo tools
-    let expected_tools = vec![
-        "add", "build", "check", "doc", "remove", "run", "test", "update",
-    ];
+    // Note: We exclude "test" to avoid recursive execution during testing
+    let expected_tools = vec!["add", "build", "check", "doc", "remove", "run", "update"];
 
     // Verify ALL expected tools are present
     let tool_names: Vec<String> = tools_result
@@ -81,12 +86,19 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     }
 
     // Verify we have exactly the expected number of tools (catches if new tools are added)
+    // Note: We expect 8 total tools but only test 7 to avoid recursive test execution
     assert_eq!(
         tool_names.len(),
-        expected_tools.len(),
-        "Expected exactly {} tools, but found {}. Tools: {:?}",
-        expected_tools.len(),
+        8, // Still expect all 8 tools including "test"
+        "Expected exactly 8 tools, but found {}. Tools: {:?}",
         tool_names.len(),
+        tool_names
+    );
+
+    // Verify the test tool exists but we won't execute it to avoid recursion
+    assert!(
+        tool_names.contains(&"test".to_string()),
+        "test tool should be available but was not found in: {:?}",
         tool_names
     );
 
@@ -104,9 +116,28 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
 
         // Provide appropriate arguments for tools that require them
         let arguments = match tool_name.as_ref() {
-            "add" => Some(object!({ "name": "serde" })),
-            "remove" => Some(object!({ "name": "serde" })),
-            _ => None,
+            "add" => {
+                let obj = json!({
+                    "name": "serde",
+                    "working_directory": temp_project_path
+                });
+                obj.as_object().cloned()
+            }
+            "remove" => {
+                let obj = json!({
+                    "name": "serde",
+                    "working_directory": temp_project_path
+                });
+                obj.as_object().cloned()
+            }
+            _ => {
+                // For all other tools, also use the temp project directory
+                // to avoid affecting the main project
+                let obj = json!({
+                    "working_directory": temp_project_path
+                });
+                obj.as_object().cloned()
+            }
         };
 
         let result = client
@@ -163,7 +194,12 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     let doc_result = client
         .call_tool(CallToolRequestParam {
             name: "doc".into(),
-            arguments: None,
+            arguments: {
+                let obj = json!({
+                    "working_directory": temp_project_path
+                });
+                obj.as_object().cloned()
+            },
         })
         .await?;
 
@@ -217,10 +253,19 @@ async fn test_mcp_protocol_flow() -> Result<()> {
     println!("✅ Server provides {} tools", tools_result.len());
 
     // Test a simple tool call to verify the protocol works end-to-end
+    // Create a temporary project for this test
+    let temp_project = create_test_cargo_project().await?;
+    let temp_project_path = temp_project.path().to_str().unwrap();
+
     let result = client
         .call_tool(CallToolRequestParam {
             name: "check".into(),
-            arguments: None,
+            arguments: {
+                let obj = json!({
+                    "working_directory": temp_project_path
+                });
+                obj.as_object().cloned()
+            },
         })
         .await?;
 
@@ -229,4 +274,46 @@ async fn test_mcp_protocol_flow() -> Result<()> {
 
     let _ = client.cancel().await;
     Ok(())
+}
+
+/// Helper function to create a temporary Cargo project for testing
+/// This ensures tests operate on temporary directories, not the actual project
+async fn create_test_cargo_project() -> Result<TempDir> {
+    let temp_dir = TempDir::new("cargo_mcp_test")?;
+    let project_path = temp_dir.path();
+
+    // Create Cargo.toml
+    let cargo_toml_content = r#"[package]
+name = "test_project"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+"#;
+
+    fs::write(project_path.join("Cargo.toml"), cargo_toml_content)?;
+
+    // Create src directory
+    fs::create_dir(project_path.join("src"))?;
+
+    // Create main.rs with a simple hello world
+    let main_rs_content = r#"fn main() {
+    println!("Hello, test world!");
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        let result = 2 + 2;
+        assert_eq!(result, 4);
+    }
+}
+"#;
+
+    fs::write(project_path.join("src").join("main.rs"), main_rs_content)?;
+
+    println!("Created test project at: {:?}", project_path);
+
+    Ok(temp_dir)
 }

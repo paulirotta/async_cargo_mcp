@@ -41,126 +41,148 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
         tools_result.len()
     );
 
-    // Verify expected tools are present
+    // Define the complete set of expected cargo tools
+    let expected_tools = vec![
+        "add", "build", "check", "doc", "remove", "run", "test", "update",
+    ];
+
+    // Verify ALL expected tools are present
     let tool_names: Vec<String> = tools_result
         .iter()
         .map(|tool| tool.name.to_string())
         .collect();
 
-    assert!(
-        tool_names.contains(&"say_hello".to_string()),
-        "say_hello tool should be available"
-    );
-    assert!(
-        tool_names.contains(&"echo".to_string()),
-        "echo tool should be available"
-    );
-    assert!(
-        tool_names.contains(&"sum".to_string()),
-        "sum tool should be available"
-    );
-    assert!(
-        tool_names.contains(&"build".to_string()),
-        "build tool should be available"
-    );
-    assert!(
-        tool_names.contains(&"check".to_string()),
-        "check tool should be available"
+    println!("Available tools: {:?}", tool_names);
+
+    for expected_tool in &expected_tools {
+        assert!(
+            tool_names.contains(&expected_tool.to_string()),
+            "{} tool should be available but was not found in: {:?}",
+            expected_tool,
+            tool_names
+        );
+    }
+
+    // Verify we don't have unexpected tools (like the old utility functions)
+    let unexpected_tools = vec![
+        "say_hello",
+        "echo",
+        "sum",
+        "increment",
+        "decrement",
+        "get_value",
+    ];
+    for unexpected_tool in &unexpected_tools {
+        assert!(
+            !tool_names.contains(&unexpected_tool.to_string()),
+            "Unexpected utility tool '{}' found - these should have been removed",
+            unexpected_tool
+        );
+    }
+
+    // Verify we have exactly the expected number of tools (catches if new tools are added)
+    assert_eq!(
+        tool_names.len(),
+        expected_tools.len(),
+        "Expected exactly {} tools, but found {}. Tools: {:?}",
+        expected_tools.len(),
+        tool_names.len(),
+        tool_names
     );
 
-    // Verify counter tools are NOT present
-    assert!(
-        !tool_names.contains(&"increment".to_string()),
-        "increment tool should not be available"
-    );
-    assert!(
-        !tool_names.contains(&"decrement".to_string()),
-        "decrement tool should not be available"
-    );
-    assert!(
-        !tool_names.contains(&"get_value".to_string()),
-        "get_value tool should not be available"
+    println!(
+        "✅ Tool availability validation passed - all {} expected cargo tools present",
+        expected_tools.len()
     );
 
-    println!("✅ Tool availability validation passed");
+    // Test 3: Test each cargo tool to ensure they execute without protocol errors
+    // Note: We expect some tools to return errors when run in the wrong context,
+    // but they should still execute and return proper MCP responses
 
-    // Small delay between tool calls
-    sleep(Duration::from_millis(50)).await;
+    for tool_name in &expected_tools {
+        sleep(Duration::from_millis(50)).await; // Small delay between calls
 
-    // Test 3: Test say_hello tool
-    let hello_result = client
+        // Provide appropriate arguments for tools that require them
+        let arguments = match tool_name.as_ref() {
+            "add" => Some(object!({ "name": "serde" })),
+            "remove" => Some(object!({ "name": "serde" })),
+            _ => None,
+        };
+
+        let result = client
+            .call_tool(CallToolRequestParam {
+                name: (*tool_name).into(),
+                arguments,
+            })
+            .await?;
+
+        // Verify the tool returned some content (even if it's an error message)
+        assert!(
+            !result.content.is_empty(),
+            "{} tool should return some content",
+            tool_name
+        );
+
+        // Verify the result has the expected structure
+        assert!(
+            result.content.len() > 0,
+            "{} tool should return at least one content item",
+            tool_name
+        );
+
+        println!("✅ {} tool executed successfully", tool_name);
+    }
+
+    // Test 4: Verify tool descriptions are present and meaningful
+    for tool in &tools_result {
+        assert!(
+            tool.description.is_some(),
+            "Tool '{}' should have a description",
+            tool.name
+        );
+
+        let desc = tool.description.as_ref().unwrap();
+        assert!(
+            !desc.is_empty(),
+            "Tool '{}' description should not be empty",
+            tool.name
+        );
+
+        // Verify description mentions cargo (since all our tools are cargo-related)
+        assert!(
+            desc.to_lowercase().contains("cargo"),
+            "Tool '{}' description should mention cargo: '{}'",
+            tool.name,
+            desc
+        );
+    }
+
+    println!("✅ Tool descriptions validation passed");
+
+    // Test 5: Test specific doc command functionality (since it's particularly important)
+    let doc_result = client
         .call_tool(CallToolRequestParam {
-            name: "say_hello".into(),
+            name: "doc".into(),
             arguments: None,
         })
         .await?;
 
+    // Verify doc command returns meaningful content
     assert!(
-        !hello_result.is_error.unwrap_or(false),
-        "say_hello should not return error"
+        !doc_result.content.is_empty(),
+        "doc command should return content"
     );
+
+    // For doc command, verify it mentions documentation in the output
+    let doc_output = format!("{:?}", doc_result.content);
     assert!(
-        !hello_result.content.is_empty(),
-        "say_hello should return content"
+        doc_output.to_lowercase().contains("documentation")
+            || doc_output.to_lowercase().contains("doc"),
+        "doc command output should mention documentation: {}",
+        doc_output
     );
-    println!("✅ say_hello tool test passed");
 
-    // Small delay between tool calls
-    sleep(Duration::from_millis(50)).await;
-
-    // Test 4: Test echo tool with arguments
-    let echo_result = client
-        .call_tool(CallToolRequestParam {
-            name: "echo".into(),
-            arguments: Some(object!({ "message": "Hello MCP!" })),
-        })
-        .await?;
-
-    assert!(
-        !echo_result.is_error.unwrap_or(false),
-        "echo should not return error"
-    );
-    assert!(
-        !echo_result.content.is_empty(),
-        "echo should return content"
-    );
-    println!("✅ echo tool test passed");
-
-    // Small delay between tool calls
-    sleep(Duration::from_millis(50)).await;
-
-    // Test 5: Test sum tool with arguments
-    let sum_result = client
-        .call_tool(CallToolRequestParam {
-            name: "sum".into(),
-            arguments: Some(object!({ "a": 5, "b": 3 })),
-        })
-        .await?;
-
-    assert!(
-        !sum_result.is_error.unwrap_or(false),
-        "sum should not return error"
-    );
-    assert!(!sum_result.content.is_empty(), "sum should return content");
-    println!("✅ sum tool test passed");
-
-    // Small delay between tool calls
-    sleep(Duration::from_millis(50)).await;
-
-    // Test 6: Test cargo check command
-    let check_result = client
-        .call_tool(CallToolRequestParam {
-            name: "check".into(),
-            arguments: None,
-        })
-        .await?;
-
-    // Note: check might return an error if run in the wrong directory, but it should still execute
-    assert!(
-        !check_result.content.is_empty(),
-        "check should return some content"
-    );
-    println!("✅ check tool test completed");
+    println!("✅ doc command specific validation passed");
 
     // Clean up
     let _ = client.cancel().await;
@@ -197,7 +219,7 @@ async fn test_mcp_protocol_flow() -> Result<()> {
     // Test a simple tool call to verify the protocol works end-to-end
     let result = client
         .call_tool(CallToolRequestParam {
-            name: "say_hello".into(),
+            name: "check".into(),
             arguments: None,
         })
         .await?;

@@ -11,12 +11,6 @@ use serde_json::json;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-pub struct StructRequest {
-    pub a: i32,
-    pub b: i32,
-}
-
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct DependencyRequest {
     pub name: String,
     pub version: Option<String>,
@@ -100,28 +94,6 @@ impl AsyncCargo {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_millis() as u64
-    }
-
-    #[tool(description = "Say hello to the client")]
-    fn say_hello(&self) -> Result<CallToolResult, McpError> {
-        Ok(CallToolResult::success(vec![Content::text("hello")]))
-    }
-
-    #[tool(description = "Repeat what you say")]
-    fn echo(&self, Parameters(object): Parameters<JsonObject>) -> Result<CallToolResult, McpError> {
-        Ok(CallToolResult::success(vec![Content::text(
-            serde_json::Value::Object(object).to_string(),
-        )]))
-    }
-
-    #[tool(description = "Calculate the sum of two numbers")]
-    fn sum(
-        &self,
-        Parameters(StructRequest { a, b }): Parameters<StructRequest>,
-    ) -> Result<CallToolResult, McpError> {
-        Ok(CallToolResult::success(vec![Content::text(
-            (a + b).to_string(),
-        )]))
     }
 
     #[tool(description = "Build the Rust project using cargo build")]
@@ -650,7 +622,7 @@ impl ServerHandler for AsyncCargo {
                 .enable_tools()
                 .build(),
             server_info: Implementation::from_build_env(),
-            instructions: Some("This server provides Rust cargo operations including build, test, run, check, and dependency management (add/remove/update). It also includes utility tools like echo, sum, and say_hello for testing purposes.".to_string()),
+            instructions: Some("This server provides Rust cargo operations including build, test, run, check, and dependency management (add/remove/update).".to_string()),
         }
     }
 

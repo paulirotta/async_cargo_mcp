@@ -13,23 +13,7 @@
 //! This is a pragmatic architectural decision following rust-instructions.md
 //! guidance to prefer simple solutions over complex fixes for external library issues.
 
-use async_cargo_mcp::{test_doc_functionality, test_increment_functionality};
-
-#[ignore = "Some integration tests are currently ignored due to undiagnosed issues with TokioChildProcess transport in the test environment"]
-#[tokio::test]
-async fn test_mcp_server_increment_sequence() {
-    let result = test_increment_functionality()
-        .await
-        .expect("Increment test failed");
-    println!("Increment test result: {}", result);
-
-    // Verify that the result contains expected progression
-    assert!(result.contains("Increment test results"));
-    assert!(result.contains("Initial:"));
-    assert!(result.contains("After first increment:"));
-    assert!(result.contains("After second increment:"));
-    assert!(result.contains("Final value:"));
-}
+use async_cargo_mcp::test_doc_functionality;
 
 #[ignore = "Some integration tests are currently ignored due to undiagnosed issues with TokioChildProcess transport in the test environment"]
 #[tokio::test]

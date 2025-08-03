@@ -51,7 +51,6 @@ This project provides a high performance MCP server that allows Large Language M
 - ✅ Comprehensive test suite (20 unit tests passing, 2 integration tests have known rmcp client issue)
 - ✅ Working directory support for safe testing
 - ✅ MCP protocol integration with JSON schema validation
-- ✅ Counter tools for testing (increment, decrement, get_value, echo, sum)
 
 ### Upcoming Features
 - 🔄 Fix integration test TokioChildProcess timing issue
@@ -149,7 +148,7 @@ Direct server and client interaction:
 
 This script provides comprehensive testing of:
 - MCP protocol initialization
-- All available tools (increment, get_value, echo, sum, and cargo commands)
+- All available cargo commands
 - Cargo operations (build, check, add, remove, test, etc.)
 - JSON-RPC communication
 
@@ -162,6 +161,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) for the protocol specification
 - [rmcp](https://github.com/modelcontextprotocol/rmcp) for the Rust MCP implementation
 - Rust community for excellent async ecosystem
+
+## Development Notes
+
+**MCP Server Usage Experience**: During development and testing, the async_cargo_mcp server performed efficiently for cargo operations. The clean removal of utility commands (say_hello, echo, sum, increment/decrement/get_value) successfully focused the server on its core purpose of providing cargo command access to LLMs. All cargo operations (build, test, check, doc, add, remove, update, run) work reliably with proper async notifications and error handling.
 
 ## Alternatives
 

@@ -65,33 +65,6 @@ async fn main() -> Result<()> {
     let tools = client.list_all_tools().await?;
     tracing::info!("Available tools: {tools:#?}");
 
-    // Test say_hello
-    let tool_result = client
-        .call_tool(CallToolRequestParam {
-            name: "say_hello".into(),
-            arguments: None,
-        })
-        .await?;
-    tracing::info!("Tool result for say_hello: {tool_result:#?}");
-
-    // Test echo with parameters
-    let tool_result = client
-        .call_tool(CallToolRequestParam {
-            name: "echo".into(),
-            arguments: Some(object!({ "message": "Hello from client!" })),
-        })
-        .await?;
-    tracing::info!("Tool result for echo: {tool_result:#?}");
-
-    // Test sum with parameters
-    let tool_result = client
-        .call_tool(CallToolRequestParam {
-            name: "sum".into(),
-            arguments: Some(object!({ "a": 5, "b": 3 })),
-        })
-        .await?;
-    tracing::info!("Tool result for sum: {tool_result:#?}");
-
     // Test cargo build with async notifications
     let tool_result = client
         .call_tool(CallToolRequestParam {

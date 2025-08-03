@@ -28,11 +28,6 @@
 //! - `remove`: Remove dependencies using `cargo remove`
 //! - `update`: Update dependencies using `cargo update`
 //!
-//! ### Utility Commands
-//! - `increment`/`decrement`/`get_value`: Counter operations for testing
-//! - `echo`: Echo back provided input for connectivity testing
-//! - `sum`: Calculate sum of two numbers for basic math operations
-//!
 //! ## Documentation Generation and Usage
 //!
 //! The `doc` command is particularly valuable for LLMs and development tools as it generates
@@ -43,13 +38,13 @@
 //! ## Usage Example
 //!
 //! ```rust,no_run
-//! use async_cargo_mcp::test_all_tools;
+//! use async_cargo_mcp::test_doc_functionality;
 //! use anyhow::Result;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
-//!     // Test all available commands
-//!     let results = test_all_tools().await?;
+//!     // Test documentation generation
+//!     let results = test_doc_functionality().await?;
 //!     println!("Test results: {}", results);
 //!     Ok(())
 //! }
@@ -84,190 +79,6 @@ use rmcp::{
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use tokio::process::Command;
-
-/// Test all available MCP tools and return a comprehensive summary
-///
-/// This function creates an MCP client connection to the async_cargo_mcp server,
-/// executes all available test commands (increment, get_value, decrement, echo, sum),
-/// and returns a formatted summary of the results.
-///
-/// This is useful for:
-/// - Verifying server connectivity and functionality
-/// - Integration testing of the MCP protocol implementation
-/// - Demonstrating basic command execution patterns
-///
-/// # Returns
-///
-/// A `Result<String>` containing either:
-/// - `Ok(String)`: Formatted summary of all test results
-/// - `Err(anyhow::Error)`: Error details if any command fails
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use async_cargo_mcp::test_all_tools;
-///
-/// #[tokio::main]
-/// async fn main() -> anyhow::Result<()> {
-///     match test_all_tools().await {
-///         Ok(summary) => println!("All tests passed:\n{}", summary),
-///         Err(e) => eprintln!("Test failed: {}", e),
-///     }
-///     Ok(())
-/// }
-/// ```
-pub async fn test_all_tools() -> Result<String> {
-    let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
-            },
-        ))?)
-        .await?;
-
-    // Test increment
-    let inc_result = client
-        .call_tool(CallToolRequestParam {
-            name: "increment".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Increment failed: {}", e))?;
-
-    // Test get_value
-    let value_result = client
-        .call_tool(CallToolRequestParam {
-            name: "get_value".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Get value failed: {}", e))?;
-
-    // Test decrement
-    let dec_result = client
-        .call_tool(CallToolRequestParam {
-            name: "decrement".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Decrement failed: {}", e))?;
-
-    // Test echo
-    let echo_result = client
-        .call_tool(CallToolRequestParam {
-            name: "echo".into(),
-            arguments: Some(object!({ "message": "test" })),
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Echo failed: {}", e))?;
-
-    // Test sum
-    let sum_result = client
-        .call_tool(CallToolRequestParam {
-            name: "sum".into(),
-            arguments: Some(object!({ "a": 5, "b": 3 })),
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Sum failed: {}", e))?;
-
-    // Store the result before canceling the client
-    let result = format!(
-        "All tools tested successfully:\n- Increment: {:?}\n- Get Value: {:?}\n- Decrement: {:?}\n- Echo: {:?}\n- Sum: {:?}",
-        inc_result, value_result, dec_result, echo_result, sum_result
-    );
-
-    // Cancel the client - ignore errors since transport might already be closed
-    let _ = client.cancel().await;
-
-    Ok(result)
-}
-
-/// Test increment functionality with detailed state tracking
-///
-/// This function demonstrates the stateful nature of the MCP server by:
-/// 1. Getting the initial counter value
-/// 2. Performing two increment operations  
-/// 3. Retrieving the final counter value
-/// 4. Returning a detailed log of all state changes
-///
-/// This test is particularly useful for:
-/// - Verifying server state persistence across multiple calls
-/// - Demonstrating sequential command execution patterns
-/// - Testing the increment/decrement/get_value command trio
-///
-/// # Returns
-///
-/// A `Result<String>` containing either:
-/// - `Ok(String)`: Detailed log of counter state changes throughout the test
-/// - `Err(anyhow::Error)`: Error details if any operation fails
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use async_cargo_mcp::test_increment_functionality;
-///
-/// #[tokio::main]
-/// async fn main() -> anyhow::Result<()> {
-///     let increment_log = test_increment_functionality().await?;
-///     println!("Increment test log:\n{}", increment_log);
-///     Ok(())
-/// }
-/// ```
-pub async fn test_increment_functionality() -> Result<String> {
-    let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
-            },
-        ))?)
-        .await?;
-
-    // Start with get_value to see initial state
-    let initial = client
-        .call_tool(CallToolRequestParam {
-            name: "get_value".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Initial get_value failed: {}", e))?;
-
-    // Increment twice
-    let inc1 = client
-        .call_tool(CallToolRequestParam {
-            name: "increment".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("First increment failed: {}", e))?;
-
-    let inc2 = client
-        .call_tool(CallToolRequestParam {
-            name: "increment".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Second increment failed: {}", e))?;
-
-    // Get final value
-    let final_value = client
-        .call_tool(CallToolRequestParam {
-            name: "get_value".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Final get_value failed: {}", e))?;
-
-    // Store the result before canceling the client
-    let result = format!(
-        "Increment test results:\n- Initial: {:?}\n- After first increment: {:?}\n- After second increment: {:?}\n- Final value: {:?}",
-        initial, inc1, inc2, final_value
-    );
-
-    // Cancel the client - ignore errors since transport might already be closed
-    let _ = client.cancel().await;
-
-    Ok(result)
-}
 
 /// Test documentation generation functionality
 ///

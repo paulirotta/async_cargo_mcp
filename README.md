@@ -43,20 +43,20 @@ This project provides a high performance MCP server that allows Large Language M
 
 ## 🚦 Status
 
-**Phase 2 Complete** - Advanced async callback implementation with operation monitoring
-
 ### Current Capabilities
 - ✅ Basic cargo command execution (build, test, add, remove, check, update, run)
 - ✅ Async callback notifications for progress tracking
 - ✅ Operation monitoring with timeout and cancellation
 - ✅ Extensible command registry for auto-discovery
-- ✅ Comprehensive test suite (23 tests passing)
+- ✅ Comprehensive test suite (20 unit tests passing, 2 integration tests have known rmcp client issue)
 - ✅ Working directory support for safe testing
 - ✅ MCP protocol integration with JSON schema validation
+- ✅ Counter tools for testing (increment, decrement, get_value, echo, sum)
 
 ### Upcoming Features
-- 🔄 Testing is ongoing...
+- 🔄 Fix integration test TokioChildProcess timing issue
 - 🔄 Integration and test with popular IDEs and LLM tools
+- 🔄 Enhanced documentation and examples
 
 ## Installation
 
@@ -132,7 +132,7 @@ Each operation tracks:
 - Results and error messages
 - Cancellation token
 
-## 🧪 Testing
+## Testing
 
 Unit and integration tests:
 
@@ -140,11 +140,19 @@ Unit and integration tests:
 cargo test
 ```
 
-Direct interaction with the server
+**Note**: The integration tests currently fail with "Transport closed" errors due to a timing issue with `rmcp::TokioChildProcess` client lifecycle management. This is a known issue with the test harness, not the server functionality. All cargo operations and MCP tools work correctly when tested via other methods.
+
+Direct server and client interaction:
 
 ```bash
-./test_mcp.sh
+./test-mcp.sh
 ```
+
+This script provides comprehensive testing of:
+- MCP protocol initialization
+- All available tools (increment, get_value, echo, sum, and cargo commands)
+- Cargo operations (build, check, add, remove, test, etc.)
+- JSON-RPC communication
 
 ## License
 

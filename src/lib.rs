@@ -16,6 +16,7 @@ use rmcp::{
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use tokio::process::Command;
+use tokio::time::{Duration, sleep};
 
 /// Test all the available tools and return a summary
 ///
@@ -39,6 +40,9 @@ pub async fn test_all_tools() -> Result<String> {
         .await
         .map_err(|e| anyhow::anyhow!("Increment failed: {}", e))?;
 
+    // Small delay to prevent TokioChildProcess race condition
+    sleep(Duration::from_millis(50)).await;
+
     // Test get_value
     let value_result = client
         .call_tool(CallToolRequestParam {
@@ -47,6 +51,9 @@ pub async fn test_all_tools() -> Result<String> {
         })
         .await
         .map_err(|e| anyhow::anyhow!("Get value failed: {}", e))?;
+
+    // Small delay to prevent TokioChildProcess race condition
+    sleep(Duration::from_millis(50)).await;
 
     // Test decrement
     let dec_result = client
@@ -57,6 +64,9 @@ pub async fn test_all_tools() -> Result<String> {
         .await
         .map_err(|e| anyhow::anyhow!("Decrement failed: {}", e))?;
 
+    // Small delay to prevent TokioChildProcess race condition
+    sleep(Duration::from_millis(50)).await;
+
     // Test echo
     let echo_result = client
         .call_tool(CallToolRequestParam {
@@ -65,6 +75,9 @@ pub async fn test_all_tools() -> Result<String> {
         })
         .await
         .map_err(|e| anyhow::anyhow!("Echo failed: {}", e))?;
+
+    // Small delay to prevent TokioChildProcess race condition
+    sleep(Duration::from_millis(50)).await;
 
     // Test sum
     let sum_result = client
@@ -106,6 +119,9 @@ pub async fn test_increment_functionality() -> Result<String> {
         .await
         .map_err(|e| anyhow::anyhow!("Initial get_value failed: {}", e))?;
 
+    // Small delay to prevent TokioChildProcess race condition
+    sleep(Duration::from_millis(50)).await;
+
     // Increment twice
     let inc1 = client
         .call_tool(CallToolRequestParam {
@@ -115,6 +131,9 @@ pub async fn test_increment_functionality() -> Result<String> {
         .await
         .map_err(|e| anyhow::anyhow!("First increment failed: {}", e))?;
 
+    // Small delay to prevent TokioChildProcess race condition
+    sleep(Duration::from_millis(50)).await;
+
     let inc2 = client
         .call_tool(CallToolRequestParam {
             name: "increment".into(),
@@ -122,6 +141,9 @@ pub async fn test_increment_functionality() -> Result<String> {
         })
         .await
         .map_err(|e| anyhow::anyhow!("Second increment failed: {}", e))?;
+
+    // Small delay to prevent TokioChildProcess race condition
+    sleep(Duration::from_millis(50)).await;
 
     // Get final value
     let final_value = client

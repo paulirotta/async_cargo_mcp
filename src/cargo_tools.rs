@@ -72,6 +72,13 @@ pub struct UpdateRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct DocRequest {
+    pub working_directory: Option<String>,
+    /// Enable async callback notifications for operation progress
+    pub enable_async_notifications: Option<bool>,
+}
+
 #[derive(Clone, Debug)]
 pub struct AsyncCargo {
     counter: Arc<Mutex<i32>>,
@@ -569,6 +576,95 @@ impl AsyncCargo {
         } else {
             format!(
                 "❌ Update operation #{update_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(description = "Generate documentation for the Rust project using cargo doc")]
+    async fn doc(
+        &self,
+        Parameters(req): Parameters<DocRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let doc_id = self.next_operation_id().await;
+
+        // TODO: Add asynchronous callback mechanism here for documentation generation progress
+        // Implementation plan:
+        // 1. Stream documentation generation progress to the LLM in real-time
+        // 2. Show which crates and modules are being documented
+        // 3. Provide warnings about missing documentation or broken doc links
+        // 4. Report the final location of generated documentation files
+        // This would allow streaming doc generation progress and warnings to the LLM
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("doc").arg("--no-deps");
+
+        // Set working directory if provided
+        if let Some(working_dir) = &req.working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo doc: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|dir| format!(" in {}", dir))
+            .unwrap_or_default();
+
+        let result_msg = if output.status.success() {
+            // Try to determine the crate name for the documentation path
+            let crate_name = if let Some(working_dir) = &req.working_directory {
+                // If working directory is specified, try to read Cargo.toml there
+                let cargo_toml_path = format!("{}/Cargo.toml", working_dir);
+                std::fs::read_to_string(&cargo_toml_path)
+                    .ok()
+                    .and_then(|content| {
+                        // Simple parsing to extract package name
+                        content
+                            .lines()
+                            .find(|line| line.trim().starts_with("name"))
+                            .and_then(|line| {
+                                line.split('=')
+                                    .nth(1)?
+                                    .trim()
+                                    .trim_matches('"')
+                                    .split(' ')
+                                    .next()
+                                    .map(|s| s.replace('-', "_"))
+                            })
+                    })
+                    .unwrap_or_else(|| "unknown_crate".to_string())
+            } else {
+                "async_cargo_mcp".to_string() // Default for this project
+            };
+
+            let doc_path = if let Some(working_dir) = &req.working_directory {
+                format!("{}/target/doc/{}/index.html", working_dir, crate_name)
+            } else {
+                format!("target/doc/{}/index.html", crate_name)
+            };
+
+            format!(
+                "✅ Documentation generation #{doc_id} completed successfully{working_dir_msg}.
+📚 Documentation generated at: {}
+🔍 The generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.
+💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.
+
+Output: {stdout}",
+                doc_path
+            )
+        } else {
+            format!(
+                "❌ Documentation generation #{doc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             )
         };
 

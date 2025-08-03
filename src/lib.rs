@@ -143,4 +143,3 @@ pub async fn test_doc_functionality() -> Result<String> {
 
     Ok(result)
 }
-

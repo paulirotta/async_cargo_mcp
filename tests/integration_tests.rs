@@ -15,21 +15,6 @@
 
 use async_cargo_mcp::{test_doc_functionality, test_increment_functionality};
 
-#[ignore = "TokioChildProcess race condition in rmcp library - see file comments for details. Server functionality verified via test-mcp.sh"]
-#[tokio::test]
-async fn test_mcp_server_utility_tools() {
-    let result = test_utility_tools()
-        .await
-        .expect("Utility tools test failed");
-    println!("Test result: {}", result);
-
-    // Verify that the result contains expected strings
-    assert!(result.contains("Utility tools tested successfully"));
-    assert!(result.contains("Say Hello:"));
-    assert!(result.contains("Echo:"));
-    assert!(result.contains("Sum:"));
-}
-
 #[ignore = "Some integration tests are currently ignored due to undiagnosed issues with TokioChildProcess transport in the test environment"]
 #[tokio::test]
 async fn test_mcp_server_increment_sequence() {

@@ -54,9 +54,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
       
-      - name: Install Linux dependencies in background
-        run: sudo apt update && sudo apt-get install -y pkg-config libfontconfig1-dev &
-      
       - name: Get current day number
         id: day-number
         run: echo "day=$(date +%j)" >> $GITHUB_OUTPUT
@@ -119,9 +116,6 @@ jobs:
           fetch-depth: 2
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Linux dependencies in background
-        run: sudo apt update && sudo apt-get install -y pkg-config libfontconfig1-dev &
       
       - name: Get current day number
         id: day-number

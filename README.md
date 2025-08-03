@@ -55,124 +55,53 @@ This project provides a high performance MCP server that allows Large Language M
 - ✅ MCP protocol integration with JSON schema validation
 
 ### Upcoming Features
-- 🔄 Real-time streaming of cargo output during execution
-- 🔄 Advanced operation management UI
-- 🔄 Integration with popular IDEs and LLM tools
+- 🔄 Testing is ongoing...
+- 🔄 Integration and test with popular IDEs and LLM tools
 
-## 📦 Installation
+## Installation
 
-### Prerequisites
-- Rust 1.70+ with Cargo
-- Git
+Under active development, so only from source at the moment:
 
-### Build from Source
 ```bash
-git clone https://github.com/yourusername/async_cargo_mcp.git
-cd async_cargo_mcp
-cargo build --release
+git clone git@github.com:paulirotta/async_cargo_mcp.git
 ```
 
-### Command Line Usage
-```bash
-# Check version
-cargo run -- --version
-
-# Get help
-cargo run -- --help
-
-# Run MCP server (stdio transport)
-cargo run --bin async_cargo_mcp
-
-# Run test client
-cargo run --bin client
-```
-
-## 🔧 IDE Integration
+## IDE Integration
 
 ### VSCode with GitHub Copilot
 
-Add the following to your VSCode settings.json:
+There are MCP Extensions in the marketplace. They are not necessary and may cause confusion/duplication.
+
+First ensure you have enabled VSCode internal MCP server:
 
 ```json
-{
-    "chat.mcp.enabled": true,
-    "chat.mcp.discovery.enabled": {
-        "async_cargo_mcp": {
-            "command": "/YOUR_PATH_TO/async_cargo_mcp/target/release/async_cargo_mcp",
-            "args": []
-        }
-    }
-}
+    "chat.mcp.enabled": true
 ```
 
-After building the release version:
 ```bash
 cargo build --release
+```
+
+In VSCode either add either as Global or Workplace using 
+`CTRL/CMD SHIFT P "MCP: Add Server"`
+
+The result is stored in to `mcp.json` as:
+```json
+{
+    "servers": {
+        "async_cargo_mcp": {
+            "type": "stdio",
+            "command": "YOUR_PROJECT_PATH/async_cargo_mcp/target/release/async_cargo_mcp",
+            "args": []
+        },
+    },
+    "inputs": []
+}
 ```
 
 Restart VSCode to activate the MCP server.
 
-## 📖 Usage Examples
-
-### Basic Cargo Operations
-
-```typescript
-// Build project
-await mcp.callTool("build", {
-    working_directory: "/path/to/project"
-});
-
-// Add dependency
-await mcp.callTool("add", {
-    name: "serde",
-    version: "1.0",
-    features: ["derive"],
-    working_directory: "/path/to/project"
-});
-
-// Run tests
-await mcp.callTool("test", {
-    working_directory: "/path/to/project"
-});
-```
-
-### Async Operations with Notifications
-
-```typescript
-// Enable async notifications for long-running builds
-await mcp.callTool("build", {
-    working_directory: "/path/to/project",
-    enable_async_notifications: true
-});
-
-// Server will log:
-// - Start notification with operation ID
-// - Progress updates during execution  
-// - Completion notification with timing and results
-```
-
-### Advanced Features
-
-```typescript
-// Check project without building
-await mcp.callTool("check", {
-    working_directory: "/path/to/project",
-    enable_async_notifications: true
-});
-
-// Update all dependencies
-await mcp.callTool("update", {
-    working_directory: "/path/to/project"
-});
-
-// Remove dependency
-await mcp.callTool("remove", {
-    name: "unused-dep",
-    working_directory: "/path/to/project"
-});
-```
-
-## 🏗️ Architecture
+## Architecture
 
 ### Core Components
 
@@ -205,120 +134,34 @@ Each operation tracks:
 
 ## 🧪 Testing
 
-Run the comprehensive test suite:
+Unit and integration tests:
 
 ```bash
-# All tests
-cargo test
-
-# Specific modules
-cargo test callback_system
-cargo test command_registry
-cargo test operation_monitor
-cargo test cargo_tools_tests
-```
-
-Test coverage includes:
-- Unit tests for all modules (15 tests)
-- Integration tests with temporary cargo projects (5 tests)
-- MCP server functionality tests (3 tests)
-- **Total: 23 tests ensuring reliable operation**
-
-## 📊 Monitoring & Metrics
-
-The operation monitor provides detailed statistics:
-
-```rust
-let stats = monitor.get_statistics().await;
-println!("Success rate: {:.1}%", stats.success_rate());
-println!("Average duration: {:?}", stats.average_duration);
-println!("Total operations: {}", stats.total);
-```
-
-Available metrics:
-- Total, pending, running, completed, failed, cancelled, timed out operations
-- Success and failure rates
-- Average operation duration
-- Real-time operation status
-
-## 🔍 Debugging
-
-Enable detailed logging:
-
-```bash
-RUST_LOG=debug cargo run --bin async_cargo_mcp
-```
-
-Logs include:
-- Operation lifecycle events
-- Command execution details
-- Callback progress updates
-- Error diagnostics
-- Performance metrics
-
-## 🤝 Contributing
-
-We welcome contributions! Key areas:
-
-1. **New Cargo Commands**: Implement the `CargoCommand` trait
-2. **Callback Implementations**: Add new progress notification methods
-3. **Output Streaming**: Help implement real-time cargo output streaming
-4. **IDE Integrations**: Support for additional editors and LLM tools
-
-### Development Setup
-
-```bash
-git clone https://github.com/yourusername/async_cargo_mcp.git
-cd async_cargo_mcp
-cargo build
 cargo test
 ```
 
-## 📄 License
+Direct interaction with the server
+
+```bash
+./test_mcp.sh
+```
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) for the protocol specification
 - [rmcp](https://github.com/modelcontextprotocol/rmcp) for the Rust MCP implementation
 - Rust community for excellent async ecosystem
 
-## VSCode chat test
+## Alternatives
 
-1. Setup as above and 
-2. Select a tool-calling LLM (GPT-4.1..)
-3. Type in Github Copilot Chat window:
+The ecosystem is changing rapidly. Running without an MCP tool but adding some prompt incantations might be the most flexible. In some cases a good tool saves time/money.
 
-```bash
-@async_cargo_mcp Please increment the counter.
-```
+[jbr's cargo-mcp](https://github.com/jbr/cargo-mcp)
 
-## Run the server locally
+[seemethere's cargo-mcp](https://github.com/seemethere/cargo-mcp)
 
-TODO: We do not yet support HTTP commands in the server
-
-You can instead test by starting it in another window, for example:
-
-```bash
-cargo build --release
-/YOUR_PATH_TO/async_cargo_mcp/target/release/async_cargo_mcp --spawn=false
-```
-
-Send a call_tool request: You need to create a JSON payload representing the tool call. The message must be prefixed with its content length and headers, as per the Language Server Protocol (which MCP's transport layer is based on).
-
-Here is an example of a shell command that constructs and sends a request to increment the counter. You can paste this into a different terminal window.
-
-```bash
-# JSON payload for the call_tool request
-JSON_PAYLOAD='{"jsonrpc":"2.0","method":"call_tool","params":{"name":"increment","arguments":{}},"id":1}'
-
-# Calculate the content length
-CONTENT_LENGTH=$(echo -n "$JSON_PAYLOAD" | wc -c | tr -d ' ')
-
-# Construct the full message with header and send it to the running process
-# NOTE: You must run the server first in a separate terminal for this to connect.
-printf "Content-Length: %s\r\n\r\n%s" "$CONTENT_LENGTH" "$JSON_PAYLOAD" | /Users/paul/github/async_cargo_mcp/target/release/async_cargo_mcp --spawn=false
-```
-
-This command will send the request and the server will print its JSON-RPC response to stdout. This manual method is useful for debugging the raw protocol but testing through the VS Code Chat view is much more convenient for general use.
+[SignalWhisperer's cargo-mcp](https://github.com/SignalWhisperer/cargo-mcp)

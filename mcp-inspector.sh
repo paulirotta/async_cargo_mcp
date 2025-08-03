@@ -1,4 +1,9 @@
 #!/bin/bash
+# mcp-inspector.sh is a test script for launching the MCP Inspector Web UI
+# It launches the MCP Inspector Web UI for direct interaction with async_cargo_mcp
+#
+# Ensure the script is run from the correct directory
+# This script assumes it is located in the root of a cargo project directory.
 
 # Print current directory message
 echo "Starting MCP Inspector from directory: $(pwd)"

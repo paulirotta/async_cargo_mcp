@@ -27,16 +27,6 @@ async fn main() -> Result<()> {
     // Parse command line arguments
     let _args = Args::parse();
 
-    // Write to a log file to prove we started
-    std::fs::write(
-        "/tmp/async_cargo_mcp_started.log",
-        format!(
-            "async_cargo_mcp started at {:?}\n",
-            std::time::SystemTime::now()
-        ),
-    )
-    .ok();
-
     // Initialize the tracing subscriber with file and stdout logging
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::DEBUG.into()))

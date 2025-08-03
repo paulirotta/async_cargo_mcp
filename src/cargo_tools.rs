@@ -107,6 +107,7 @@ impl AsyncCargo {
         let result = CallToolResult::success(vec![Content::text(counter.to_string())]);
         tracing::info!("Increment result: {:?}", result);
         tracing::info!("=== INCREMENT TOOL RETURNING ===");
+        println!("Increment result: {:?}", result);
         Ok(result)
     }
 

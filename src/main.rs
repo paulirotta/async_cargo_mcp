@@ -8,6 +8,16 @@ use tracing_subscriber::{self, EnvFilter};
 /// npx @modelcontextprotocol/inspector cargo run -p async_cargo_mcp
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Write to a log file to prove we started
+    std::fs::write(
+        "/tmp/async_cargo_mcp_started.log",
+        format!(
+            "async_cargo_mcp started at {:?}\n",
+            std::time::SystemTime::now()
+        ),
+    )
+    .ok();
+
     // Initialize the tracing subscriber with file and stdout logging
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::DEBUG.into()))

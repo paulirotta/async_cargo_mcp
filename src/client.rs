@@ -19,6 +19,7 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    //TODO is this coming back to the vscode server on stderr causing problems when it expects only json?
     tracing::info!("Starting MCP client to test our server");
 
     // Start our server as a child process

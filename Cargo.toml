@@ -13,7 +13,7 @@ path = "src/client.rs"
 
 [dependencies]
 anyhow = "1.0.98"
-async-trait = "0.1.88"
+async-trait = "0.1.88" # Remove this once Stable Rust supports Box<dyn TraitWithAsyncMethods>
 axum = "0.8.4"
 clap = { version = "4.5.42", features = ["derive"] }
 rmcp = { version = "0.3.2", features = ["server", "client", "macros", "transport-io", "transport-child-process"] }

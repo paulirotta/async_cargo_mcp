@@ -27,20 +27,17 @@ echo "Testing MCP protocol interactions..."
     # 3. Call tools/list to see available tools
     echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
     
-    # 4. Test the increment tool
-    echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"increment","arguments":{}}}'
+    # 4. Test say_hello
+    echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"say_hello","arguments":{}}}'
     
-    # 5. Test get_value
-    echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_value","arguments":{}}}'
+    # 5. Test echo with arguments
+    echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello MCP!"}}}'
     
-    # 6. Test echo with arguments
-    echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello MCP!"}}}'
+    # 6. Test sum
+    echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"sum","arguments":{"a":5,"b":3}}}'
     
-    # 7. Test sum
-    echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"sum","arguments":{"a":5,"b":3}}}'
-    
-    # 8. Test a cargo command (build in current directory)
-    echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"check","arguments":{}}}'
+    # 7. Test a cargo command (check in current directory)
+    echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"check","arguments":{}}}'
     
 } | /Users/paul/github/async_cargo_mcp/target/release/async_cargo_mcp 2>/dev/null
 

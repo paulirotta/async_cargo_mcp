@@ -41,41 +41,14 @@ async fn main() -> Result<()> {
     let tools = client.list_all_tools().await?;
     tracing::info!("Available tools: {tools:#?}");
 
-    // Call increment tool
+    // Test say_hello
     let tool_result = client
         .call_tool(CallToolRequestParam {
-            name: "increment".into(),
+            name: "say_hello".into(),
             arguments: None,
         })
         .await?;
-    tracing::info!("Tool result for increment: {tool_result:#?}");
-
-    // Call increment again
-    let tool_result = client
-        .call_tool(CallToolRequestParam {
-            name: "increment".into(),
-            arguments: None,
-        })
-        .await?;
-    tracing::info!("Tool result for second increment: {tool_result:#?}");
-
-    // Get current value
-    let tool_result = client
-        .call_tool(CallToolRequestParam {
-            name: "get_value".into(),
-            arguments: None,
-        })
-        .await?;
-    tracing::info!("Tool result for get_value: {tool_result:#?}");
-
-    // Test decrement
-    let tool_result = client
-        .call_tool(CallToolRequestParam {
-            name: "decrement".into(),
-            arguments: None,
-        })
-        .await?;
-    tracing::info!("Tool result for decrement: {tool_result:#?}");
+    tracing::info!("Tool result for say_hello: {tool_result:#?}");
 
     // Test echo with parameters
     let tool_result = client

@@ -8,9 +8,7 @@ use rmcp::{
     tool, tool_handler, tool_router,
 };
 use serde_json::json;
-use std::sync::Arc;
-use std::time::Instant;
-use tokio::sync::Mutex;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct StructRequest {
@@ -74,7 +72,6 @@ pub struct UpdateRequest {
 
 #[derive(Clone, Debug)]
 pub struct AsyncCargo {
-    counter: Arc<Mutex<i32>>,
     tool_router: ToolRouter<AsyncCargo>,
 }
 
@@ -83,7 +80,6 @@ impl AsyncCargo {
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
-            counter: Arc::new(Mutex::new(0)),
             tool_router: Self::tool_router(),
         }
     }
@@ -92,40 +88,11 @@ impl AsyncCargo {
         RawResource::new(uri, name.to_string()).no_annotation()
     }
 
-    /// Increment the counter and return the new value
-    async fn next_operation_id(&self) -> i32 {
-        let mut counter = self.counter.lock().await;
-        *counter += 1;
-        *counter
-    }
-
-    #[tool(description = "Increment the counter by 1")]
-    async fn increment(&self) -> Result<CallToolResult, McpError> {
-        tracing::info!("=== INCREMENT TOOL CALLED ===");
-        let mut counter = self.counter.lock().await;
-        *counter += 1;
-        let result = CallToolResult::success(vec![Content::text(counter.to_string())]);
-        tracing::info!("Increment result: {:?}", result);
-        tracing::info!("=== INCREMENT TOOL RETURNING ===");
-        println!("Increment result: {:?}", result);
-        Ok(result)
-    }
-
-    #[tool(description = "Decrement the counter by 1")]
-    async fn decrement(&self) -> Result<CallToolResult, McpError> {
-        let mut counter = self.counter.lock().await;
-        *counter -= 1;
-        Ok(CallToolResult::success(vec![Content::text(
-            counter.to_string(),
-        )]))
-    }
-
-    #[tool(description = "Get the current counter value")]
-    async fn get_value(&self) -> Result<CallToolResult, McpError> {
-        let counter = self.counter.lock().await;
-        Ok(CallToolResult::success(vec![Content::text(
-            counter.to_string(),
-        )]))
+    fn generate_operation_id(&self) -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64
     }
 
     #[tool(description = "Say hello to the client")]
@@ -155,7 +122,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<BuildRequest>,
     ) -> Result<CallToolResult, McpError> {
-        let build_id = self.next_operation_id().await;
+        let build_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -223,7 +190,7 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
-        let run_id = self.next_operation_id().await;
+        let run_id = self.generate_operation_id();
 
         // TODO: Add asynchronous callback mechanism here for runtime output streaming
         // Implementation plan:
@@ -274,7 +241,7 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
-        let test_id = self.next_operation_id().await;
+        let test_id = self.generate_operation_id();
 
         // TODO: Add asynchronous callback mechanism here for test progress updates
         // Implementation plan:
@@ -325,7 +292,7 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
-        let check_id = self.next_operation_id().await;
+        let check_id = self.generate_operation_id();
 
         // TODO: Add asynchronous callback mechanism here for check progress updates
         // Implementation plan:
@@ -374,7 +341,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<DependencyRequest>,
     ) -> Result<CallToolResult, McpError> {
-        let add_id = self.next_operation_id().await;
+        let add_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -461,7 +428,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<RemoveDependencyRequest>,
     ) -> Result<CallToolResult, McpError> {
-        let remove_id = self.next_operation_id().await;
+        let remove_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -531,7 +498,7 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, McpError> {
         use tokio::process::Command;
 
-        let update_id = self.next_operation_id().await;
+        let update_id = self.generate_operation_id();
 
         // TODO: Add asynchronous callback mechanism here for dependency update progress
         // Implementation plan:
@@ -587,7 +554,7 @@ impl ServerHandler for AsyncCargo {
                 .enable_tools()
                 .build(),
             server_info: Implementation::from_build_env(),
-            instructions: Some("This server provides a counter tool that can increment and decrement values. The counter starts at 0 and can be modified using the 'increment' and 'decrement' tools. Use 'get_value' to check the current count.".to_string()),
+            instructions: Some("This server provides Rust cargo operations including build, test, run, check, and dependency management (add/remove/update). It also includes utility tools like echo, sum, and say_hello for testing purposes.".to_string()),
         }
     }
 
@@ -723,7 +690,7 @@ impl AsyncCargo {
     ) -> Result<String, String> {
         use tokio::process::Command;
 
-        let operation_id = self.next_operation_id().await.to_string();
+        let operation_id = self.generate_operation_id().to_string();
         let start_time = Instant::now();
 
         let callback = callback.unwrap_or_else(|| no_callback());
@@ -825,7 +792,7 @@ impl AsyncCargo {
     ) -> Result<String, String> {
         use tokio::process::Command;
 
-        let operation_id = self.next_operation_id().await.to_string();
+        let operation_id = self.generate_operation_id().to_string();
         let start_time = Instant::now();
 
         let callback = callback.unwrap_or_else(|| no_callback());
@@ -907,7 +874,7 @@ impl AsyncCargo {
     ) -> Result<String, String> {
         use tokio::process::Command;
 
-        let operation_id = self.next_operation_id().await.to_string();
+        let operation_id = self.generate_operation_id().to_string();
         let start_time = Instant::now();
 
         let callback = callback.unwrap_or_else(|| no_callback());

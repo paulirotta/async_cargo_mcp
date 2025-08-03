@@ -16,12 +16,13 @@ use rmcp::{
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use tokio::process::Command;
+use tokio::time::{Duration, sleep};
 
-/// Test all the available tools and return a summary
+/// Test the remaining utility tools (echo, sum, say_hello)
 ///
 /// This is a self-contained test function that creates its own client,
-/// runs all tests, and cleans up.
-pub async fn test_all_tools() -> Result<String> {
+/// runs all non-counter tests, and cleans up.
+pub async fn test_utility_tools() -> Result<String> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
@@ -30,32 +31,17 @@ pub async fn test_all_tools() -> Result<String> {
         ))?)
         .await?;
 
-    // Test increment
-    let inc_result = client
+    // Test say_hello
+    let hello_result = client
         .call_tool(CallToolRequestParam {
-            name: "increment".into(),
+            name: "say_hello".into(),
             arguments: None,
         })
         .await
-        .map_err(|e| anyhow::anyhow!("Increment failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Say hello failed: {}", e))?;
 
-    // Test get_value
-    let value_result = client
-        .call_tool(CallToolRequestParam {
-            name: "get_value".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Get value failed: {}", e))?;
-
-    // Test decrement
-    let dec_result = client
-        .call_tool(CallToolRequestParam {
-            name: "decrement".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Decrement failed: {}", e))?;
+    // Small delay to prevent TokioChildProcess race condition
+    sleep(Duration::from_millis(50)).await;
 
     // Test echo
     let echo_result = client
@@ -65,6 +51,9 @@ pub async fn test_all_tools() -> Result<String> {
         })
         .await
         .map_err(|e| anyhow::anyhow!("Echo failed: {}", e))?;
+
+    // Small delay to prevent TokioChildProcess race condition
+    sleep(Duration::from_millis(50)).await;
 
     // Test sum
     let sum_result = client
@@ -77,65 +66,8 @@ pub async fn test_all_tools() -> Result<String> {
 
     // Store the result before canceling the client
     let result = format!(
-        "All tools tested successfully:\n- Increment: {:?}\n- Get Value: {:?}\n- Decrement: {:?}\n- Echo: {:?}\n- Sum: {:?}",
-        inc_result, value_result, dec_result, echo_result, sum_result
-    );
-
-    // Cancel the client - ignore errors since transport might already be closed
-    let _ = client.cancel().await;
-
-    Ok(result)
-}
-
-/// Test increment functionality
-pub async fn test_increment_functionality() -> Result<String> {
-    let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
-            },
-        ))?)
-        .await?;
-
-    // Start with get_value to see initial state
-    let initial = client
-        .call_tool(CallToolRequestParam {
-            name: "get_value".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Initial get_value failed: {}", e))?;
-
-    // Increment twice
-    let inc1 = client
-        .call_tool(CallToolRequestParam {
-            name: "increment".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("First increment failed: {}", e))?;
-
-    let inc2 = client
-        .call_tool(CallToolRequestParam {
-            name: "increment".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Second increment failed: {}", e))?;
-
-    // Get final value
-    let final_value = client
-        .call_tool(CallToolRequestParam {
-            name: "get_value".into(),
-            arguments: None,
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Final get_value failed: {}", e))?;
-
-    // Store the result before canceling the client
-    let result = format!(
-        "Increment test results:\n- Initial: {:?}\n- After first increment: {:?}\n- After second increment: {:?}\n- Final value: {:?}",
-        initial, inc1, inc2, final_value
+        "Utility tools tested successfully:\n- Say Hello: {:?}\n- Echo: {:?}\n- Sum: {:?}",
+        hello_result, echo_result, sum_result
     );
 
     // Cancel the client - ignore errors since transport might already be closed

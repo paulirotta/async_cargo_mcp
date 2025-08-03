@@ -109,7 +109,6 @@ Restart VSCode to activate the MCP server.
 - **`callback_system.rs`**: Async callback infrastructure for progress updates
 - **`command_registry.rs`**: Extensible command registration and auto-discovery
 - **`operation_monitor.rs`**: Operation lifecycle management and monitoring
-- **`streaming_cargo.rs`**: Future streaming implementation for real-time output
 
 ### Callback System
 

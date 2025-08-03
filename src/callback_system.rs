@@ -1,3 +1,38 @@
+//! Asynchronous callback system for monitoring cargo operation progress
+//!
+//! This module provides a flexible callback architecture for tracking the progress of
+//! long-running cargo operations. It enables real-time progress updates, output streaming,
+//! and completion notifications through various callback mechanisms.
+//!
+//! ## Key Components
+//!
+//! - [`ProgressUpdate`]: Enumeration of different progress event types
+//! - [`CallbackSender`]: Trait for implementing custom progress callback handlers
+//! - [`ChannelCallbackSender`]: Channel-based callback implementation for async communication
+//! - [`LoggingCallbackSender`]: Simple logging-based callback for debugging and monitoring
+//!
+//! ## Usage Example
+//!
+//! ```rust,no_run
+//! use async_cargo_mcp::callback_system::{CallbackSender, LoggingCallbackSender, ProgressUpdate};
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     let callback: Box<dyn CallbackSender> = Box::new(
+//!         LoggingCallbackSender::new("cargo_build_001".to_string())
+//!     );
+//!     
+//!     // Send progress updates during a cargo operation
+//!     let update = ProgressUpdate::Started {
+//!         operation_id: "cargo_build_001".to_string(),
+//!         command: "cargo build".to_string(),
+//!         description: "Building project dependencies".to_string(),
+//!     };
+//!     
+//!     callback.send_progress(update).await;
+//! }
+//! ```
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt;

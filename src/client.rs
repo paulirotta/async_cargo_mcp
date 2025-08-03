@@ -1,3 +1,27 @@
+//! MCP client for testing and demonstrating the async_cargo_mcp server
+//!
+//! This module provides a simple client application that connects to the async_cargo_mcp
+//! server and demonstrates how to interact with the available MCP tools. It serves as both
+//! a testing utility and an example of how external clients can integrate with the server.
+//!
+//! ## Features
+//!
+//! - Establishes connection to the async_cargo_mcp server as a child process
+//! - Lists all available tools and their capabilities
+//! - Demonstrates tool invocation patterns for testing and validation
+//! - Provides logging and error handling examples for client implementations
+//!
+//! ## Usage
+//!
+//! Run this client directly to test server functionality:
+//!
+//! ```bash
+//! cargo run --bin client
+//! ```
+//!
+//! This client will start the server, connect to it, list available tools,
+//! and execute sample commands to verify everything is working correctly.
+
 use anyhow::Result;
 use rmcp::{
     ServiceExt,

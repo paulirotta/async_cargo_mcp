@@ -13,7 +13,7 @@
 //! This is a pragmatic architectural decision following rust-instructions.md
 //! guidance to prefer simple solutions over complex fixes for external library issues.
 
-use async_cargo_mcp::test_utility_tools;
+use async_cargo_mcp::{test_doc_functionality, test_increment_functionality};
 
 #[ignore = "TokioChildProcess race condition in rmcp library - see file comments for details. Server functionality verified via test-mcp.sh"]
 #[tokio::test]
@@ -28,4 +28,33 @@ async fn test_mcp_server_utility_tools() {
     assert!(result.contains("Say Hello:"));
     assert!(result.contains("Echo:"));
     assert!(result.contains("Sum:"));
+}
+
+#[ignore = "Some integration tests are currently ignored due to undiagnosed issues with TokioChildProcess transport in the test environment"]
+#[tokio::test]
+async fn test_mcp_server_increment_sequence() {
+    let result = test_increment_functionality()
+        .await
+        .expect("Increment test failed");
+    println!("Increment test result: {}", result);
+
+    // Verify that the result contains expected progression
+    assert!(result.contains("Increment test results"));
+    assert!(result.contains("Initial:"));
+    assert!(result.contains("After first increment:"));
+    assert!(result.contains("After second increment:"));
+    assert!(result.contains("Final value:"));
+}
+
+#[ignore = "Some integration tests are currently ignored due to undiagnosed issues with TokioChildProcess transport in the test environment"]
+#[tokio::test]
+async fn test_mcp_server_doc_generation() {
+    let result = test_doc_functionality()
+        .await
+        .expect("Doc functionality test failed");
+    println!("Doc test result: {}", result);
+
+    // Verify that the result contains expected documentation generation output
+    assert!(result.contains("Documentation generation test results"));
+    assert!(result.contains("Doc result:"));
 }

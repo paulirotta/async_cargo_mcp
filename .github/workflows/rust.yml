@@ -1,4 +1,6 @@
 name: Async Cargo MCP Rust
+permissions:
+  contents: read
 # Heavy use of multi-layer caching to speed builds
 # Github Actions caches grow since they do not forget unused files from old versions
 #

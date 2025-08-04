@@ -13,7 +13,7 @@ This project provides a high performance MCP server that allows Large Language M
 ## Features
 
 ### Core Cargo Integration
-- **Complete Cargo Command Support**: clippy, build, test, add, remove, check, update, run
+- **Complete Cargo Command Support**: build, test, add, remove, check, update, run
 - **Working Directory Support**: All commands accept optional `working_directory` parameter for safe project isolation
 - **Real Command Execution**: Uses actual `cargo` subprocess calls with proper error handling
 - **Parameter Validation**: Type-safe parameter structures with JSON schema validation
@@ -55,6 +55,7 @@ This project provides a high performance MCP server that allows Large Language M
 - ✅ Comprehensive test suite (20 unit tests passing, 2 integration tests have known rmcp client issue)
 
 ### Upcoming Features
+- 🔄 Clippy
 - 🔄 Enhanced documentation and usage examples
 - 🔄 Integration and testing with popular IDEs and LLM tools (collaborateion and PRs welcome, open an issue)
 - 🔄 RAG documentation to give current API and upstream library API support to the LLM

@@ -139,18 +139,12 @@ Unit and integration tests:
 cargo test
 ```
 
-**Note**: The integration tests currently fail with "Transport closed" errors due to a timing issue with `rmcp::TokioChildProcess` client lifecycle management. This is a known issue with the test harness, not the server functionality. All cargo operations and MCP tools work correctly when tested via other methods.
+A test client is included in the library and used in integration tests
 
-Direct server and client interaction:
-
-```bash
-./test-mcp.sh
-```
-
-This script provides comprehensive testing of:
+Test cover:
 - MCP protocol initialization
 - All available cargo commands
-- Cargo operations (build, check, add, remove, test, etc.)
+- Cargo operations (doc, build, check, add, remove, test, etc.)
 - JSON-RPC communication
 
 ## License

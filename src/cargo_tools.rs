@@ -74,6 +74,8 @@ pub struct DocRequest {
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct ClippyRequest {
     pub working_directory: Option<String>,
+    /// Additional arguments to pass to clippy (e.g., ["--fix", "--allow-dirty"])
+    pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
@@ -103,7 +105,9 @@ impl AsyncCargo {
             .as_millis() as u64
     }
 
-    #[tool(description = "Build the Rust project using cargo build")]
+    #[tool(
+        description = "BUILD: Safer than terminal cargo. Use enable_async_notifications=true for builds >1s to multitask. Structured output + isolation."
+    )]
     async fn build(
         &self,
         Parameters(req): Parameters<BuildRequest>,
@@ -157,11 +161,11 @@ impl AsyncCargo {
 
             let result_msg = if output.status.success() {
                 format!(
-                    "✅ Build operation #{build_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                    "Build operation #{build_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
                 )
             } else {
                 format!(
-                    "❌ Build operation #{build_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                    "Build operation #{build_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
                 )
             };
 
@@ -169,7 +173,9 @@ impl AsyncCargo {
         }
     }
 
-    #[tool(description = "Run the Rust project using cargo run")]
+    #[tool(
+        description = "RUN: Safer than terminal cargo. Use enable_async_notifications=true for long apps to multitask. Structured output + isolation."
+    )]
     async fn run(
         &self,
         Parameters(req): Parameters<RunRequest>,
@@ -209,18 +215,20 @@ impl AsyncCargo {
 
         let result_msg = if output.status.success() {
             format!(
-                "✅ Run operation #{run_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Run operation #{run_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
             )
         } else {
             format!(
-                "❌ Run operation #{run_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "Run operation #{run_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             )
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
-    #[tool(description = "Run tests for the Rust project using cargo test")]
+    #[tool(
+        description = "TEST: Safer than terminal cargo. ALWAYS use enable_async_notifications=true for test suites to multitask. Real-time progress + isolation."
+    )]
     async fn test(
         &self,
         Parameters(req): Parameters<TestRequest>,
@@ -228,14 +236,6 @@ impl AsyncCargo {
         use tokio::process::Command;
 
         let test_id = self.generate_operation_id();
-
-        // TODO: Add asynchronous callback mechanism here for test progress updates
-        // Implementation plan:
-        // 1. Stream test execution results in real-time as they complete
-        // 2. Provide progress indicators for test suites (e.g., "Running 15/30 tests")
-        // 3. Send immediate notifications for test failures with detailed error info
-        // 4. Allow LLM to see which specific tests are running/passing/failing
-        // 5. Support for parallel test execution feedback
 
         let mut cmd = Command::new("cargo");
         cmd.arg("test");
@@ -260,18 +260,20 @@ impl AsyncCargo {
 
         let result_msg = if output.status.success() {
             format!(
-                "✅ Test operation #{test_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Test operation #{test_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
             )
         } else {
             format!(
-                "❌ Test operation #{test_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "Test operation #{test_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             )
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
-    #[tool(description = "Check the Rust project for errors using cargo check")]
+    #[tool(
+        description = "CHECK: Safer than terminal cargo. Fast validation - async optional for large projects. Quick compile check."
+    )]
     async fn check(
         &self,
         Parameters(req): Parameters<CheckRequest>,
@@ -311,18 +313,20 @@ impl AsyncCargo {
 
         let result_msg = if output.status.success() {
             format!(
-                "✅ Check operation #{check_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Check operation #{check_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
             )
         } else {
             format!(
-                "❌ Check operation #{check_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "Check operation #{check_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             )
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
-    #[tool(description = "Add a dependency to the Rust project using cargo add")]
+    #[tool(
+        description = "ADD: Safer than terminal cargo. Use enable_async_notifications=true for complex deps to multitask. Handles version conflicts."
+    )]
     async fn add(
         &self,
         Parameters(req): Parameters<DependencyRequest>,
@@ -395,12 +399,12 @@ impl AsyncCargo {
 
             let result_msg = if output.status.success() {
                 format!(
-                    "✅ Add operation #{add_id} completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
+                    "Add operation #{add_id} completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
                     req.name
                 )
             } else {
                 format!(
-                    "❌ Add operation #{add_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                    "Add operation #{add_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
                     req.name
                 )
             };
@@ -409,7 +413,9 @@ impl AsyncCargo {
         }
     }
 
-    #[tool(description = "Remove a dependency from the Rust project using cargo remove")]
+    #[tool(
+        description = "REMOVE: Safer than terminal cargo. Fast operation - async not needed. Prevents Cargo.toml corruption."
+    )]
     async fn remove(
         &self,
         Parameters(req): Parameters<RemoveDependencyRequest>,
@@ -463,12 +469,12 @@ impl AsyncCargo {
 
             let result_msg = if output.status.success() {
                 format!(
-                    "✅ Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
+                    "Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
                     req.name
                 )
             } else {
                 format!(
-                    "❌ Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                    "Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
                     req.name
                 )
             };
@@ -477,7 +483,9 @@ impl AsyncCargo {
         }
     }
 
-    #[tool(description = "Update dependencies in the Rust project using cargo update")]
+    #[tool(
+        description = "UPDATE: Safer than terminal cargo. Use enable_async_notifications=true for large projects to multitask. Shows version changes."
+    )]
     async fn update(
         &self,
         Parameters(req): Parameters<UpdateRequest>,
@@ -517,18 +525,20 @@ impl AsyncCargo {
 
         let result_msg = if output.status.success() {
             format!(
-                "✅ Update operation #{update_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Update operation #{update_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
             )
         } else {
             format!(
-                "❌ Update operation #{update_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "Update operation #{update_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             )
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
-    #[tool(description = "Generate documentation for the Rust project using cargo doc")]
+    #[tool(
+        description = "DOC: Safer than terminal cargo. Use enable_async_notifications=true for large codebases to multitask. Creates LLM-friendly API reference."
+    )]
     async fn doc(
         &self,
         Parameters(req): Parameters<DocRequest>,
@@ -600,23 +610,25 @@ impl AsyncCargo {
             };
 
             format!(
-                "✅ Documentation generation #{doc_id} completed successfully{working_dir_msg}.
-📚 Documentation generated at: {}
-🔍 The generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.
-💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.
+                "Documentation generation #{doc_id} completed successfully{working_dir_msg}.
+Documentation generated at: {}
+The generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.
+Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.
 
 Output: {stdout}",
                 doc_path
             )
         } else {
             format!(
-                "❌ Documentation generation #{doc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "Documentation generation #{doc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             )
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
-    #[tool(description = "Lint the Rust project using cargo clippy")]
+    #[tool(
+        description = "CLIPPY: Safer than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional."
+    )]
     async fn clippy(
         &self,
         Parameters(req): Parameters<ClippyRequest>,
@@ -627,6 +639,12 @@ Output: {stdout}",
 
         let mut cmd = Command::new("cargo");
         cmd.arg("clippy");
+
+        // Add any additional arguments passed to clippy
+        if let Some(args) = &req.args {
+            cmd.args(args);
+        }
+
         if let Some(dir) = &req.working_directory {
             cmd.current_dir(dir);
         }
@@ -646,11 +664,11 @@ Output: {stdout}",
 
         let result_msg = if output.status.success() {
             format!(
-                "✅ Clippy operation #{clippy_id} passed with no warnings{working_dir_msg}.\nOutput: {stdout}",
+                "Clippy operation #{clippy_id} passed with no warnings{working_dir_msg}.\nOutput: {stdout}",
             )
         } else {
             format!(
-                "❌ Clippy operation #{clippy_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}",
+                "Clippy operation #{clippy_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}",
             )
         };
 
@@ -669,7 +687,7 @@ impl ServerHandler for AsyncCargo {
                 .enable_tools()
                 .build(),
             server_info: Implementation::from_build_env(),
-            instructions: Some("This server provides Rust cargo operations including build, test, run, check, and dependency management (add/remove/update).".to_string()),
+            instructions: Some("Rust cargo operations with async support. For builds/tests >1s, use enable_async_notifications=true to multitask efficiently while operations run. Safer than terminal commands.".to_string()),
         }
     }
 

@@ -19,13 +19,13 @@ async fn test_cargo_build_in_temp_project() {
 
     match result {
         Ok(output) => {
-            println!("Build test passed: {}", output);
+            println!("Build test passed: {output}");
             assert!(
                 output.contains("✅ Build operation") || output.contains("completed successfully")
             );
         }
         Err(e) => {
-            panic!("Build test failed: {}", e);
+            panic!("Build test failed: {e}");
         }
     }
 }
@@ -42,13 +42,13 @@ async fn test_cargo_check_in_temp_project() {
 
     match result {
         Ok(output) => {
-            println!("Check test passed: {}", output);
+            println!("Check test passed: {output}");
             assert!(
                 output.contains("✅ Check operation") || output.contains("completed successfully")
             );
         }
         Err(e) => {
-            panic!("Check test failed: {}", e);
+            panic!("Check test failed: {e}");
         }
     }
 }
@@ -65,11 +65,11 @@ async fn test_cargo_add_dependency() {
 
     match result {
         Ok(output) => {
-            println!("Add dependency test passed: {}", output);
+            println!("Add dependency test passed: {output}");
             assert!(output.contains("✅ Add operation") && output.contains("serde"));
         }
         Err(e) => {
-            panic!("Add dependency test failed: {}", e);
+            panic!("Add dependency test failed: {e}");
         }
     }
 }
@@ -92,11 +92,11 @@ async fn test_cargo_remove_dependency() {
 
     match result {
         Ok(output) => {
-            println!("Remove dependency test passed: {}", output);
+            println!("Remove dependency test passed: {output}");
             assert!(output.contains("✅ Remove operation") && output.contains("serde"));
         }
         Err(e) => {
-            panic!("Remove dependency test failed: {}", e);
+            panic!("Remove dependency test failed: {e}");
         }
     }
 }
@@ -113,13 +113,13 @@ async fn test_cargo_test_in_temp_project() {
 
     match result {
         Ok(output) => {
-            println!("Test command test passed: {}", output);
+            println!("Test command test passed: {output}");
             assert!(
                 output.contains("✅ Test operation") || output.contains("completed successfully")
             );
         }
         Err(e) => {
-            panic!("Test command test failed: {}", e);
+            panic!("Test command test failed: {e}");
         }
     }
 }
@@ -163,7 +163,7 @@ mod tests {
 
     fs::write(project_path.join("src").join("main.rs"), main_rs_content)?;
 
-    println!("Created test project at: {:?}", project_path);
+    println!("Created test project at: {project_path:?}");
 
     Ok(temp_dir)
 }

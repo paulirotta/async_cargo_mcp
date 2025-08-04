@@ -21,7 +21,7 @@ async fn test_mcp_server_doc_generation() {
     let result = test_doc_functionality()
         .await
         .expect("Doc functionality test failed");
-    println!("Doc test result: {}", result);
+    println!("Doc test result: {result}");
 
     // Verify that the result contains expected documentation generation output
     assert!(result.contains("Documentation generation test results"));

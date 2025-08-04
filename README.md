@@ -16,9 +16,6 @@ Example: With a single premium token you can do things like "`Use MCP server asy
 
 This project provides a high performance MCP server that allows Large Language Models (LLMs) to interact with Rust's Cargo build system operations asynchronously. This allows the LLM to proceed on other tasks with the async_cargo_mcp process as an concurrent agent. It supports real-time progress updates, operation cancellation, timeout handling, and extensible command architecture.
 
-## Code Quality & Security
-
-
 ## Features
 
 ### Core Cargo Integration

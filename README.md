@@ -1,13 +1,12 @@
 # Async Cargo MCP
 
+<a href="https://github.com/paulirotta/async_cargo_mcp/security/code-scanning">
+    <img src="assets/codeql.svg" height="35" alt="CodeQL Static Analysis"/>
+<a>
+
 [![CI](https://github.com/paulirotta/async_cargo_mcp/actions/workflows/rust.yml/badge.svg)](https://github.com/paulirotta/async_cargo_mcp/actions/workflows/rust.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org/)
-
-<a href="https://github.com/paulirotta/async_cargo_mcp/security/code-scanning">
-    <img src="assets/codeql.svg" height="35" alt="CodeQL Static Analysis"/>
-    CodeQL Static Analysis
-</a>
 
 **Model Context Protocol (MCP) server for Cargo with asynchronous response handling and comprehensive operation monitoring.**
 

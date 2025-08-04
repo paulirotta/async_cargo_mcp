@@ -884,7 +884,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg = format!(
-                "✅ Add operation completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
+                "Add operation completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
                 req.name
             );
 
@@ -966,7 +966,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg = format!(
-                "✅ Remove operation completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
+                "Remove operation completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
                 req.name
             );
 
@@ -1047,7 +1047,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg =
-                format!("✅ Build completed successfully{working_dir_msg}.\nOutput: {stdout}");
+                format!("Build completed successfully{working_dir_msg}.\nOutput: {stdout}");
 
             // Send completion notification
             let _ = callback

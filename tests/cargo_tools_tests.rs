@@ -21,7 +21,7 @@ async fn test_cargo_build_in_temp_project() {
         Ok(output) => {
             println!("Build test passed: {output}");
             assert!(
-                output.contains("✅ Build operation") || output.contains("completed successfully")
+                output.contains("Build operation") || output.contains("completed successfully")
             );
         }
         Err(e) => {
@@ -44,7 +44,7 @@ async fn test_cargo_check_in_temp_project() {
         Ok(output) => {
             println!("Check test passed: {output}");
             assert!(
-                output.contains("✅ Check operation") || output.contains("completed successfully")
+                output.contains("Check operation") || output.contains("completed successfully")
             );
         }
         Err(e) => {
@@ -66,7 +66,7 @@ async fn test_cargo_add_dependency() {
     match result {
         Ok(output) => {
             println!("Add dependency test passed: {output}");
-            assert!(output.contains("✅ Add operation") && output.contains("serde"));
+            assert!(output.contains("Add operation") && output.contains("serde"));
         }
         Err(e) => {
             panic!("Add dependency test failed: {e}");
@@ -93,7 +93,7 @@ async fn test_cargo_remove_dependency() {
     match result {
         Ok(output) => {
             println!("Remove dependency test passed: {output}");
-            assert!(output.contains("✅ Remove operation") && output.contains("serde"));
+            assert!(output.contains("Remove operation") && output.contains("serde"));
         }
         Err(e) => {
             panic!("Remove dependency test failed: {e}");
@@ -114,9 +114,7 @@ async fn test_cargo_test_in_temp_project() {
     match result {
         Ok(output) => {
             println!("Test command test passed: {output}");
-            assert!(
-                output.contains("✅ Test operation") || output.contains("completed successfully")
-            );
+            assert!(output.contains("Test operation") || output.contains("completed successfully"));
         }
         Err(e) => {
             panic!("Test command test failed: {e}");
@@ -129,7 +127,8 @@ async fn test_cargo_test_in_temp_project() {
 /// This function creates a minimal but valid Rust project in a temporary directory
 /// that can be used for testing cargo commands safely.
 async fn create_test_cargo_project() -> Result<TempDir> {
-    let temp_dir = TempDir::new("cargo_mcp_test")?;
+    let uuid = uuid::Uuid::new_v4();
+    let temp_dir = TempDir::new(&format!("cargo_mcp_test_{}", uuid))?;
     let project_path = temp_dir.path();
 
     // Create Cargo.toml

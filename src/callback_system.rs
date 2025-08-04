@@ -130,7 +130,7 @@ impl fmt::Display for ProgressUpdate {
             } => {
                 write!(
                     f,
-                    "[{}] ✅ Completed in {}ms: {}",
+                    "[{}] Completed in {}ms: {}",
                     operation_id, duration_ms, message
                 )
             }

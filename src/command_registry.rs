@@ -295,7 +295,7 @@ impl CargoCommand for GenericCargoCommand {
 
         if output.status.success() {
             Ok(format!(
-                "✅ cargo {} completed successfully.\nOutput: {}",
+                "cargo {} completed successfully.\nOutput: {}",
                 self.name, stdout
             ))
         } else {

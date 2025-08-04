@@ -46,13 +46,13 @@ This project provides a high performance MCP server that allows Large Language M
 ## Status
 
 ### Current Capabilities
-- ✅ Working directory support for safe testing
-- ✅ MCP protocol integration with JSON schema validation
-- ✅ Basic cargo command execution (build, test, add, remove, doc, check, update)
-- ✅ Async callback notifications for progress tracking
-- ✅ Operation monitoring with timeout and cancellation
-- ✅ Extensible command registry for auto-discovery
-- ✅ Comprehensive test suite (20 unit tests passing, 2 integration tests have known rmcp client issue)
+- Working directory support for safe testing
+- MCP protocol integration with JSON schema validation
+- Basic cargo command execution (build, test, add, remove, doc, check, update)
+- Async callback notifications for progress tracking
+- Operation monitoring with timeout and cancellation
+- Extensible command registry for auto-discovery
+- Comprehensive test suite (20 unit tests passing, 2 integration tests have known rmcp client issue)
 
 ### Upcoming Features
 - 🔄 Clippy

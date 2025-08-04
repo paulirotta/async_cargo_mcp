@@ -7,7 +7,7 @@
 //! errors during rapid successive calls. The server functionality is fully
 //! validated through:
 //! - Unit tests (15 tests) - all pass ✅
-//! - Cargo tools tests (5 tests) - all pass ✅  
+//! - Cargo tools tests (5 tests) - all pass  
 //! - Manual integration testing via test-mcp.sh - works perfectly ✅
 //!
 //! This is a pragmatic architectural decision following rust-instructions.md

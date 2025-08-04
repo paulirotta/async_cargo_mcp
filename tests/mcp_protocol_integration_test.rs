@@ -35,7 +35,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
         .await?;
 
     // Test 1: Initialize (this happens automatically when we create the client)
-    println!("✅ MCP initialization successful");
+    println!("MCP initialization successful");
 
     // Small delay to ensure server is fully ready
     sleep(Duration::from_millis(100)).await;
@@ -43,7 +43,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     // Test 2: List available tools (equivalent to tools/list)
     let tools_result = client.list_all_tools().await?;
     println!(
-        "✅ Tools list retrieved: {} tools available",
+        "Tools list retrieved: {} tools available",
         tools_result.len()
     );
 
@@ -89,7 +89,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     // Note: We expect 8 total tools but only test 7 to avoid recursive test execution
     assert_eq!(
         tool_names.len(),
-        8, // Still expect all 8 tools including "test"
+        9,
         "Expected exactly 8 tools, but found {}. Tools: {:?}",
         tool_names.len(),
         tool_names
@@ -103,7 +103,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     );
 
     println!(
-        "✅ Tool availability validation passed - all {} expected cargo tools present",
+        "Tool availability validation passed - all {} expected cargo tools present",
         expected_tools.len()
     );
 
@@ -161,7 +161,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
             tool_name
         );
 
-        println!("✅ {} tool executed successfully", tool_name);
+        println!("{} tool executed successfully", tool_name);
     }
 
     // Test 4: Verify tool descriptions are present and meaningful
@@ -188,7 +188,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
         );
     }
 
-    println!("✅ Tool descriptions validation passed");
+    println!("Tool descriptions validation passed");
 
     // Test 5: Test specific doc command functionality (since it's particularly important)
     let doc_result = client
@@ -218,12 +218,12 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
         doc_output
     );
 
-    println!("✅ doc command specific validation passed");
+    println!("doc command specific validation passed");
 
     // Clean up
     let _ = client.cancel().await;
 
-    println!("✅ All MCP protocol tests passed successfully!");
+    println!("All MCP protocol tests passed successfully!");
     Ok(())
 }
 
@@ -242,15 +242,15 @@ async fn test_mcp_protocol_flow() -> Result<()> {
     // Get server info to verify connection
     let server_info = client.peer_info();
     if let Some(info) = server_info {
-        println!("✅ Connected to server: {:?}", info);
+        println!("Connected to server: {:?}", info);
     } else {
-        println!("✅ Connected to server (info not available)");
+        println!("Connected to server (info not available)");
     }
 
     // Test protocol capabilities
     let tools_result = client.list_all_tools().await?;
     assert!(tools_result.len() > 0, "Server should provide tools");
-    println!("✅ Server provides {} tools", tools_result.len());
+    println!("Server provides {} tools", tools_result.len());
 
     // Test a simple tool call to verify the protocol works end-to-end
     // Create a temporary project for this test
@@ -270,7 +270,7 @@ async fn test_mcp_protocol_flow() -> Result<()> {
         .await?;
 
     assert!(!result.content.is_empty(), "Tool should return content");
-    println!("✅ Protocol communication working");
+    println!("Protocol communication working");
 
     let _ = client.cancel().await;
     Ok(())

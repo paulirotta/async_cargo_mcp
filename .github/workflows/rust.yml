@@ -100,7 +100,7 @@ jobs:
 
       - name: Cargo Nextest
         run: |
-          cargo nextest run
+          cargo nextest run --all-features --locked
 
       - name: Show sccache stats
         run: sccache --show-stats

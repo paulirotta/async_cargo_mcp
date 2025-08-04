@@ -8,7 +8,7 @@
 
 This project provides a high performance MCP server that allows Large Language Models (LLMs) to interact with Rust's Cargo build system operations asynchronously. This allows the LLM to proceed on other tasks with the async_cargo_mcp process as an concurrent agent. It supports real-time progress updates, operation cancellation, timeout handling, and extensible command architecture.
 
-## 🚀 Features
+## Features
 
 ### Core Cargo Integration
 - **Complete Cargo Command Support**: build, test, add, remove, check, update, run
@@ -41,21 +41,22 @@ This project provides a high performance MCP server that allows Large Language M
 - **Error Handling**: Robust error handling with descriptive messages
 - **Type Safety**: Full Rust type safety with serde serialization
 
-## 🚦 Status
+## Status
 
 ### Current Capabilities
-- ✅ Basic cargo command execution (build, test, add, remove, check, update, run)
+- ✅ Working directory support for safe testing
+- ✅ MCP protocol integration with JSON schema validation
+- ✅ Basic cargo command execution (build, test, add, remove, doc, check, update)
 - ✅ Async callback notifications for progress tracking
 - ✅ Operation monitoring with timeout and cancellation
 - ✅ Extensible command registry for auto-discovery
 - ✅ Comprehensive test suite (20 unit tests passing, 2 integration tests have known rmcp client issue)
-- ✅ Working directory support for safe testing
-- ✅ MCP protocol integration with JSON schema validation
 
 ### Upcoming Features
-- 🔄 Fix integration test TokioChildProcess timing issue
-- 🔄 Integration and test with popular IDEs and LLM tools
-- 🔄 Enhanced documentation and examples
+- 🔄 Enhanced documentation and usage examples
+- 🔄 Integration and testing with popular IDEs and LLM tools (collaborateion and PRs welcome, open an issue)
+- 🔄 RAG documentation to give current API and upstream library API support to the LLM
+- 🔄 Monitor filesystem for LLM changes and preemptively update so future commands return faster
 
 ## Installation
 

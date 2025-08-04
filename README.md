@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org/)
 <a href="https://github.com/paulirotta/async_cargo_mcp/security/code-scanning">
-  <img src="assets/codeql.svg" height="40" alt="CodeQL Static Analysis"/>
+  <img src="assets/codeql.svg" height="35" alt="CodeQL Static Analysis"/>
 </a>
 
 **Model Context Protocol (MCP) server for Cargo with asynchronous response handling and comprehensive operation monitoring.**

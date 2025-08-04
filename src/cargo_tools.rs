@@ -70,6 +70,13 @@ pub struct DocRequest {
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
+// Request payload for `cargo clippy` linter command
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct ClippyRequest {
+    pub working_directory: Option<String>,
+    /// Enable async callback notifications for operation progress
+    pub enable_async_notifications: Option<bool>,
+}
 
 #[derive(Clone, Debug)]
 pub struct AsyncCargo {
@@ -604,6 +611,46 @@ Output: {stdout}",
         } else {
             format!(
                 "❌ Documentation generation #{doc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+    #[tool(description = "Lint the Rust project using cargo clippy")]
+    async fn clippy(
+        &self,
+        Parameters(req): Parameters<ClippyRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let clippy_id = self.generate_operation_id();
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("clippy");
+        if let Some(dir) = &req.working_directory {
+            cmd.current_dir(dir);
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo clippy: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = req
+            .working_directory
+            .as_ref()
+            .map(|d| format!(" in {}", d))
+            .unwrap_or_default();
+
+        let result_msg = if output.status.success() {
+            format!(
+                "✅ Clippy operation #{clippy_id} passed with no warnings{working_dir_msg}.\nOutput: {stdout}",
+            )
+        } else {
+            format!(
+                "❌ Clippy operation #{clippy_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}",
             )
         };
 

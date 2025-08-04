@@ -3,12 +3,16 @@
 [![CI](https://github.com/paulirotta/async_cargo_mcp/actions/workflows/rust.yml/badge.svg)](https://github.com/paulirotta/async_cargo_mcp/actions/workflows/rust.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org/)
+[View any CodeQL Static Analysis Scan Alerts](https://github.com/paulirotta/async_cargo_mcp/security/code-scanning)
 
 **Model Context Protocol (MCP) server for Cargo with asynchronous response handling and comprehensive operation monitoring.**
 
 Example: With a single premium token you can do things like "`Use MCP server async-cargo-mcp to run cargo doc, build, clippy and test. Fix any errors and repeat until clean`" Depending on the LLM and tasks, actions may be completed concurrently.
 
 This project provides a high performance MCP server that allows Large Language Models (LLMs) to interact with Rust's Cargo build system operations asynchronously. This allows the LLM to proceed on other tasks with the async_cargo_mcp process as an concurrent agent. It supports real-time progress updates, operation cancellation, timeout handling, and extensible command architecture.
+
+## Code Quality & Security
+
 
 ## Features
 

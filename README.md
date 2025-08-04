@@ -6,12 +6,14 @@
 
 **Model Context Protocol (MCP) server for Cargo with asynchronous response handling and comprehensive operation monitoring.**
 
+Example: With a single premium token you can do things like "`Use MCP server async-cargo-mcp to run cargo doc, build, clippy and test. Fix any errors and repeat until clean`" Depending on the LLM and tasks, actions may be completed concurrently.
+
 This project provides a high performance MCP server that allows Large Language Models (LLMs) to interact with Rust's Cargo build system operations asynchronously. This allows the LLM to proceed on other tasks with the async_cargo_mcp process as an concurrent agent. It supports real-time progress updates, operation cancellation, timeout handling, and extensible command architecture.
 
 ## Features
 
 ### Core Cargo Integration
-- **Complete Cargo Command Support**: build, test, add, remove, check, update, run
+- **Complete Cargo Command Support**: clippy, build, test, add, remove, check, update, run
 - **Working Directory Support**: All commands accept optional `working_directory` parameter for safe project isolation
 - **Real Command Execution**: Uses actual `cargo` subprocess calls with proper error handling
 - **Parameter Validation**: Type-safe parameter structures with JSON schema validation
@@ -96,6 +98,89 @@ The result is stored in to `mcp.json` as:
         },
     },
     "inputs": []
+}
+```
+
+You may also want per-project task definitions in `.vscode/tasks.json`:
+```json
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Rust Build",
+            "type": "shell",
+            "command": "async-cargo-mcp build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "Rust Build with All Features",
+            "type": "shell",
+            "command": "async-cargo-mcp build --all-features",
+            "group": "build",
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "Rust Check",
+            "type": "shell",
+            "command": "async-cargo-mcp check",
+            "group": "build",
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "Rust Clippy",
+            "type": "shell",
+            "command": "async-cargo-mcp clippy",
+            "group": "build",
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "Rust Test",
+            "type": "shell",
+            "command": "async-cargo-mcp test",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "Rust Run",
+            "type": "shell",
+            "command": "async-cargo-mcp run",
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "Rust Clean",
+            "type": "shell",
+            "command": "async-cargo-mcp clean",
+            "problemMatcher": []
+        },
+        {
+            "label": "Rust Doc",
+            "type": "shell",
+            "command": "async-cargo-mcp doc",
+            "group": "build",
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+    ]
 }
 ```
 

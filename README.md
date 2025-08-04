@@ -6,6 +6,7 @@
 
 <a href="https://github.com/paulirotta/async_cargo_mcp/security/code-scanning">
     <img src="assets/codeql.svg" height="35" alt="CodeQL Static Analysis"/>
+    CodeQL Static Analysis
 </a>
 
 **Model Context Protocol (MCP) server for Cargo with asynchronous response handling and comprehensive operation monitoring.**

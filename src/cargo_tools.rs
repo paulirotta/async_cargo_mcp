@@ -133,7 +133,7 @@ pub struct InstallRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct UpgradeRequest {
     pub working_directory: String,
     /// Upgrade to latest incompatible version
@@ -152,7 +152,7 @@ pub struct UpgradeRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct AuditRequest {
     pub working_directory: String,
     /// Output format (default, json, yaml)
@@ -224,7 +224,7 @@ pub struct FetchRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct RustcRequest {
     pub working_directory: String,
     /// Additional arguments to pass to rustc
@@ -423,7 +423,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "BUILD: Safer than terminal cargo. Use enable_async_notifications=true for builds >1s to multitask. Structured output + isolation."
+        description = "CARGO BUILD: Safer than terminal cargo. Use enable_async_notifications=true for builds >1s to multitask. Structured output with isolation"
     )]
     async fn build(
         &self,
@@ -525,7 +525,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "RUN: Safer than terminal cargo. Use enable_async_notifications=true for long apps to multitask. Structured output + isolation."
+        description = "CARGO RUN: Safer than terminal cargo. Use enable_async_notifications=true for long-running apps to multitask. Structured output with isolation"
     )]
     async fn run(
         &self,
@@ -624,7 +624,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "TEST: Safer than terminal cargo. ALWAYS use enable_async_notifications=true for test suites to multitask. Real-time progress + isolation."
+        description = "CARGO TEST: Safer than terminal cargo. ALWAYS use enable_async_notifications=true for test suites to multitask. Real-time progress with isolation"
     )]
     async fn test(
         &self,
@@ -725,7 +725,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CHECK: Safer than terminal cargo. Fast validation - async optional for large projects. Quick compile check."
+        description = "CARGO CHECK: Safer than terminal cargo. Fast validation - async optional for large projects. Quick compile check"
     )]
     async fn check(
         &self,
@@ -826,7 +826,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "ADD: Safer than terminal cargo. Use enable_async_notifications=true for complex deps to multitask. Handles version conflicts."
+        description = "CARGO ADD: Safer than terminal cargo. Use enable_async_notifications=true for complex dependencies to multitask. Handles version conflicts"
     )]
     async fn add(
         &self,
@@ -909,7 +909,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "REMOVE: Safer than terminal cargo. Fast operation - async not needed. Prevents Cargo.toml corruption."
+        description = "CARGO REMOVE: Safer than terminal cargo. Fast operation - async not needed. Prevents Cargo.toml corruption"
     )]
     async fn remove(
         &self,
@@ -973,7 +973,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "UPDATE: Safer than terminal cargo. Use enable_async_notifications=true for large projects to multitask. Shows version changes."
+        description = "CARGO UPDATE: Safer than terminal cargo. Use enable_async_notifications=true for large projects to multitask. Shows version changes"
     )]
     async fn update(
         &self,
@@ -1074,7 +1074,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "DOC: Safer than terminal cargo. Use enable_async_notifications=true for large codebases to multitask. Creates LLM-friendly API reference."
+        description = "CARGO DOC: Safer than terminal cargo. Use enable_async_notifications=true for large codebases to multitask. Creates LLM-friendly API reference"
     )]
     async fn doc(
         &self,
@@ -1209,7 +1209,7 @@ Output: {stdout}",
         }
     }
     #[tool(
-        description = "CLIPPY: Safer than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional."
+        description = "CARGO CLIPPY: Safer than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional"
     )]
     async fn clippy(
         &self,
@@ -1314,7 +1314,7 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "NEXTEST: Safer than terminal cargo. Faster test runner. ALWAYS use enable_async_notifications=true for test suites to multitask. Real-time progress + isolation."
+        description = "CARGO NEXTEST: Safer than terminal cargo. Faster test runner. ALWAYS use enable_async_notifications=true for test suites to multitask. Real-time progress with isolation"
     )]
     async fn nextest(
         &self,
@@ -1433,7 +1433,7 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "CLEAN: Safer than terminal cargo. Fast operation - async not needed. Frees disk space."
+        description = "CARGO CLEAN: Safer than terminal cargo. Fast operation - async not needed. Frees disk space"
     )]
     async fn clean(
         &self,
@@ -1533,7 +1533,7 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "FIX: Safer than terminal cargo. Automatically fix compiler warnings. Supports --allow-dirty via args. Use async for large codebases."
+        description = "CARGO FIX: Safer than terminal cargo. Automatically fix compiler warnings. Supports --allow-dirty via args. Use async for large codebases"
     )]
     async fn fix(
         &self,
@@ -1641,7 +1641,7 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "SEARCH: Safer than terminal cargo. Search for crates on crates.io. Fast operation - async not needed unless searching many terms."
+        description = "CARGO SEARCH: Safer than terminal cargo. Search for crates on crates.io. Fast operation - async not needed unless searching many terms"
     )]
     async fn search(
         &self,
@@ -1746,7 +1746,7 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "BENCH: Safer than terminal cargo. ALWAYS use enable_async_notifications=true for benchmark suites to multitask. Performance testing."
+        description = "CARGO BENCH: Safer than terminal cargo. ALWAYS use enable_async_notifications=true for benchmark suites to multitask. Performance testing"
     )]
     async fn bench(
         &self,
@@ -1851,7 +1851,7 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "INSTALL: Safer than terminal cargo. Use enable_async_notifications=true for large packages to multitask. Global tool installation."
+        description = "CARGO INSTALL: Safer than terminal cargo. Use enable_async_notifications=true for large packages to multitask. Global tool installation"
     )]
     async fn install(
         &self,
@@ -1952,18 +1952,17 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "UPGRADE: Safer than terminal cargo. Use enable_async_notifications=true for large projects to multitask. Updates dependencies to latest versions using cargo-edit."
+        description = "CARGO UPGRADE: Safer than terminal cargo. Use enable_async_notifications=true for large projects to multitask. Updates dependencies to latest versions using cargo-edit"
     )]
     async fn upgrade(
         &self,
         Parameters(req): Parameters<UpgradeRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        use tokio::process::Command;
-
         let upgrade_id = self.generate_operation_id();
 
         // First check if cargo-edit (upgrade command) is available
-        let upgrade_check = Command::new("cargo")
+        let upgrade_check = tokio::process::Command::new("cargo")
             .args(["upgrade", "--version"])
             .output()
             .await;
@@ -1975,6 +1974,70 @@ Output: {stdout}",
 🔄 Falling back to regular cargo update is recommended."
             ))]));
         }
+
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let upgrade_id_clone = upgrade_id.clone();
+
+            // Spawn background task for actual upgrade work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, upgrade_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: upgrade_id_clone.clone(),
+                        command: "cargo upgrade".to_string(),
+                        description: "Upgrading dependencies in background".to_string(),
+                    })
+                    .await;
+
+                // Do the actual upgrade work
+                let result = Self::upgrade_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: upgrade_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: upgrade_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "⬆️ Upgrade operation {} started in background. You will receive progress notifications as dependencies are upgraded.",
+                upgrade_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::upgrade_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of upgrade logic
+    async fn upgrade_implementation(req: &UpgradeRequest) -> Result<String, String> {
+        use tokio::process::Command;
+
+        let upgrade_id = uuid::Uuid::new_v4().to_string()[..8].to_string();
 
         let mut cmd = Command::new("cargo");
         cmd.arg("upgrade");
@@ -2015,131 +2078,178 @@ Output: {stdout}",
 
         cmd.current_dir(&req.working_directory);
 
-        let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo upgrade: {}", e), None)
-        })?;
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo upgrade: {}", e))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
-        let result_msg = if output.status.success() {
+        if output.status.success() {
             let dry_run_msg = if req.dry_run.unwrap_or(false) {
                 " (dry run - no changes made)"
             } else {
                 ""
             };
-            format!(
+            Ok(format!(
                 "⬆️ Upgrade operation #{upgrade_id} completed successfully{working_dir_msg}{dry_run_msg}.\nOutput: {stdout}"
-            )
+            ))
         } else {
-            format!(
+            Err(format!(
                 "❌ Upgrade operation #{upgrade_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-            )
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
-    }
-
-    #[tool(
-        description = "AUDIT: Safer than terminal cargo. Security vulnerability scanning. Use enable_async_notifications=true for large projects to multitask. Identifies known security vulnerabilities."
-    )]
-    async fn audit(
-        &self,
-        Parameters(req): Parameters<AuditRequest>,
-    ) -> Result<CallToolResult, McpError> {
-        let audit_id = self.generate_operation_id();
-
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
-            // Use the callback-enabled version for async notifications
-            let callback: Box<dyn CallbackSender> = Box::new(LoggingCallbackSender::new(format!(
-                "cargo_audit_{}",
-                audit_id
-            )));
-
-            match self.audit_with_callback(req, Some(callback)).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
-        } else {
-            // Use direct execution for synchronous operation
-            use tokio::process::Command;
-
-            // First check if cargo-audit is available
-            let audit_check = Command::new("cargo")
-                .args(["audit", "--version"])
-                .output()
-                .await;
-
-            if audit_check.is_err() || !audit_check.unwrap().status.success() {
-                return Ok(CallToolResult::success(vec![Content::text(format!(
-                    "❌ Audit operation #{audit_id} failed: cargo-audit is not installed. 
-📦 Install with: cargo install cargo-audit
-🔒 This tool scans for known security vulnerabilities in dependencies."
-                ))]));
-            }
-
-            let mut cmd = Command::new("cargo");
-            cmd.arg("audit");
-
-            // Add format flag if specified
-            if let Some(format) = &req.format {
-                cmd.args(["--format", format]);
-            }
-
-            // Add vulnerabilities-only flag if requested
-            if req.vulnerabilities_only.unwrap_or(false) {
-                cmd.arg("--vulnerabilities");
-            }
-
-            // Add deny warnings flag if requested
-            if req.deny_warnings.unwrap_or(false) {
-                cmd.arg("--deny-warnings");
-            }
-
-            // Add any additional arguments
-            if let Some(args) = &req.args {
-                cmd.args(args);
-            }
-
-            cmd.current_dir(&req.working_directory);
-
-            let output = cmd.output().await.map_err(|e| {
-                McpError::internal_error(format!("Failed to execute cargo audit: {}", e), None)
-            })?;
-
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-
-            let working_dir_msg = format!(" in {}", &req.working_directory);
-
-            let result_msg = if output.status.success() {
-                format!(
-                    "🔒 Audit operation #{audit_id} completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {stdout}"
-                )
-            } else {
-                // Check if it's a vulnerability warning (exit code 1) vs actual error
-                let vulnerability_detected = output.status.code() == Some(1) && !stdout.is_empty();
-
-                if vulnerability_detected {
-                    format!(
-                        "⚠️ Audit operation #{audit_id} found security vulnerabilities{working_dir_msg}.\nVulnerabilities detected:\n{stdout}\nErrors: {stderr}"
-                    )
-                } else {
-                    format!(
-                        "❌ Audit operation #{audit_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-                    )
-                }
-            };
-
-            Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            ))
         }
     }
 
     #[tool(
-        description = "FMT: Safer than terminal cargo. Format Rust code using rustfmt. Use enable_async_notifications=true for large projects to multitask while code is being formatted."
+        description = "CARGO AUDIT: Safer than terminal cargo. Security vulnerability scanning. Use enable_async_notifications=true for large projects to multitask. Identifies known security vulnerabilities"
+    )]
+    async fn audit(
+        &self,
+        Parameters(req): Parameters<AuditRequest>,
+        context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, McpError> {
+        let audit_id = self.generate_operation_id();
+
+        // First check if cargo-audit is available
+        let audit_check = tokio::process::Command::new("cargo")
+            .args(["audit", "--version"])
+            .output()
+            .await;
+
+        if audit_check.is_err() || !audit_check.unwrap().status.success() {
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "❌ Audit operation #{audit_id} failed: cargo-audit is not installed. 
+📦 Install with: cargo install cargo-audit
+🔒 This tool scans for known security vulnerabilities in dependencies."
+            ))]));
+        }
+
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let audit_id_clone = audit_id.clone();
+
+            // Spawn background task for actual audit work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, audit_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: audit_id_clone.clone(),
+                        command: "cargo audit".to_string(),
+                        description: "Scanning for security vulnerabilities in background"
+                            .to_string(),
+                    })
+                    .await;
+
+                // Do the actual audit work
+                let result = Self::audit_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: audit_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: audit_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "🔒 Audit operation {} started in background. You will receive progress notifications as security scanning proceeds.",
+                audit_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::audit_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of audit logic
+    async fn audit_implementation(req: &AuditRequest) -> Result<String, String> {
+        use tokio::process::Command;
+
+        let audit_id = uuid::Uuid::new_v4().to_string()[..8].to_string();
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("audit");
+
+        // Add format flag if specified
+        if let Some(format) = &req.format {
+            cmd.args(["--format", format]);
+        }
+
+        // Add vulnerabilities-only flag if requested
+        if req.vulnerabilities_only.unwrap_or(false) {
+            cmd.arg("--vulnerabilities");
+        }
+
+        // Add deny warnings flag if requested
+        if req.deny_warnings.unwrap_or(false) {
+            cmd.arg("--deny-warnings");
+        }
+
+        // Add any additional arguments
+        if let Some(args) = &req.args {
+            cmd.args(args);
+        }
+
+        cmd.current_dir(&req.working_directory);
+
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo audit: {}", e))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+
+        if output.status.success() {
+            Ok(format!(
+                "🔒 Audit operation #{audit_id} completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {stdout}"
+            ))
+        } else {
+            // Check if it's a vulnerability warning (exit code 1) vs actual error
+            let vulnerability_detected = output.status.code() == Some(1) && !stdout.is_empty();
+
+            if vulnerability_detected {
+                Err(format!(
+                    "⚠️ Audit operation #{audit_id} found security vulnerabilities{working_dir_msg}.\nVulnerabilities detected:\n{stdout}\nErrors: {stderr}"
+                ))
+            } else {
+                Err(format!(
+                    "❌ Audit operation #{audit_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                ))
+            }
+        }
+    }
+
+    #[tool(
+        description = "CARGO FMT: Safer than terminal cargo. Format Rust code using rustfmt. Use enable_async_notifications=true for large projects to multitask while code is being formatted"
     )]
     async fn fmt(
         &self,
@@ -2280,7 +2390,7 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "TREE: Safer than terminal cargo. Display dependency tree. Use enable_async_notifications=true for large projects to multitask while dependency tree is being generated."
+        description = "CARGO TREE: Safer than terminal cargo. Display dependency tree. Use enable_async_notifications=true for large projects to multitask while dependency tree is being generated"
     )]
     async fn tree(
         &self,
@@ -2412,7 +2522,7 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "VERSION: Safer than terminal cargo. Show cargo version information. Fast operation that helps LLMs understand the available cargo capabilities."
+        description = "CARGO VERSION: Safer than terminal cargo. Show cargo version information. Fast operation that helps LLMs understand the available cargo capabilities"
     )]
     async fn version(
         &self,
@@ -2451,7 +2561,7 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "FETCH: Safer than terminal cargo. Fetch dependencies without building. Use enable_async_notifications=true for large dependency sets to multitask while downloading."
+        description = "CARGO FETCH: Safer than terminal cargo. Fetch dependencies without building. Use enable_async_notifications=true for large dependency sets to multitask while downloading"
     )]
     async fn fetch(
         &self,
@@ -2578,15 +2688,79 @@ Output: {stdout}",
     }
 
     #[tool(
-        description = "RUSTC: Safer than terminal cargo. Compile with custom rustc options. Use enable_async_notifications=true for complex builds to multitask while compiling."
+        description = "CARGO RUSTC: Safer than terminal cargo. Compile with custom rustc options. Use enable_async_notifications=true for complex builds to multitask while compiling"
     )]
     async fn rustc(
         &self,
         Parameters(req): Parameters<RustcRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
+        let rustc_id = self.generate_operation_id();
+
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let rustc_id_clone = rustc_id.clone();
+
+            // Spawn background task for actual rustc work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, rustc_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: rustc_id_clone.clone(),
+                        command: "cargo rustc".to_string(),
+                        description: "Compiling with custom rustc options in background"
+                            .to_string(),
+                    })
+                    .await;
+
+                // Do the actual rustc work
+                let result = Self::rustc_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: rustc_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: rustc_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "🔧 Rustc operation {} started in background. You will receive progress notifications as compilation proceeds.",
+                rustc_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::rustc_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of rustc logic
+    async fn rustc_implementation(req: &RustcRequest) -> Result<String, String> {
         use tokio::process::Command;
 
-        let rustc_id = self.generate_operation_id();
+        let rustc_id = uuid::Uuid::new_v4().to_string()[..8].to_string();
 
         let mut cmd = Command::new("cargo");
         cmd.arg("rustc");
@@ -2606,30 +2780,29 @@ Output: {stdout}",
 
         cmd.current_dir(&req.working_directory);
 
-        let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo rustc: {}", e), None)
-        })?;
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo rustc: {}", e))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
-        let result_msg = if output.status.success() {
-            format!(
+        if output.status.success() {
+            Ok(format!(
                 "🔧 Rustc operation #{rustc_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
-            )
+            ))
         } else {
-            format!(
+            Err(format!(
                 "❌ Rustc operation #{rustc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-            )
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            ))
+        }
     }
 
     #[tool(
-        description = "METADATA: Safer than terminal cargo. Output JSON metadata about the project. Fast operation that provides LLMs with comprehensive project structure information."
+        description = "CARGO METADATA: Safer than terminal cargo. Output JSON metadata about the project. Fast operation that provides LLMs with comprehensive project structure information"
     )]
     async fn metadata(
         &self,

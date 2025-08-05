@@ -501,10 +501,12 @@ impl AsyncCargo {
         cmd.current_dir(&req.working_directory);
 
         // Execute command and collect full output
-        let output = cmd
-            .output()
-            .await
-            .map_err(|e| format!("Failed to execute cargo build: {}", e))?;
+        let output = cmd.output().await.map_err(|e| {
+            format!(
+                "❌ Build operation failed in {}.\nError: Failed to execute cargo build: {}",
+                &req.working_directory, e
+            )
+        })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -649,9 +651,10 @@ impl AsyncCargo {
         // Set working directory
         cmd.current_dir(&req.working_directory);
 
-        let output = cmd.output().await.map_err(|e| {
-            format!("Failed to execute cargo test: {}", e)
-        })?;
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo test: {}", e))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1132,9 +1135,10 @@ Output: {stdout}",
 
         cmd.current_dir(&req.working_directory);
 
-        let output = cmd.output().await.map_err(|e| {
-            format!("Failed to execute cargo nextest: {}", e)
-        })?;
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo nextest: {}", e))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -2296,10 +2300,12 @@ impl AsyncCargo {
         cmd.current_dir(&req.working_directory);
 
         // Execute command and collect full output
-        let output = cmd
-            .output()
-            .await
-            .map_err(|e| format!("Failed to execute cargo build: {}", e))?;
+        let output = cmd.output().await.map_err(|e| {
+            format!(
+                "❌ Build operation failed in {}.\nError: Failed to execute cargo build: {}",
+                &req.working_directory, e
+            )
+        })?;
 
         let duration_ms = start_time.elapsed().as_millis() as u64;
         let stdout = String::from_utf8_lossy(&output.stdout);

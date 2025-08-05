@@ -29,6 +29,20 @@ This project provides a high-performance MCP server that allows Large Language M
 ## Status
 
 It works with STDIN/STDOUT (not yet SSE), it is fast. It is not heavily field tested.
+Here is an example of Claude Sonnet 4 using `async-cargo-mcp` and thinking at the same time:
+
+> ..
+> **Now let me run the full test suite to verify that all tests pass with my fixes:**
+>
+> ---
+>
+> **async_cargo_mcp (MCP Server):**
+> > **Perfect! The test is running in the background. While it's running, let me update the `agent-plan.md` to mark this task as substantially complete and document the final findings:**
+>
+> ```
+> agent-plan.md+3-3
+> ```
+> ..
 
 ### Current Capabilities
 - All cargo commands implemented with fairly comprehensive integration test coverage

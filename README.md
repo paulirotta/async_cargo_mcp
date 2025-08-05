@@ -16,30 +16,33 @@ This project provides a high-performance MCP server that allows Large Language M
 
 ## Features
 
-- **Comprehensive Cargo Commands**: Implementation of all cargo commands useful to an LLM.
+- **Walk and chew gum at the same time**: Long-running cargo commands return immediately. Callbacks notifify of progress. This allows the LLM to continue concurrent thinking or other tool commands. The LLM may not think of or expect this unless you prompt it.
+- **Comprehensive Cargo Commands**: Implementation of all core cargo commands useful to an LLM: `build`, `test`, `run`, `check`, `doc`, `add`, `remove`, `update`, `clean`, `fix`, `search`, `bench`, `install`, `tree`, `version`, `fetch`, `rustc`, `metadata`
 - **Optional Cargo Extension Commands**: If installed, the LLM can use:
-    - `clippy` for linting
-    - `cargo-edit` for intelligent dependency upgrades and package management
-    - `cargo-audit` to audit Cargo.lock for crates with security vulnerabilities
-    - `cargo-nextest` for faster test runs
-- **Async Operations**: Long-running cargo commands return immediately. Callbacks notifify of progress. This allows the LLM to continue concurrent thinking or other tool commands. The LLM may not think of or expect this unless you prompt it.
-- **Typed Parameters**: All command parameters are strongly-typed with JSON schema validation.
+    - `clippy` for enhanced linting and code quality checks
+    - `nextest` for faster test execution
+    - `upgrade` (from cargo-edit) for intelligent dependency upgrades and package management
+    - `audit` (from cargo-audit) to audit Cargo.lock for crates with security vulnerabilities
+    - `fmt` (from rustfmt) for code formatting
+- **Typed Parameters**: Command parameters are strongly-typed with JSON schema validation to the the LLM on the straight-and-narrow path to success
 
 ## Status
 
-### Current Capabilities
-- All core cargo commands implemented: `build`, `test`, `run`, `check`, `doc`, `add`, `remove`, `update`, `clean`, `fix`, `search`, `bench`, `install`.
-- Optional command support for `clippy`, `nextest`, and `upgrade` (from cargo-edit).
-- MCP protocol integration with JSON schema validation.
-- Async callback notifications for progress tracking.
-- `working_directory` is required for all commands for safety.
-- Comprehensive test suite.
+It works, it is fast. It is not heavily field tested.
 
-### Upcoming Features
-- Enhanced documentation and usage examples.
-- Integration and testing with popular IDEs and LLM tools (collaboration and PRs welcome, open an issue).
-- RAG documentation to give current API and upstream library API support to the LLM.
-- Monitor filesystem for LLM changes and preemptively update so future commands return faster.
+### Current Capabilities
+- All cargo commands implemented with fairly comprehensive integration test coverage
+- MCP protocol official library integration with JSON schema validation tested in VSCode
+- Async callback notifications for progress tracking, but LLMs may still ignore this and wait unless prompted
+- `working_directory` is passed to commands, but we do not yet limit scope to one or more directory trees for safety
+
+### Upcoming Features (open an issue with requests, PRs welcome)
+- Better docs and examples
+- Instructions for other IDEs and command line tools
+- ´cargo install´ for easier setup
+- VSCode plugin etc for easier setup
+- Add RAG documentation server for the LLM to read current and upstream docs for the latest in-use API support (help the LLM with updates since its training cutoff date, similar to [Context7](https://context7.com/) but a different approach)
+- [`cargo watch`](https://crates.io/crates/cargo-watch) integration for LLMs. Monitor and pre-emptively build etc so future commands return faster
 
 ## Installation
 
@@ -61,7 +64,7 @@ Ensure you have the internal MCP server enabled in your VSCode settings:
 "chat.mcp.enabled": true
 ```
 
-Then, add the server to your VSCode configuration using `CTRL/CMD SHIFT P` and searching for "MCP: Add Server".
+Then, add the server to your VSCode configuration using `CTRL/CMD SHIFT P` and searching for "MCP: Add Server"
 
 The server configuration will be stored in `mcp.json`:
 ```json
@@ -77,30 +80,7 @@ The server configuration will be stored in `mcp.json`:
 }
 ```
 
-Restart VSCode to activate the MCP server.
-
-## Architecture
-
-### Core Components
-
-- **`cargo_tools.rs`**: MCP tool implementations for cargo commands.
-- **`callback_system.rs`**: Async callback infrastructure for progress updates.
-- **`command_registry.rs`**: Extensible command registration and auto-discovery.
-- **`operation_monitor.rs`**: Operation lifecycle management and monitoring.
-
-## Testing
-
-Run unit and integration tests with:
-
-```bash
-cargo test
-```
-
-The test suite covers:
-- MCP protocol initialization.
-- All available cargo commands.
-- Asynchronous operation handling.
-- JSON-RPC communication.
+Restart VSCode to activate the MCP server
 
 ## License
 
@@ -108,10 +88,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) for the protocol specification.
-- [rmcp](https://github.com/modelcontextprotocol/rmcp) for the Rust MCP implementation.
-- The Rust community for its excellent async ecosystem.
-
+- [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) for the protocol specification
+- [rmcp](https://github.com/modelcontextprotocol/rmcp) for the Rust MCP implementation
+- The Rust community for its excellent async ecosystem
 
 ## Features
 
@@ -149,11 +128,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Current Capabilities
 - Working directory support for safe testing
 - MCP protocol integration with JSON schema validation
-- Basic cargo command execution (build, test, clippy, add, remove, doc, check, update, upgrade)
+- Complete cargo command execution (build, test, run, check, doc, add, remove, update, clean, fix, search, bench, install, tree, version, fetch, rustc, metadata)
+- Optional extension commands (clippy, nextest, upgrade, audit, fmt)
 - Async callback notifications for progress tracking
 - Operation monitoring with timeout and cancellation
 - Extensible command registry for auto-discovery
-- Comprehensive test suite (20 unit tests passing, 2 integration tests have known rmcp client issue)
+- Comprehensive test suite (55+ tests with robust error handling)
 
 ### Upcoming Features
 - Enhanced documentation and usage examples
@@ -173,7 +153,7 @@ git clone git@github.com:paulirotta/async_cargo_mcp.git
 
 ### VSCode with GitHub Copilot
 
-There are MCP Extensions in the marketplace. They are not necessary and may cause confusion/duplication.
+There are MCP Extensions in the marketplace. They are not necessary and may cause confusion/duplication
 
 First ensure you have enabled VSCode internal MCP server:
 
@@ -202,7 +182,7 @@ The result is stored in to `mcp.json` as:
 }
 ```
 
-Restart VSCode to activate the MCP server.
+Restart VSCode to activate the MCP server
 
 ## Architecture
 
@@ -262,11 +242,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Development Notes
 
-**MCP Server Usage Experience**: During development and testing, the async_cargo_mcp server performed efficiently for cargo operations. The clean removal of utility commands (say_hello, echo, sum, increment/decrement/get_value) successfully focused the server on its core purpose of providing cargo command access to LLMs. All cargo operations (build, test, check, doc, add, remove, update, run) work reliably with proper async notifications and error handling.
+**MCP Server Usage Experience**: During development and testing, the async_cargo_mcp server performed efficiently for cargo operations. The clean removal of utility commands (say_hello, echo, sum, increment/decrement/get_value) successfully focused the server on its core purpose of providing cargo command access to LLMs. All cargo operations including the full set of core commands (build, test, run, check, doc, add, remove, update, clean, fix, search, bench, install, tree, version, fetch, rustc, metadata) and optional extensions (clippy, nextest, upgrade, audit, fmt) work reliably with proper async notifications and error handling.
 
 ## Alternatives
 
-The ecosystem is changing rapidly. Running without an MCP tool but adding some prompt incantations might be the most flexible. In some cases a good tool saves time/money.
+The ecosystem is changing rapidly. Running without an MCP tool but adding some prompt incantations might be the most flexible. In some cases a good tool saves time/money
 
 [jbr's cargo-mcp](https://github.com/jbr/cargo-mcp)
 

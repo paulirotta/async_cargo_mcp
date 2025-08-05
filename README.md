@@ -28,7 +28,7 @@ This project provides a high-performance MCP server that allows Large Language M
 
 ## Status
 
-It works, it is fast. It is not heavily field tested.
+It works with STDIN/STDOUT (not yet SSE), it is fast. It is not heavily field tested.
 
 ### Current Capabilities
 - All cargo commands implemented with fairly comprehensive integration test coverage
@@ -43,6 +43,7 @@ It works, it is fast. It is not heavily field tested.
 - VSCode plugin etc for easier setup
 - Add RAG documentation server for the LLM to read current and upstream docs for the latest in-use API support (help the LLM with updates since its training cutoff date, similar to [Context7](https://context7.com/) but a different approach)
 - [`cargo watch`](https://crates.io/crates/cargo-watch) integration for LLMs. Monitor and pre-emptively build etc so future commands return faster
+- SSE support for other MCP setups (subject to security considerations)
 
 ## Installation
 

@@ -38,7 +38,7 @@ pub struct BuildRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct RunRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
@@ -52,27 +52,27 @@ pub struct TestRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct CheckRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct UpdateRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct DocRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct ClippyRequest {
     pub working_directory: String,
     /// Additional arguments to pass to clippy (e.g., ["--fix", "--allow-dirty"])
@@ -90,14 +90,14 @@ pub struct NextestRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct CleanRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct FixRequest {
     pub working_directory: String,
     /// Additional arguments to pass to fix (e.g., ["--allow-dirty"])
@@ -106,7 +106,7 @@ pub struct FixRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct SearchRequest {
     pub query: String,
     /// Limit the number of results
@@ -115,7 +115,7 @@ pub struct SearchRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct BenchRequest {
     pub working_directory: String,
     /// Additional arguments to pass to bench
@@ -530,18 +530,71 @@ impl AsyncCargo {
     async fn run(
         &self,
         Parameters(req): Parameters<RunRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        use tokio::process::Command;
-
         let run_id = self.generate_operation_id();
 
-        // TODO: Add asynchronous callback mechanism here for runtime output streaming
-        // Implementation plan:
-        // 1. Use tokio::process::Command::spawn() to start the process without blocking
-        // 2. Stream stdout/stderr in real-time to provide live output to the LLM
-        // 3. Handle long-running processes that might need user interaction
-        // 4. Provide option to terminate running processes via MCP commands
-        // 5. Support for interactive applications through bidirectional communication
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let run_id_clone = run_id.clone();
+
+            // Spawn background task for actual run work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, run_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: run_id_clone.clone(),
+                        command: "cargo run".to_string(),
+                        description: "Running application in background".to_string(),
+                    })
+                    .await;
+
+                // Do the actual run work
+                let result = Self::run_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: run_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: run_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "🚀 Run operation {} started in background. You will receive progress notifications as the application runs.",
+                run_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::run_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of run logic
+    async fn run_implementation(req: &RunRequest) -> Result<String, String> {
+        use tokio::process::Command;
 
         let mut cmd = Command::new("cargo");
         cmd.arg("run");
@@ -549,26 +602,25 @@ impl AsyncCargo {
         // Set working directory
         cmd.current_dir(&req.working_directory);
 
-        let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo run: {}", e), None)
-        })?;
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Run operation failed: Failed to execute cargo run: {}", e))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
-        let result_msg = if output.status.success() {
-            format!(
-                "✅ Run operation #{run_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
-            )
+        if output.status.success() {
+            Ok(format!(
+                "✅ Run operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+            ))
         } else {
-            format!(
-                "❌ Run operation #{run_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-            )
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            Err(format!(
+                "❌ Run operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            ))
+        }
     }
 
     #[tool(
@@ -678,18 +730,71 @@ impl AsyncCargo {
     async fn check(
         &self,
         Parameters(req): Parameters<CheckRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        use tokio::process::Command;
-
         let check_id = self.generate_operation_id();
 
-        // TODO: Add asynchronous callback mechanism here for check progress updates
-        // Implementation plan:
-        // 1. Stream compilation check results as they become available
-        // 2. Send immediate warnings and errors to the LLM during checking
-        // 3. Provide progress indicators for large projects
-        // 4. Allow early termination on first error if requested
-        // 5. Include suggestion hints from compiler alongside error messages
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let check_id_clone = check_id.clone();
+
+            // Spawn background task for actual check work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, check_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: check_id_clone.clone(),
+                        command: "cargo check".to_string(),
+                        description: "Checking project in background".to_string(),
+                    })
+                    .await;
+
+                // Do the actual check work
+                let result = Self::check_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: check_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: check_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "✅ Check operation {} started in background. You will receive progress notifications as the check proceeds.",
+                check_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::check_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of check logic
+    async fn check_implementation(req: &CheckRequest) -> Result<String, String> {
+        use tokio::process::Command;
 
         let mut cmd = Command::new("cargo");
         cmd.arg("check");
@@ -698,7 +803,10 @@ impl AsyncCargo {
         cmd.current_dir(&req.working_directory);
 
         let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo check: {}", e), None)
+            format!(
+                "❌ Check operation failed in {}.\nError: Failed to execute cargo check: {}",
+                &req.working_directory, e
+            )
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -706,17 +814,15 @@ impl AsyncCargo {
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
-        let result_msg = if output.status.success() {
-            format!(
-                "✅ Check operation #{check_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
-            )
+        if output.status.success() {
+            Ok(format!(
+                "✅ Check operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+            ))
         } else {
-            format!(
-                "❌ Check operation #{check_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-            )
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            Err(format!(
+                "❌ Check operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            ))
+        }
     }
 
     #[tool(
@@ -872,18 +978,71 @@ impl AsyncCargo {
     async fn update(
         &self,
         Parameters(req): Parameters<UpdateRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        use tokio::process::Command;
-
         let update_id = self.generate_operation_id();
 
-        // TODO: Add asynchronous callback mechanism here for dependency update progress
-        // Implementation plan:
-        // 1. Stream update progress and version changes to the LLM in real-time
-        // 2. Show which dependencies are being updated and to what versions
-        // 3. Provide warnings about breaking changes or compatibility issues
-        // 4. Allow selective updates if the LLM requests specific package updates
-        // This would allow streaming update progress and version changes to the LLM
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let update_id_clone = update_id.clone();
+
+            // Spawn background task for actual update work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, update_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: update_id_clone.clone(),
+                        command: "cargo update".to_string(),
+                        description: "Updating dependencies in background".to_string(),
+                    })
+                    .await;
+
+                // Do the actual update work
+                let result = Self::update_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: update_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: update_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "⬆️ Update operation {} started in background. You will receive progress notifications as dependencies are updated.",
+                update_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::update_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of update logic
+    async fn update_implementation(req: &UpdateRequest) -> Result<String, String> {
+        use tokio::process::Command;
 
         let mut cmd = Command::new("cargo");
         cmd.arg("update");
@@ -892,7 +1051,10 @@ impl AsyncCargo {
         cmd.current_dir(&req.working_directory);
 
         let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo update: {}", e), None)
+            format!(
+                "Update operation failed: Failed to execute cargo update: {}",
+                e
+            )
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -900,17 +1062,15 @@ impl AsyncCargo {
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
-        let result_msg = if output.status.success() {
-            format!(
-                "⬆️ Update operation #{update_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
-            )
+        if output.status.success() {
+            Ok(format!(
+                "⬆️ Update operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+            ))
         } else {
-            format!(
-                "❌ Update operation #{update_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-            )
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            Err(format!(
+                "❌ Update operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            ))
+        }
     }
 
     #[tool(
@@ -919,18 +1079,71 @@ impl AsyncCargo {
     async fn doc(
         &self,
         Parameters(req): Parameters<DocRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        use tokio::process::Command;
-
         let doc_id = self.generate_operation_id();
 
-        // TODO: Add asynchronous callback mechanism here for documentation generation progress
-        // Implementation plan:
-        // 1. Stream documentation generation progress to the LLM in real-time
-        // 2. Show which crates and modules are being documented
-        // 3. Provide warnings about missing documentation or broken doc links
-        // 4. Report the final location of generated documentation files
-        // This would allow streaming doc generation progress and warnings to the LLM
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let doc_id_clone = doc_id.clone();
+
+            // Spawn background task for actual doc generation work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, doc_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: doc_id_clone.clone(),
+                        command: "cargo doc".to_string(),
+                        description: "Generating documentation in background".to_string(),
+                    })
+                    .await;
+
+                // Do the actual doc generation work
+                let result = Self::doc_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: doc_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: doc_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "📚 Documentation generation {} started in background. You will receive progress notifications as documentation is generated.",
+                doc_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::doc_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of doc generation logic
+    async fn doc_implementation(req: &DocRequest) -> Result<String, String> {
+        use tokio::process::Command;
 
         let mut cmd = Command::new("cargo");
         cmd.arg("doc").arg("--no-deps");
@@ -939,7 +1152,10 @@ impl AsyncCargo {
         cmd.current_dir(&req.working_directory);
 
         let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo doc: {}", e), None)
+            format!(
+                "Documentation generation failed: Failed to execute cargo doc: {}",
+                e
+            )
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -947,7 +1163,7 @@ impl AsyncCargo {
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
-        let result_msg = if output.status.success() {
+        if output.status.success() {
             // Try to determine the crate name for the documentation path
             let crate_name = {
                 // If working directory is specified, try to read Cargo.toml there
@@ -977,22 +1193,20 @@ impl AsyncCargo {
                 &req.working_directory, crate_name
             );
 
-            format!(
-                "📚 Documentation generation #{doc_id} completed successfully{working_dir_msg}.
+            Ok(format!(
+                "📚 Documentation generation completed successfully{working_dir_msg}.
 Documentation generated at: {}
 The generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.
 💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.
 
 Output: {stdout}",
                 doc_path
-            )
+            ))
         } else {
-            format!(
-                "❌ Documentation generation #{doc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-            )
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            Err(format!(
+                "❌ Documentation generation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            ))
+        }
     }
     #[tool(
         description = "CLIPPY: Safer than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional."
@@ -1000,10 +1214,71 @@ Output: {stdout}",
     async fn clippy(
         &self,
         Parameters(req): Parameters<ClippyRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        use tokio::process::Command;
-
         let clippy_id = self.generate_operation_id();
+
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let clippy_id_clone = clippy_id.clone();
+
+            // Spawn background task for actual clippy work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, clippy_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: clippy_id_clone.clone(),
+                        command: "cargo clippy".to_string(),
+                        description: "Running linter in background".to_string(),
+                    })
+                    .await;
+
+                // Do the actual clippy work
+                let result = Self::clippy_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: clippy_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: clippy_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "🔍 Clippy operation {} started in background. You will receive progress notifications as linting proceeds.",
+                clippy_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::clippy_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of clippy logic
+    async fn clippy_implementation(req: &ClippyRequest) -> Result<String, String> {
+        use tokio::process::Command;
 
         let mut cmd = Command::new("cargo");
         cmd.arg("clippy");
@@ -1016,7 +1291,10 @@ Output: {stdout}",
         cmd.current_dir(&req.working_directory);
 
         let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo clippy: {}", e), None)
+            format!(
+                "Clippy operation failed: Failed to execute cargo clippy: {}",
+                e
+            )
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -1024,17 +1302,15 @@ Output: {stdout}",
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
-        let result_msg = if output.status.success() {
-            format!(
-                "🔍 Clippy operation #{clippy_id} passed with no warnings{working_dir_msg}.\nOutput: {stdout}",
-            )
+        if output.status.success() {
+            Ok(format!(
+                "🔍 Clippy operation passed with no warnings{working_dir_msg}.\nOutput: {stdout}",
+            ))
         } else {
-            format!(
-                "❌ Clippy operation #{clippy_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}",
-            )
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            Err(format!(
+                "❌ Clippy operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}",
+            ))
+        }
     }
 
     #[tool(

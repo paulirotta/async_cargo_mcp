@@ -86,11 +86,11 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     }
 
     // Verify we have exactly the expected number of tools (catches if new tools are added)
-    // Note: We expect 8 total tools but only test 7 to avoid recursive test execution
+    // We expect 17 total tools including audit command
     assert_eq!(
         tool_names.len(),
-        9,
-        "Expected exactly 8 tools, but found {}. Tools: {:?}",
+        17,
+        "Expected exactly 17 tools, but found {}. Tools: {:?}",
         tool_names.len(),
         tool_names
     );

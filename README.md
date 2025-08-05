@@ -12,16 +12,111 @@
 
 **Model Context Protocol (MCP) server for Cargo with asynchronous response handling and comprehensive operation monitoring.**
 
-Example: With a single premium token you can do things like "`Use MCP server async-cargo-mcp to run cargo doc, build, clippy and test. Fix any errors and repeat until clean`" Depending on the LLM and tasks, actions may be completed concurrently.
+This project provides a high-performance MCP server that allows Large Language Models (LLMs) to interact with Rust's Cargo build system operations. It supports both synchronous and asynchronous execution. For long-running tasks, asynchronous operations allow the LLM to continue with other tasks while the `async_cargo_mcp` process works in the background as a concurrent agent.
 
-This project provides a high performance MCP server that allows Large Language Models (LLMs) to interact with Rust's Cargo build system operations asynchronously. This allows the LLM to proceed on other tasks with the async_cargo_mcp process as an concurrent agent. It supports real-time progress updates, operation cancellation, timeout handling, and extensible command architecture.
+## Features
+
+- **Comprehensive Cargo Commands**: Implementation of all cargo commands useful to an LLM.
+- **Optional Cargo Extension Commands**: If installed, the LLM can use:
+    - `clippy` for linting
+    - `cargo-edit` for intelligent dependency upgrades and package management
+    - `cargo-audit` to audit Cargo.lock for crates with security vulnerabilities
+    - `cargo-nextest` for faster test runs
+- **Async Operations**: Long-running cargo commands return immediately. Callbacks notifify of progress. This allows the LLM to continue concurrent thinking or other tool commands. The LLM may not think of or expect this unless you prompt it.
+- **Typed Parameters**: All command parameters are strongly-typed with JSON schema validation.
+
+## Status
+
+### Current Capabilities
+- All core cargo commands implemented: `build`, `test`, `run`, `check`, `doc`, `add`, `remove`, `update`, `clean`, `fix`, `search`, `bench`, `install`.
+- Optional command support for `clippy`, `nextest`, and `upgrade` (from cargo-edit).
+- MCP protocol integration with JSON schema validation.
+- Async callback notifications for progress tracking.
+- `working_directory` is required for all commands for safety.
+- Comprehensive test suite.
+
+### Upcoming Features
+- Enhanced documentation and usage examples.
+- Integration and testing with popular IDEs and LLM tools (collaboration and PRs welcome, open an issue).
+- RAG documentation to give current API and upstream library API support to the LLM.
+- Monitor filesystem for LLM changes and preemptively update so future commands return faster.
+
+## Installation
+
+This project is under active development and can be installed from source:
+
+```bash
+git clone git@github.com:paulirotta/async_cargo_mcp.git
+cd async_cargo_mcp
+cargo build --release
+```
+
+## IDE Integration
+
+### VSCode with GitHub Copilot
+
+Ensure you have the internal MCP server enabled in your VSCode settings:
+
+```json
+"chat.mcp.enabled": true
+```
+
+Then, add the server to your VSCode configuration using `CTRL/CMD SHIFT P` and searching for "MCP: Add Server".
+
+The server configuration will be stored in `mcp.json`:
+```json
+{
+    "servers": {
+        "async_cargo_mcp": {
+            "type": "stdio",
+            "command": "YOUR_PROJECT_PATH/async_cargo_mcp/target/release/async_cargo_mcp",
+            "args": []
+        }
+    },
+    "inputs": []
+}
+```
+
+Restart VSCode to activate the MCP server.
+
+## Architecture
+
+### Core Components
+
+- **`cargo_tools.rs`**: MCP tool implementations for cargo commands.
+- **`callback_system.rs`**: Async callback infrastructure for progress updates.
+- **`command_registry.rs`**: Extensible command registration and auto-discovery.
+- **`operation_monitor.rs`**: Operation lifecycle management and monitoring.
+
+## Testing
+
+Run unit and integration tests with:
+
+```bash
+cargo test
+```
+
+The test suite covers:
+- MCP protocol initialization.
+- All available cargo commands.
+- Asynchronous operation handling.
+- JSON-RPC communication.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) for the protocol specification.
+- [rmcp](https://github.com/modelcontextprotocol/rmcp) for the Rust MCP implementation.
+- The Rust community for its excellent async ecosystem.
+
 
 ## Features
 
 ### Core Cargo Integration
-- **Complete Cargo Command Support**: build, test, add, remove, check, update, run
-- **Working Directory Support**: All commands accept optional `working_directory` parameter for safe project isolation
-- **Real Command Execution**: Uses actual `cargo` subprocess calls with proper error handling
+- **Common Cargo Command Support**: build, test, add, remove, check, update, run
 - **Parameter Validation**: Type-safe parameter structures with JSON schema validation
 
 ### Asynchronous Operation Support
@@ -54,17 +149,17 @@ This project provides a high performance MCP server that allows Large Language M
 ### Current Capabilities
 - Working directory support for safe testing
 - MCP protocol integration with JSON schema validation
-- Basic cargo command execution (build, test, clippy, add, remove, doc, check, update)
+- Basic cargo command execution (build, test, clippy, add, remove, doc, check, update, upgrade)
 - Async callback notifications for progress tracking
 - Operation monitoring with timeout and cancellation
 - Extensible command registry for auto-discovery
 - Comprehensive test suite (20 unit tests passing, 2 integration tests have known rmcp client issue)
 
 ### Upcoming Features
-- 🔄 Enhanced documentation and usage examples
-- 🔄 Integration and testing with popular IDEs and LLM tools (collaborateion and PRs welcome, open an issue)
-- 🔄 RAG documentation to give current API and upstream library API support to the LLM
-- 🔄 Monitor filesystem for LLM changes and preemptively update so future commands return faster
+- Enhanced documentation and usage examples
+- Integration and testing with popular IDEs and LLM tools (collaborateion and PRs welcome, open an issue)
+- RAG documentation to give current API and upstream library API support to the LLM
+- Monitor filesystem for LLM changes and preemptively update so future commands return faster
 
 ## Installation
 
@@ -104,89 +199,6 @@ The result is stored in to `mcp.json` as:
         },
     },
     "inputs": []
-}
-```
-
-You may also want per-project task definitions in `.vscode/tasks.json`:
-```json
-{
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Rust Build",
-            "type": "shell",
-            "command": "async-cargo-mcp build",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Rust Build with All Features",
-            "type": "shell",
-            "command": "async-cargo-mcp build --all-features",
-            "group": "build",
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Rust Check",
-            "type": "shell",
-            "command": "async-cargo-mcp check",
-            "group": "build",
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Rust Clippy",
-            "type": "shell",
-            "command": "async-cargo-mcp clippy",
-            "group": "build",
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Rust Test",
-            "type": "shell",
-            "command": "async-cargo-mcp test",
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Rust Run",
-            "type": "shell",
-            "command": "async-cargo-mcp run",
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-        {
-            "label": "Rust Clean",
-            "type": "shell",
-            "command": "async-cargo-mcp clean",
-            "problemMatcher": []
-        },
-        {
-            "label": "Rust Doc",
-            "type": "shell",
-            "command": "async-cargo-mcp doc",
-            "group": "build",
-            "problemMatcher": [
-                "$rustc"
-            ]
-        },
-    ]
 }
 ```
 

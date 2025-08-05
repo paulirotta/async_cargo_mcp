@@ -14,7 +14,7 @@
             ]
         },
         {
-            "label": "Rust Doc",
+            "label": "Rust 'cargo doc'",
             "type": "shell",
             "command": "async-cargo-mcp doc",
             "group": "build",
@@ -23,7 +23,7 @@
             ]
         },
         {
-            "label": "Rust Check",
+            "label": "Rust 'cargo check'",
             "type": "shell",
             "command": "async-cargo-mcp check",
             "group": "build",
@@ -32,7 +32,7 @@
             ]
         },
         {
-            "label": "Rust Clippy",
+            "label": "Rust 'cargo clippy'",
             "type": "shell",
             "command": "async-cargo-mcp clippy",
             "group": "build",
@@ -41,7 +41,7 @@
             ]
         },
         {
-            "label": "Rust Test",
+            "label": "Rust 'cargo test'",
             "type": "shell",
             "command": "async-cargo-mcp test",
             "group": {
@@ -53,7 +53,16 @@
             ]
         },
         {
-            "label": "Rust Run",
+            "label": "Rust 'cargo nextest run'",
+            "type": "shell",
+            "command": "async-cargo-mcp nextest run",
+            "group": "test",
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "label": "Rust 'cargo run'",
             "type": "shell",
             "command": "async-cargo-mcp run",
             "problemMatcher": [
@@ -61,9 +70,39 @@
             ]
         },
         {
-            "label": "Rust Clean",
+            "label": "Rust 'cargo clean'",
             "type": "shell",
             "command": "async-cargo-mcp clean",
+            "problemMatcher": []
+        },
+        {
+            "label": "Rust 'cargo fix'",
+            "type": "shell",
+            "command": "async-cargo-mcp fix --allow-dirty",
+            "problemMatcher": []
+        },
+        {
+            "label": "Rust 'cargo search'",
+            "type": "shell",
+            "command": "async-cargo-mcp search",
+            "problemMatcher": []
+        },
+        {
+            "label": "Rust 'cargo bench'",
+            "type": "shell",
+            "command": "async-cargo-mcp bench",
+            "problemMatcher": []
+        },
+        {
+            "label": "Rust 'cargo install'",
+            "type": "shell",
+            "command": "async-cargo-mcp install",
+            "problemMatcher": []
+        },
+        {
+            "label": "Rust 'cargo update'",
+            "type": "shell",
+            "command": "async-cargo-mcp update",
             "problemMatcher": []
         }
     ]

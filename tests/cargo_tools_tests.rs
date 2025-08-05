@@ -5,7 +5,7 @@
 use anyhow::Result;
 use async_cargo_mcp::test_cargo_tools;
 use std::fs;
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 /// Test cargo build in a temporary project
 #[tokio::test]
@@ -128,7 +128,9 @@ async fn test_cargo_test_in_temp_project() {
 /// that can be used for testing cargo commands safely.
 async fn create_test_cargo_project() -> Result<TempDir> {
     let uuid = uuid::Uuid::new_v4();
-    let temp_dir = TempDir::new(&format!("cargo_mcp_test_{}", uuid))?;
+    let temp_dir = tempfile::Builder::new()
+        .prefix(&format!("cargo_mcp_test_{}_", uuid))
+        .tempdir()?;
     let project_path = temp_dir.path();
 
     // Create Cargo.toml

@@ -11,6 +11,7 @@ use rmcp::{
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use std::env;
+use tempfile::TempDir;
 use tokio::process::Command;
 
 /// Test build command with missing Cargo.toml
@@ -519,11 +520,13 @@ async fn test_build_with_null_working_dir() -> Result<String> {
     Ok(format!("{:?}", result))
 }
 
-async fn create_minimal_project() -> Result<tempdir::TempDir> {
+async fn create_minimal_project() -> Result<TempDir> {
     use std::fs;
 
     let uuid = uuid::Uuid::new_v4();
-    let temp_dir = tempdir::TempDir::new(&format!("cargo_mcp_minimal_{}", uuid))?;
+    let temp_dir = tempfile::Builder::new()
+        .prefix(&format!("cargo_mcp_minimal_{}", uuid))
+        .tempdir()?;
     let project_path = temp_dir.path();
 
     // Create Cargo.toml

@@ -13,7 +13,7 @@ use rmcp::{
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use std::{env, fs};
-use tempdir::TempDir;
+use tempfile::TempDir;
 use tokio::process::Command;
 
 /// Test cargo clean command
@@ -167,6 +167,148 @@ async fn test_cargo_audit_with_async() {
         }
         Err(e) => {
             println!("Audit async test completed: {e}");
+        }
+    }
+}
+
+/// Test cargo fmt command
+#[tokio::test]
+async fn test_cargo_fmt_command() {
+    let temp_project = create_test_cargo_project_with_formatting_issues()
+        .await
+        .expect("Failed to create test project with formatting issues");
+    let project_path = temp_project.path().to_str().unwrap();
+
+    let result = test_fmt_command(project_path).await;
+
+    match result {
+        Ok(output) => {
+            println!("Format test result: {output}");
+            assert!(output.contains("Format operation"));
+        }
+        Err(e) => {
+            println!("Format test completed: {e}");
+        }
+    }
+}
+
+/// Test cargo fmt command with check flag
+#[tokio::test]
+async fn test_cargo_fmt_check() {
+    let temp_project = create_test_cargo_project_with_formatting_issues()
+        .await
+        .expect("Failed to create test project with formatting issues");
+    let project_path = temp_project.path().to_str().unwrap();
+
+    let result = test_fmt_command_check(project_path).await;
+
+    match result {
+        Ok(output) => {
+            println!("Format check test result: {output}");
+            assert!(output.contains("Format operation"));
+        }
+        Err(e) => {
+            println!("Format check test completed: {e}");
+        }
+    }
+}
+
+/// Test cargo tree command
+#[tokio::test]
+async fn test_cargo_tree_command() {
+    let temp_project = create_test_cargo_project()
+        .await
+        .expect("Failed to create test project");
+    let project_path = temp_project.path().to_str().unwrap();
+
+    let result = test_tree_command(project_path).await;
+
+    match result {
+        Ok(output) => {
+            println!("Tree test result: {output}");
+            assert!(output.contains("Tree operation"));
+        }
+        Err(e) => {
+            println!("Tree test completed: {e}");
+        }
+    }
+}
+
+/// Test cargo version command
+#[tokio::test]
+async fn test_cargo_version_command() {
+    let result = test_version_command().await;
+
+    match result {
+        Ok(output) => {
+            println!("Version test result: {output}");
+            assert!(output.contains("Version operation") && output.contains("cargo"));
+        }
+        Err(e) => {
+            panic!("Version test failed: {e}");
+        }
+    }
+}
+
+/// Test cargo fetch command
+#[tokio::test]
+async fn test_cargo_fetch_command() {
+    let temp_project = create_test_cargo_project()
+        .await
+        .expect("Failed to create test project");
+    let project_path = temp_project.path().to_str().unwrap();
+
+    let result = test_fetch_command(project_path).await;
+
+    match result {
+        Ok(output) => {
+            println!("Fetch test result: {output}");
+            assert!(output.contains("Fetch operation"));
+        }
+        Err(e) => {
+            println!("Fetch test completed: {e}");
+        }
+    }
+}
+
+/// Test cargo rustc command
+#[tokio::test]
+async fn test_cargo_rustc_command() {
+    let temp_project = create_test_cargo_project()
+        .await
+        .expect("Failed to create test project");
+    let project_path = temp_project.path().to_str().unwrap();
+
+    let result = test_rustc_command(project_path).await;
+
+    match result {
+        Ok(output) => {
+            println!("Rustc test result: {output}");
+            assert!(output.contains("Rustc operation"));
+        }
+        Err(e) => {
+            println!("Rustc test completed: {e}");
+        }
+    }
+}
+
+/// Test cargo metadata command
+#[tokio::test]
+async fn test_cargo_metadata_command() {
+    let temp_project = create_test_cargo_project()
+        .await
+        .expect("Failed to create test project");
+    let project_path = temp_project.path().to_str().unwrap();
+
+    let result = test_metadata_command(project_path).await;
+
+    match result {
+        Ok(output) => {
+            println!("Metadata test result: {output}");
+            assert!(output.contains("Metadata operation"));
+        }
+        Err(e) => {
+            println!("Metadata test completed: {e}");
         }
     }
 }
@@ -506,7 +648,9 @@ async fn test_build_command_with_async(project_path: &str) -> Result<String> {
 /// Create a test project with a warning to test cargo fix
 async fn create_test_cargo_project_with_warning() -> Result<TempDir> {
     let uuid = uuid::Uuid::new_v4();
-    let temp_dir = TempDir::new(&format!("cargo_mcp_fix_test_{}", uuid))?;
+    let temp_dir = tempfile::Builder::new()
+        .prefix(&format!("cargo_mcp_fix_test_{}_", uuid))
+        .tempdir()?;
     let project_path = temp_dir.path();
 
     // Create Cargo.toml
@@ -549,7 +693,9 @@ mod tests {
 /// Create a basic test project (reused from cargo_tools_tests.rs)
 async fn create_test_cargo_project() -> Result<TempDir> {
     let uuid = uuid::Uuid::new_v4();
-    let temp_dir = TempDir::new(&format!("cargo_mcp_test_{}", uuid))?;
+    let temp_dir = tempfile::Builder::new()
+        .prefix(&format!("cargo_mcp_test_{}_", uuid))
+        .tempdir()?;
     let project_path = temp_dir.path();
 
     // Create Cargo.toml
@@ -667,4 +813,230 @@ async fn test_audit_command_with_format(project_path: &str, format: &str) -> Res
 
     client.cancel().await?;
     Ok(format!("{:?}", result))
+}
+
+// Helper functions for new commands
+
+async fn test_fmt_command(project_path: &str) -> Result<String> {
+    let original_dir = env::current_dir()?;
+
+    let client = ()
+        .serve(TokioChildProcess::new(Command::new("cargo").configure(
+            |cmd| {
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .current_dir(&original_dir);
+            },
+        ))?)
+        .await?;
+
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "fmt".into(),
+            arguments: Some(object!({ "working_directory": project_path })),
+        })
+        .await?;
+
+    client.cancel().await?;
+    Ok(format!("{:?}", result))
+}
+
+async fn test_fmt_command_check(project_path: &str) -> Result<String> {
+    let original_dir = env::current_dir()?;
+
+    let client = ()
+        .serve(TokioChildProcess::new(Command::new("cargo").configure(
+            |cmd| {
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .current_dir(&original_dir);
+            },
+        ))?)
+        .await?;
+
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "fmt".into(),
+            arguments: Some(object!({
+                "working_directory": project_path,
+                "check": true
+            })),
+        })
+        .await?;
+
+    client.cancel().await?;
+    Ok(format!("{:?}", result))
+}
+
+async fn test_tree_command(project_path: &str) -> Result<String> {
+    let original_dir = env::current_dir()?;
+
+    let client = ()
+        .serve(TokioChildProcess::new(Command::new("cargo").configure(
+            |cmd| {
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .current_dir(&original_dir);
+            },
+        ))?)
+        .await?;
+
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "tree".into(),
+            arguments: Some(object!({ "working_directory": project_path })),
+        })
+        .await?;
+
+    client.cancel().await?;
+    Ok(format!("{:?}", result))
+}
+
+async fn test_version_command() -> Result<String> {
+    let original_dir = env::current_dir()?;
+
+    let client = ()
+        .serve(TokioChildProcess::new(Command::new("cargo").configure(
+            |cmd| {
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .current_dir(&original_dir);
+            },
+        ))?)
+        .await?;
+
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "version".into(),
+            arguments: Some(object!({})),
+        })
+        .await?;
+
+    client.cancel().await?;
+    Ok(format!("{:?}", result))
+}
+
+async fn test_fetch_command(project_path: &str) -> Result<String> {
+    let original_dir = env::current_dir()?;
+
+    let client = ()
+        .serve(TokioChildProcess::new(Command::new("cargo").configure(
+            |cmd| {
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .current_dir(&original_dir);
+            },
+        ))?)
+        .await?;
+
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "fetch".into(),
+            arguments: Some(object!({ "working_directory": project_path })),
+        })
+        .await?;
+
+    client.cancel().await?;
+    Ok(format!("{:?}", result))
+}
+
+async fn test_rustc_command(project_path: &str) -> Result<String> {
+    let original_dir = env::current_dir()?;
+
+    let client = ()
+        .serve(TokioChildProcess::new(Command::new("cargo").configure(
+            |cmd| {
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .current_dir(&original_dir);
+            },
+        ))?)
+        .await?;
+
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "rustc".into(),
+            arguments: Some(object!({ "working_directory": project_path })),
+        })
+        .await?;
+
+    client.cancel().await?;
+    Ok(format!("{:?}", result))
+}
+
+async fn test_metadata_command(project_path: &str) -> Result<String> {
+    let original_dir = env::current_dir()?;
+
+    let client = ()
+        .serve(TokioChildProcess::new(Command::new("cargo").configure(
+            |cmd| {
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .current_dir(&original_dir);
+            },
+        ))?)
+        .await?;
+
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "metadata".into(),
+            arguments: Some(object!({ "working_directory": project_path })),
+        })
+        .await?;
+
+    client.cancel().await?;
+    Ok(format!("{:?}", result))
+}
+
+/// Create a test project with formatting issues for testing cargo fmt
+async fn create_test_cargo_project_with_formatting_issues() -> Result<TempDir> {
+    let uuid = uuid::Uuid::new_v4();
+    let temp_dir = tempfile::Builder::new()
+        .prefix(&format!("cargo_mcp_fmt_test_{}_", uuid))
+        .tempdir()?;
+    let project_path = temp_dir.path();
+
+    // Create Cargo.toml
+    let cargo_toml_content = r#"[package]
+name = "test_project_with_formatting"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+"#;
+
+    fs::write(project_path.join("Cargo.toml"), cargo_toml_content)?;
+
+    // Create src directory
+    fs::create_dir(project_path.join("src"))?;
+
+    // Create main.rs with poor formatting
+    let main_rs_content = r#"fn main(){
+let x=42;
+    let y =   43  ;
+        println!("Hello, world! {} {}",x,y);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+fn it_works(  ) {
+        let result = 2+ 2;
+            assert_eq!( result,4 );
+    }
+}
+"#;
+
+    fs::write(project_path.join("src").join("main.rs"), main_rs_content)?;
+
+    println!("Created test project with formatting issues at: {project_path:?}");
+
+    Ok(temp_dir)
 }

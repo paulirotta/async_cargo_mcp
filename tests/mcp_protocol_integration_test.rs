@@ -14,7 +14,7 @@ use rmcp::{
 };
 use serde_json::json;
 use std::fs;
-use tempdir::TempDir;
+use tempfile::TempDir;
 use tokio::process::Command;
 use tokio::time::{Duration, sleep};
 
@@ -86,11 +86,11 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     }
 
     // Verify we have exactly the expected number of tools (catches if new tools are added)
-    // We expect 17 total tools including audit command
+    // We expect 23 total tools including new commands: fmt, tree, version, fetch, rustc, metadata
     assert_eq!(
         tool_names.len(),
-        17,
-        "Expected exactly 17 tools, but found {}. Tools: {:?}",
+        23,
+        "Expected exactly 23 tools, but found {}. Tools: {:?}",
         tool_names.len(),
         tool_names
     );
@@ -279,7 +279,9 @@ async fn test_mcp_protocol_flow() -> Result<()> {
 /// Helper function to create a temporary Cargo project for testing
 /// This ensures tests operate on temporary directories, not the actual project
 async fn create_test_cargo_project() -> Result<TempDir> {
-    let temp_dir = TempDir::new("cargo_mcp_test")?;
+    let temp_dir = tempfile::Builder::new()
+        .prefix("cargo_mcp_test")
+        .tempdir()?;
     let project_path = temp_dir.path();
 
     // Create Cargo.toml

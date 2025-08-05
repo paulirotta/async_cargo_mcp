@@ -1,4 +1,5 @@
 use crate::callback_system::{CallbackSender, LoggingCallbackSender, ProgressUpdate, no_callback};
+use crate::mcp_callback::mcp_callback;
 use rmcp::{
     ErrorData as McpError, RoleServer, ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::Parameters},
@@ -30,7 +31,7 @@ pub struct RemoveDependencyRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct BuildRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
@@ -44,7 +45,7 @@ pub struct RunRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct TestRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
@@ -80,7 +81,7 @@ pub struct ClippyRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct NextestRequest {
     pub working_directory: String,
     /// Additional arguments to pass to nextest (e.g., ["--all-features"])
@@ -166,6 +167,93 @@ pub struct AuditRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct FmtRequest {
+    pub working_directory: String,
+    /// Check formatting without making changes
+    pub check: Option<bool>,
+    /// Format all packages in the workspace
+    pub all: Option<bool>,
+    /// Additional arguments to pass to fmt
+    pub args: Option<Vec<String>>,
+    /// Enable async callback notifications for operation progress
+    pub enable_async_notifications: Option<bool>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TreeRequest {
+    pub working_directory: String,
+    /// Maximum display depth of the dependency tree
+    pub depth: Option<u32>,
+    /// Space-separated list of features to activate
+    pub features: Option<Vec<String>>,
+    /// Activate all available features
+    pub all_features: Option<bool>,
+    /// Do not activate the `default` feature
+    pub no_default_features: Option<bool>,
+    /// Output format (normal, json)
+    pub format: Option<String>,
+    /// Additional arguments to pass to tree
+    pub args: Option<Vec<String>>,
+    /// Enable async callback notifications for operation progress
+    pub enable_async_notifications: Option<bool>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct VersionRequest {
+    /// Enable verbose output showing more version details
+    pub verbose: Option<bool>,
+    /// Enable async callback notifications for operation progress
+    pub enable_async_notifications: Option<bool>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct FetchRequest {
+    pub working_directory: String,
+    /// Fetch dependencies for the target triple
+    pub target: Option<String>,
+    /// Space-separated list of features to activate
+    pub features: Option<Vec<String>>,
+    /// Activate all available features
+    pub all_features: Option<bool>,
+    /// Do not activate the `default` feature
+    pub no_default_features: Option<bool>,
+    /// Additional arguments to pass to fetch
+    pub args: Option<Vec<String>>,
+    /// Enable async callback notifications for operation progress
+    pub enable_async_notifications: Option<bool>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct RustcRequest {
+    pub working_directory: String,
+    /// Additional arguments to pass to rustc
+    pub rustc_args: Option<Vec<String>>,
+    /// Additional arguments to pass to cargo rustc
+    pub cargo_args: Option<Vec<String>>,
+    /// Enable async callback notifications for operation progress
+    pub enable_async_notifications: Option<bool>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct MetadataRequest {
+    pub working_directory: String,
+    /// Output format (json is default and recommended)
+    pub format: Option<String>,
+    /// Do not include dependencies in the output
+    pub no_deps: Option<bool>,
+    /// Space-separated list of features to activate
+    pub features: Option<Vec<String>>,
+    /// Activate all available features
+    pub all_features: Option<bool>,
+    /// Do not activate the `default` feature
+    pub no_default_features: Option<bool>,
+    /// Additional arguments to pass to metadata
+    pub args: Option<Vec<String>>,
+    /// Enable async callback notifications for operation progress
+    pub enable_async_notifications: Option<bool>,
+}
+
 #[derive(Clone, Debug)]
 pub struct AsyncCargo {
     tool_router: ToolRouter<AsyncCargo>,
@@ -221,6 +309,15 @@ impl AsyncCargo {
             .unwrap_or(false);
         availability.insert("cargo-audit".to_string(), cargo_audit_available);
 
+        // Check rustfmt (for cargo fmt)
+        let rustfmt_available = Command::new("rustfmt")
+            .arg("--version")
+            .output()
+            .await
+            .map(|output| output.status.success())
+            .unwrap_or(false);
+        availability.insert("rustfmt".to_string(), rustfmt_available);
+
         // Check if cargo is available (should always be true if we got this far)
         let cargo_available = Command::new("cargo")
             .arg("--version")
@@ -241,7 +338,7 @@ impl AsyncCargo {
         report.push_str("=====================================\n\n");
 
         report.push_str("Core Commands (always available):\n");
-        report.push_str("✅ • build, test, run, check, doc, add, remove, update, clean, fix, search, bench, install\n\n");
+        report.push_str("✅ • build, test, run, check, doc, add, remove, update, clean, fix, search, bench, install, tree, version, fetch, rustc, metadata\n\n");
 
         report.push_str("Optional Components:\n");
 
@@ -277,6 +374,14 @@ impl AsyncCargo {
             );
         }
 
+        if *availability.get("rustfmt").unwrap_or(&false) {
+            report.push_str("✅ rustfmt - Available (code formatting with cargo fmt)\n");
+        } else {
+            report.push_str(
+                "❌ rustfmt - Not available (install with: rustup component add rustfmt)\n",
+            );
+        }
+
         report.push_str("\n💡 Recommendations:\n");
         report.push_str(
             "⚡ • Use 'nextest' instead of 'test' for faster test execution if available\n",
@@ -299,7 +404,7 @@ impl AsyncCargo {
         RawResource::new(uri, name.to_string()).no_annotation()
     }
 
-    fn generate_operation_id(&self) -> u64 {
+    fn generate_operation_id(&self) -> String {
         use chrono::{Local, Timelike};
         let now = Local::now();
         let midnight = now
@@ -311,7 +416,10 @@ impl AsyncCargo {
             .unwrap()
             .with_nanosecond(0)
             .unwrap();
-        (now.timestamp_millis() - midnight.timestamp_millis()) as u64
+        format!(
+            "op_{}",
+            (now.timestamp_millis() - midnight.timestamp_millis()) as u64
+        )
     }
 
     #[tool(
@@ -320,59 +428,97 @@ impl AsyncCargo {
     async fn build(
         &self,
         Parameters(req): Parameters<BuildRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         let build_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
-            // Use the callback-enabled version for async notifications
-            let callback: Box<dyn CallbackSender> = Box::new(LoggingCallbackSender::new(format!(
-                "cargo_build_{}",
-                build_id
-            )));
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
 
-            match self.build_with_callback(req, Some(callback)).await {
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let build_id_clone = build_id.clone();
+
+            // Spawn background task for actual build work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, build_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: build_id_clone.clone(),
+                        command: "cargo build".to_string(),
+                        description: "Building project in background".to_string(),
+                    })
+                    .await;
+
+                // Do the actual build work
+                let result = Self::build_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: build_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: build_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "✅ Build operation {} started in background. You will receive progress notifications as the build proceeds.",
+                build_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::build_implementation(&req).await {
                 Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
                 Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
             }
+        }
+    }
+
+    /// Internal implementation of build logic
+    async fn build_implementation(req: &BuildRequest) -> Result<String, String> {
+        use tokio::process::Command;
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("build");
+
+        // Set working directory
+        cmd.current_dir(&req.working_directory);
+
+        // Execute command and collect full output
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo build: {}", e))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+
+        if output.status.success() {
+            Ok(format!(
+                "✅ Build completed successfully{working_dir_msg}.\nOutput: {stdout}"
+            ))
         } else {
-            // Use direct execution for synchronous operation
-            use tokio::process::Command;
-
-            // TODO: Add asynchronous callback mechanism here for build progress updates
-            // Implementation plan:
-            // 1. Use tokio::process::Command::spawn() instead of output() to get a Child process
-            // 2. Read stdout/stderr streams line by line using BufReader
-            // 3. Send progress messages via MCP notifications or progress callbacks to the LLM
-            // 4. Include compilation warnings, errors, and progress percentage if available
-            // 5. Allow LLM to receive real-time feedback during long compilation processes
-
-            let mut cmd = Command::new("cargo");
-            cmd.arg("build");
-
-            // Set working directory
-            cmd.current_dir(&req.working_directory);
-
-            let output = cmd.output().await.map_err(|e| {
-                McpError::internal_error(format!("Failed to execute cargo build: {}", e), None)
-            })?;
-
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-
-            let working_dir_msg = format!(" in {}", &req.working_directory);
-
-            let result_msg = if output.status.success() {
-                format!(
-                    "✅ Build operation #{build_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
-                )
-            } else {
-                format!(
-                    "❌ Build operation #{build_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-                )
-            };
-
-            Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            Err(format!(
+                "❌ Build failed{working_dir_msg}.\nError: {stderr}\nOutput: {stdout}"
+            ))
         }
     }
 
@@ -429,10 +575,73 @@ impl AsyncCargo {
     async fn test(
         &self,
         Parameters(req): Parameters<TestRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
+        let test_id = self.generate_operation_id();
+
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let test_id_clone = test_id.clone();
+
+            // Spawn background task for actual test work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, test_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: test_id_clone.clone(),
+                        command: "cargo test".to_string(),
+                        description: "Running test suite in background".to_string(),
+                    })
+                    .await;
+
+                // Do the actual test work
+                let result = Self::test_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: test_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: test_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "🧪 Test operation {} started in background. You will receive progress notifications as the tests run.",
+                test_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::test_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of test logic
+    async fn test_implementation(req: &TestRequest) -> Result<String, String> {
         use tokio::process::Command;
 
-        let test_id = self.generate_operation_id();
+        let test_id = uuid::Uuid::new_v4().to_string()[..8].to_string();
 
         let mut cmd = Command::new("cargo");
         cmd.arg("test");
@@ -441,7 +650,7 @@ impl AsyncCargo {
         cmd.current_dir(&req.working_directory);
 
         let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo test: {}", e), None)
+            format!("Failed to execute cargo test: {}", e)
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -449,17 +658,15 @@ impl AsyncCargo {
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
-        let result_msg = if output.status.success() {
-            format!(
+        if output.status.success() {
+            Ok(format!(
                 "🧪 Test operation #{test_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
-            )
+            ))
         } else {
-            format!(
+            Err(format!(
                 "❌ Test operation #{test_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-            )
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            ))
+        }
     }
 
     #[tool(
@@ -833,13 +1040,12 @@ Output: {stdout}",
     async fn nextest(
         &self,
         Parameters(req): Parameters<NextestRequest>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        use tokio::process::Command;
-
         let nextest_id = self.generate_operation_id();
 
         // First check if nextest is available
-        let nextest_check = Command::new("cargo")
+        let nextest_check = tokio::process::Command::new("cargo")
             .args(["nextest", "--version"])
             .output()
             .await;
@@ -852,6 +1058,70 @@ Output: {stdout}",
             ))]));
         }
 
+        // Check if async notifications are enabled
+        if req.enable_async_notifications.unwrap_or(false) {
+            // TRUE 2-STAGE ASYNC PATTERN:
+            // 1. Send immediate response that operation has started
+            // 2. Spawn background task to do actual work and send notifications
+
+            let peer = context.peer.clone();
+            let req_clone = req.clone();
+            let nextest_id_clone = nextest_id.clone();
+
+            // Spawn background task for actual nextest work
+            tokio::spawn(async move {
+                // Create MCP callback sender to notify the LLM client
+                let callback = mcp_callback(peer, nextest_id_clone.clone());
+
+                // Send started notification immediately
+                let _ = callback
+                    .send_progress(ProgressUpdate::Started {
+                        operation_id: nextest_id_clone.clone(),
+                        command: "cargo nextest run".to_string(),
+                        description: "Running fast test suite in background".to_string(),
+                    })
+                    .await;
+
+                // Do the actual nextest work
+                let result = Self::nextest_implementation(&req_clone).await;
+
+                // Send completion notification
+                let completion_update = match result {
+                    Ok(msg) => ProgressUpdate::Completed {
+                        operation_id: nextest_id_clone,
+                        message: msg,
+                        duration_ms: 0, // TODO: Add actual timing
+                    },
+                    Err(err) => ProgressUpdate::Failed {
+                        operation_id: nextest_id_clone,
+                        error: err,
+                        duration_ms: 0,
+                    },
+                };
+
+                let _ = callback.send_progress(completion_update).await;
+            });
+
+            // Return immediate response to LLM - this is the "first stage"
+            Ok(CallToolResult::success(vec![Content::text(format!(
+                "⚡ Nextest operation {} started in background. You will receive progress notifications as the fast tests run.",
+                nextest_id
+            ))]))
+        } else {
+            // Synchronous operation for when async notifications are disabled
+            match Self::nextest_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        }
+    }
+
+    /// Internal implementation of nextest logic
+    async fn nextest_implementation(req: &NextestRequest) -> Result<String, String> {
+        use tokio::process::Command;
+
+        let nextest_id = uuid::Uuid::new_v4().to_string()[..8].to_string();
+
         let mut cmd = Command::new("cargo");
         cmd.args(["nextest", "run"]);
 
@@ -863,7 +1133,7 @@ Output: {stdout}",
         cmd.current_dir(&req.working_directory);
 
         let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo nextest: {}", e), None)
+            format!("Failed to execute cargo nextest: {}", e)
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -871,17 +1141,15 @@ Output: {stdout}",
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
-        let result_msg = if output.status.success() {
-            format!(
+        if output.status.success() {
+            Ok(format!(
                 "⚡ Nextest operation #{nextest_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
-            )
+            ))
         } else {
-            format!(
+            Err(format!(
                 "❌ Nextest operation #{nextest_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
-            )
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            ))
+        }
     }
 
     #[tool(
@@ -1285,6 +1553,394 @@ Output: {stdout}",
 
             Ok(CallToolResult::success(vec![Content::text(result_msg)]))
         }
+    }
+
+    #[tool(
+        description = "FMT: Safer than terminal cargo. Format Rust code using rustfmt. Use enable_async_notifications=true for large projects to multitask while code is being formatted."
+    )]
+    async fn fmt(
+        &self,
+        Parameters(req): Parameters<FmtRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let fmt_id = self.generate_operation_id();
+
+        // First check if rustfmt is available
+        let fmt_check = Command::new("rustfmt").arg("--version").output().await;
+
+        if fmt_check.is_err() || !fmt_check.unwrap().status.success() {
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "❌ Format operation #{fmt_id} failed: rustfmt is not installed. 
+📦 Install with: rustup component add rustfmt
+✨ This tool formats Rust code according to style guidelines."
+            ))]));
+        }
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("fmt");
+
+        // Add check flag if requested (don't make changes, just check)
+        if req.check.unwrap_or(false) {
+            cmd.arg("--check");
+        }
+
+        // Add all flag if requested (format all packages in workspace)
+        if req.all.unwrap_or(false) {
+            cmd.arg("--all");
+        }
+
+        // Add any additional arguments
+        if let Some(args) = &req.args {
+            cmd.args(args);
+        }
+
+        cmd.current_dir(&req.working_directory);
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo fmt: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+
+        let result_msg = if output.status.success() {
+            let check_msg = if req.check.unwrap_or(false) {
+                " (check mode - no changes made)"
+            } else {
+                ""
+            };
+            format!(
+                "✨ Format operation #{fmt_id} completed successfully{working_dir_msg}{check_msg}.\nOutput: {stdout}"
+            )
+        } else {
+            // Check if it's a formatting issue (exit code 1) vs actual error
+            let formatting_issues = output.status.code() == Some(1) && req.check.unwrap_or(false);
+
+            if formatting_issues {
+                format!(
+                    "⚠️ Format operation #{fmt_id} found formatting issues{working_dir_msg}.\nFiles need formatting:\n{stdout}\nErrors: {stderr}"
+                )
+            } else {
+                format!(
+                    "❌ Format operation #{fmt_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                )
+            }
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(
+        description = "TREE: Safer than terminal cargo. Display dependency tree. Use enable_async_notifications=true for large projects to multitask while dependency tree is being generated."
+    )]
+    async fn tree(
+        &self,
+        Parameters(req): Parameters<TreeRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let tree_id = self.generate_operation_id();
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("tree");
+
+        // Add depth limit if specified
+        if let Some(depth) = req.depth {
+            cmd.args(["--depth", &depth.to_string()]);
+        }
+
+        // Add features if specified
+        if let Some(features) = &req.features {
+            if !features.is_empty() {
+                cmd.args(["--features", &features.join(",")]);
+            }
+        }
+
+        // Add all-features flag if requested
+        if req.all_features.unwrap_or(false) {
+            cmd.arg("--all-features");
+        }
+
+        // Add no-default-features flag if requested
+        if req.no_default_features.unwrap_or(false) {
+            cmd.arg("--no-default-features");
+        }
+
+        // Add format flag if specified
+        if let Some(format) = &req.format {
+            cmd.args(["--format", format]);
+        }
+
+        // Add any additional arguments
+        if let Some(args) = &req.args {
+            cmd.args(args);
+        }
+
+        cmd.current_dir(&req.working_directory);
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo tree: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "🌳 Tree operation #{tree_id} completed successfully{working_dir_msg}.\nDependency tree:\n{stdout}"
+            )
+        } else {
+            format!(
+                "❌ Tree operation #{tree_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(
+        description = "VERSION: Safer than terminal cargo. Show cargo version information. Fast operation that helps LLMs understand the available cargo capabilities."
+    )]
+    async fn version(
+        &self,
+        Parameters(req): Parameters<VersionRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let version_id = self.generate_operation_id();
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("version");
+
+        // Add verbose flag if requested
+        if req.verbose.unwrap_or(false) {
+            cmd.arg("--verbose");
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo version: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "📋 Version operation #{version_id} completed successfully.\nCargo version information:\n{stdout}"
+            )
+        } else {
+            format!(
+                "❌ Version operation #{version_id} failed.\nErrors: {stderr}\nOutput: {stdout}"
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(
+        description = "FETCH: Safer than terminal cargo. Fetch dependencies without building. Use enable_async_notifications=true for large dependency sets to multitask while downloading."
+    )]
+    async fn fetch(
+        &self,
+        Parameters(req): Parameters<FetchRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let fetch_id = self.generate_operation_id();
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("fetch");
+
+        // Add target if specified
+        if let Some(target) = &req.target {
+            cmd.args(["--target", target]);
+        }
+
+        // Add features if specified
+        if let Some(features) = &req.features {
+            if !features.is_empty() {
+                cmd.args(["--features", &features.join(",")]);
+            }
+        }
+
+        // Add all-features flag if requested
+        if req.all_features.unwrap_or(false) {
+            cmd.arg("--all-features");
+        }
+
+        // Add no-default-features flag if requested
+        if req.no_default_features.unwrap_or(false) {
+            cmd.arg("--no-default-features");
+        }
+
+        // Add any additional arguments
+        if let Some(args) = &req.args {
+            cmd.args(args);
+        }
+
+        cmd.current_dir(&req.working_directory);
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo fetch: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "📦 Fetch operation #{fetch_id} completed successfully{working_dir_msg}.\nDependencies fetched:\n{stdout}"
+            )
+        } else {
+            format!(
+                "❌ Fetch operation #{fetch_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(
+        description = "RUSTC: Safer than terminal cargo. Compile with custom rustc options. Use enable_async_notifications=true for complex builds to multitask while compiling."
+    )]
+    async fn rustc(
+        &self,
+        Parameters(req): Parameters<RustcRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let rustc_id = self.generate_operation_id();
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("rustc");
+
+        // Add cargo-specific arguments first
+        if let Some(cargo_args) = &req.cargo_args {
+            cmd.args(cargo_args);
+        }
+
+        // Add rustc-specific arguments after --
+        if let Some(rustc_args) = &req.rustc_args {
+            if !rustc_args.is_empty() {
+                cmd.arg("--");
+                cmd.args(rustc_args);
+            }
+        }
+
+        cmd.current_dir(&req.working_directory);
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo rustc: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "🔧 Rustc operation #{rustc_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+            )
+        } else {
+            format!(
+                "❌ Rustc operation #{rustc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+    }
+
+    #[tool(
+        description = "METADATA: Safer than terminal cargo. Output JSON metadata about the project. Fast operation that provides LLMs with comprehensive project structure information."
+    )]
+    async fn metadata(
+        &self,
+        Parameters(req): Parameters<MetadataRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        use tokio::process::Command;
+
+        let metadata_id = self.generate_operation_id();
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("metadata");
+
+        // Cargo metadata defaults to JSON format, but we can specify it explicitly
+        if let Some(format) = &req.format {
+            if format == "json" {
+                cmd.arg("--format-version=1");
+            }
+        } else {
+            // Default to JSON format
+            cmd.arg("--format-version=1");
+        }
+
+        // Add no-deps flag if requested
+        if req.no_deps.unwrap_or(false) {
+            cmd.arg("--no-deps");
+        }
+
+        // Add features if specified
+        if let Some(features) = &req.features {
+            if !features.is_empty() {
+                cmd.args(["--features", &features.join(",")]);
+            }
+        }
+
+        // Add all-features flag if requested
+        if req.all_features.unwrap_or(false) {
+            cmd.arg("--all-features");
+        }
+
+        // Add no-default-features flag if requested
+        if req.no_default_features.unwrap_or(false) {
+            cmd.arg("--no-default-features");
+        }
+
+        // Add any additional arguments
+        if let Some(args) = &req.args {
+            cmd.args(args);
+        }
+
+        cmd.current_dir(&req.working_directory);
+
+        let output = cmd.output().await.map_err(|e| {
+            McpError::internal_error(format!("Failed to execute cargo metadata: {}", e), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+
+        let result_msg = if output.status.success() {
+            // For JSON output, we might want to validate it's valid JSON
+            let json_validation = if req.format.as_deref().unwrap_or("json") == "json" {
+                match serde_json::from_str::<serde_json::Value>(&stdout) {
+                    Ok(_) => " (JSON validated)",
+                    Err(_) => " (JSON validation failed)",
+                }
+            } else {
+                ""
+            };
+
+            format!(
+                "📊 Metadata operation #{metadata_id} completed successfully{working_dir_msg}{json_validation}.\nProject metadata:\n{stdout}"
+            )
+        } else {
+            format!(
+                "❌ Metadata operation #{metadata_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 }
 

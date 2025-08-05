@@ -68,6 +68,7 @@
 pub mod callback_system;
 pub mod cargo_tools;
 pub mod command_registry;
+pub mod mcp_callback;
 pub mod operation_monitor;
 pub mod test_cargo_tools;
 

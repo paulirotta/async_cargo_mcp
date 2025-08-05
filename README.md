@@ -268,3 +268,13 @@ The ecosystem is changing rapidly. Running without an MCP tool but adding some p
 [seemethere's cargo-mcp](https://github.com/seemethere/cargo-mcp)
 
 [SignalWhisperer's cargo-mcp](https://github.com/SignalWhisperer/cargo-mcp)
+
+## Note for Future AI Coding Tools
+
+**Testing Code Changes in VS Code**: When making modifications to this codebase, you can live test your changes directly in VS Code:
+
+1. Run `cargo build --release` to compile your changes
+2. Ask the user to restart VS Code so the MCP server reloads with your updated code
+3. You can then test your modifications by calling the async-cargo-mcp tools directly in the VS Code environment
+
+This workflow allows for rapid iteration and real-time verification of changes without external setup.

@@ -259,6 +259,12 @@ pub struct AsyncCargo {
     tool_router: ToolRouter<AsyncCargo>,
 }
 
+impl Default for AsyncCargo {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[tool_router]
 impl AsyncCargo {
     #[allow(dead_code)]
@@ -478,8 +484,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Build operation {} started in background. You will receive progress notifications as the build proceeds.",
-                build_id
+                "✅ Build operation {build_id} started in background. You will receive progress notifications as the build proceeds."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -580,8 +585,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🚀 Run operation {} started in background. You will receive progress notifications as the application runs.",
-                run_id
+                "🚀 Run operation {run_id} started in background. You will receive progress notifications as the application runs."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -605,7 +609,7 @@ impl AsyncCargo {
         let output = cmd
             .output()
             .await
-            .map_err(|e| format!("Run operation failed: Failed to execute cargo run: {}", e))?;
+            .map_err(|e| format!("Run operation failed: Failed to execute cargo run: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -679,8 +683,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🧪 Test operation {} started in background. You will receive progress notifications as the tests run.",
-                test_id
+                "🧪 Test operation {test_id} started in background. You will receive progress notifications as the tests run."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -706,7 +709,7 @@ impl AsyncCargo {
         let output = cmd
             .output()
             .await
-            .map_err(|e| format!("Failed to execute cargo test: {}", e))?;
+            .map_err(|e| format!("Failed to execute cargo test: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -780,8 +783,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Check operation {} started in background. You will receive progress notifications as the check proceeds.",
-                check_id
+                "✅ Check operation {check_id} started in background. You will receive progress notifications as the check proceeds."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -838,7 +840,7 @@ impl AsyncCargo {
         if req.enable_async_notifications.unwrap_or(false) {
             // Use the callback-enabled version for async notifications
             let callback: Box<dyn CallbackSender> =
-                Box::new(LoggingCallbackSender::new(format!("cargo_add_{}", add_id)));
+                Box::new(LoggingCallbackSender::new(format!("cargo_add_{add_id}")));
 
             match self.add_with_callback(req, Some(callback)).await {
                 Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
@@ -884,7 +886,7 @@ impl AsyncCargo {
             }
 
             let output = cmd.output().await.map_err(|e| {
-                ErrorData::internal_error(format!("Failed to execute cargo add: {}", e), None)
+                ErrorData::internal_error(format!("Failed to execute cargo add: {e}"), None)
             })?;
 
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -921,8 +923,7 @@ impl AsyncCargo {
         if req.enable_async_notifications.unwrap_or(false) {
             // Use the callback-enabled version for async notifications
             let callback: Box<dyn CallbackSender> = Box::new(LoggingCallbackSender::new(format!(
-                "cargo_remove_{}",
-                remove_id
+                "cargo_remove_{remove_id}"
             )));
 
             match self.remove_with_callback(req, Some(callback)).await {
@@ -948,7 +949,7 @@ impl AsyncCargo {
             cmd.current_dir(&req.working_directory);
 
             let output = cmd.output().await.map_err(|e| {
-                ErrorData::internal_error(format!("Failed to execute cargo remove: {}", e), None)
+                ErrorData::internal_error(format!("Failed to execute cargo remove: {e}"), None)
             })?;
 
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -1028,8 +1029,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "⬆️ Update operation {} started in background. You will receive progress notifications as dependencies are updated.",
-                update_id
+                "⬆️ Update operation {update_id} started in background. You will receive progress notifications as dependencies are updated."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1050,12 +1050,10 @@ impl AsyncCargo {
         // Set working directory
         cmd.current_dir(&req.working_directory);
 
-        let output = cmd.output().await.map_err(|e| {
-            format!(
-                "Update operation failed: Failed to execute cargo update: {}",
-                e
-            )
-        })?;
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Update operation failed: Failed to execute cargo update: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1129,8 +1127,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "📚 Documentation generation {} started in background. You will receive progress notifications as documentation is generated.",
-                doc_id
+                "📚 Documentation generation {doc_id} started in background. You will receive progress notifications as documentation is generated."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1152,10 +1149,7 @@ impl AsyncCargo {
         cmd.current_dir(&req.working_directory);
 
         let output = cmd.output().await.map_err(|e| {
-            format!(
-                "Documentation generation failed: Failed to execute cargo doc: {}",
-                e
-            )
+            format!("Documentation generation failed: Failed to execute cargo doc: {e}")
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -1195,12 +1189,11 @@ impl AsyncCargo {
 
             Ok(format!(
                 "📚 Documentation generation completed successfully{working_dir_msg}.
-Documentation generated at: {}
+Documentation generated at: {doc_path}
 The generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.
 💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.
 
-Output: {stdout}",
-                doc_path
+Output: {stdout}"
             ))
         } else {
             Err(format!(
@@ -1264,8 +1257,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🔍 Clippy operation {} started in background. You will receive progress notifications as linting proceeds.",
-                clippy_id
+                "🔍 Clippy operation {clippy_id} started in background. You will receive progress notifications as linting proceeds."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1290,12 +1282,10 @@ Output: {stdout}",
 
         cmd.current_dir(&req.working_directory);
 
-        let output = cmd.output().await.map_err(|e| {
-            format!(
-                "Clippy operation failed: Failed to execute cargo clippy: {}",
-                e
-            )
-        })?;
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Clippy operation failed: Failed to execute cargo clippy: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1383,8 +1373,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "⚡ Nextest operation {} started in background. You will receive progress notifications as the fast tests run.",
-                nextest_id
+                "⚡ Nextest operation {nextest_id} started in background. You will receive progress notifications as the fast tests run."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1414,7 +1403,7 @@ Output: {stdout}",
         let output = cmd
             .output()
             .await
-            .map_err(|e| format!("Failed to execute cargo nextest: {}", e))?;
+            .map_err(|e| format!("Failed to execute cargo nextest: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1488,8 +1477,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Clean operation {} started in background. You will receive progress notifications as the cleaning proceeds.",
-                clean_id
+                "✅ Clean operation {clean_id} started in background. You will receive progress notifications as the cleaning proceeds."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1588,8 +1576,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Fix operation {} started in background. You will receive progress notifications as the fixes proceed.",
-                fix_id
+                "✅ Fix operation {fix_id} started in background. You will receive progress notifications as the fixes proceed."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1801,8 +1788,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Benchmark operation {} started in background. You will receive progress notifications as benchmarks run.",
-                bench_id
+                "✅ Benchmark operation {bench_id} started in background. You will receive progress notifications as benchmarks run."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2021,8 +2007,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "⬆️ Upgrade operation {} started in background. You will receive progress notifications as dependencies are upgraded.",
-                upgrade_id
+                "⬆️ Upgrade operation {upgrade_id} started in background. You will receive progress notifications as dependencies are upgraded."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2081,7 +2066,7 @@ Output: {stdout}",
         let output = cmd
             .output()
             .await
-            .map_err(|e| format!("Failed to execute cargo upgrade: {}", e))?;
+            .map_err(|e| format!("Failed to execute cargo upgrade: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -2175,8 +2160,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🔒 Audit operation {} started in background. You will receive progress notifications as security scanning proceeds.",
-                audit_id
+                "🔒 Audit operation {audit_id} started in background. You will receive progress notifications as security scanning proceeds."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2221,7 +2205,7 @@ Output: {stdout}",
         let output = cmd
             .output()
             .await
-            .map_err(|e| format!("Failed to execute cargo audit: {}", e))?;
+            .map_err(|e| format!("Failed to execute cargo audit: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -2304,8 +2288,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Format operation {} started in background. You will receive progress notifications as the formatting proceeds.",
-                fmt_id
+                "✅ Format operation {fmt_id} started in background. You will receive progress notifications as the formatting proceeds."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2445,8 +2428,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Tree operation {} started in background. You will receive progress notifications as the dependency tree is generated.",
-                tree_id
+                "✅ Tree operation {tree_id} started in background. You will receive progress notifications as the dependency tree is generated."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2541,7 +2523,7 @@ Output: {stdout}",
         }
 
         let output = cmd.output().await.map_err(|e| {
-            ErrorData::internal_error(format!("Failed to execute cargo version: {}", e), None)
+            ErrorData::internal_error(format!("Failed to execute cargo version: {e}"), None)
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -2616,8 +2598,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Fetch operation {} started in background. You will receive progress notifications as dependencies are fetched.",
-                fetch_id
+                "✅ Fetch operation {fetch_id} started in background. You will receive progress notifications as dependencies are fetched."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2744,8 +2725,7 @@ Output: {stdout}",
 
             // Return immediate response to LLM - this is the "first stage"
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🔧 Rustc operation {} started in background. You will receive progress notifications as compilation proceeds.",
-                rustc_id
+                "🔧 Rustc operation {rustc_id} started in background. You will receive progress notifications as compilation proceeds."
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2783,7 +2763,7 @@ Output: {stdout}",
         let output = cmd
             .output()
             .await
-            .map_err(|e| format!("Failed to execute cargo rustc: {}", e))?;
+            .map_err(|e| format!("Failed to execute cargo rustc: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -2855,7 +2835,7 @@ Output: {stdout}",
         cmd.current_dir(&req.working_directory);
 
         let output = cmd.output().await.map_err(|e| {
-            ErrorData::internal_error(format!("Failed to execute cargo metadata: {}", e), None)
+            ErrorData::internal_error(format!("Failed to execute cargo metadata: {e}"), None)
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -3092,7 +3072,7 @@ impl AsyncCargo {
         let output = cmd
             .output()
             .await
-            .map_err(|e| format!("Failed to execute cargo add: {}", e))?;
+            .map_err(|e| format!("Failed to execute cargo add: {e}"))?;
 
         let duration_ms = start_time.elapsed().as_millis() as u64;
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -3168,7 +3148,7 @@ impl AsyncCargo {
         let output = cmd
             .output()
             .await
-            .map_err(|e| format!("Failed to execute cargo remove: {}", e))?;
+            .map_err(|e| format!("Failed to execute cargo remove: {e}"))?;
 
         let duration_ms = start_time.elapsed().as_millis() as u64;
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -3312,11 +3292,10 @@ impl AsyncCargo {
             .await;
 
         if audit_check.is_err() || !audit_check.unwrap().status.success() {
-            let error_msg = format!(
-                "❌ Audit operation failed: cargo-audit is not installed. 
+            let error_msg = "❌ Audit operation failed: cargo-audit is not installed. 
 📦 Install with: cargo install cargo-audit
 🔒 This tool scans for known security vulnerabilities in dependencies."
-            );
+                .to_string();
 
             let _ = callback
                 .send_progress(ProgressUpdate::Failed {
@@ -3359,7 +3338,7 @@ impl AsyncCargo {
         let output = cmd
             .output()
             .await
-            .map_err(|e| format!("Failed to execute cargo audit: {}", e))?;
+            .map_err(|e| format!("Failed to execute cargo audit: {e}"))?;
 
         let duration_ms = start_time.elapsed().as_millis() as u64;
         let stdout = String::from_utf8_lossy(&output.stdout);

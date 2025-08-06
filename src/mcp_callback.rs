@@ -47,7 +47,7 @@ impl CallbackSender for McpCallbackSender {
                     progress_token: progress_token.clone(),
                     progress: 0,
                     total: None,
-                    message: Some(format!("{}: {}", command, description)),
+                    message: Some(format!("{command}: {description}")),
                 }
             }
             ProgressUpdate::Progress {
@@ -78,9 +78,9 @@ impl CallbackSender for McpCallbackSender {
                     progress: 75, // Arbitrary progress for output
                     total: Some(100),
                     message: Some(if is_stderr {
-                        format!("stderr: {}", line)
+                        format!("stderr: {line}")
                     } else {
-                        format!("stdout: {}", line)
+                        format!("stdout: {line}")
                     }),
                 }
             }
@@ -107,7 +107,7 @@ impl CallbackSender for McpCallbackSender {
                     progress_token: progress_token.clone(),
                     progress: 100, // Mark as complete even on failure
                     total: Some(100),
-                    message: Some(format!("Failed: {}", error)),
+                    message: Some(format!("Failed: {error}")),
                 }
             }
             ProgressUpdate::Cancelled {
@@ -120,7 +120,7 @@ impl CallbackSender for McpCallbackSender {
                     progress_token: progress_token.clone(),
                     progress: 100, // Mark as complete even when cancelled
                     total: Some(100),
-                    message: Some(format!("Cancelled: {}", message)),
+                    message: Some(format!("Cancelled: {message}")),
                 }
             }
         };
@@ -134,8 +134,7 @@ impl CallbackSender for McpCallbackSender {
             Err(e) => {
                 error!("Failed to send MCP progress notification: {:?}", e);
                 Err(CallbackError::SendFailed(format!(
-                    "Failed to send MCP notification: {:?}",
-                    e
+                    "Failed to send MCP notification: {e:?}"
                 )))
             }
         }

@@ -39,7 +39,7 @@ pub async fn test_build_command(project_path: &str) -> Result<String> {
 
     client.cancel().await?;
 
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 /// Test the check command in a specific directory using working_directory parameter
@@ -66,7 +66,7 @@ pub async fn test_check_command(project_path: &str) -> Result<String> {
 
     client.cancel().await?;
 
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 /// Test the test command in a specific directory using working_directory parameter
@@ -93,7 +93,7 @@ pub async fn test_test_command(project_path: &str) -> Result<String> {
 
     client.cancel().await?;
 
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 /// Test adding a dependency using working_directory parameter
@@ -130,7 +130,7 @@ pub async fn test_add_dependency(
 
     client.cancel().await?;
 
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 /// Test removing a dependency using working_directory parameter
@@ -157,7 +157,7 @@ pub async fn test_remove_dependency(project_path: &str, dep_name: &str) -> Resul
 
     client.cancel().await?;
 
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 /// Test the update command using working_directory parameter
@@ -184,7 +184,7 @@ pub async fn test_update_command(project_path: &str) -> Result<String> {
 
     client.cancel().await?;
 
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 /// Test the doc command in a specific directory using working_directory parameter
@@ -211,5 +211,5 @@ pub async fn test_doc_command(project_path: &str) -> Result<String> {
 
     client.cancel().await?;
 
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }

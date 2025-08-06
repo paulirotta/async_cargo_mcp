@@ -200,7 +200,7 @@ impl OperationMonitor {
             );
             Ok(())
         } else {
-            Err(format!("Operation not found: {}", operation_id))
+            Err(format!("Operation not found: {operation_id}"))
         }
     }
 
@@ -222,7 +222,7 @@ impl OperationMonitor {
 
             Ok(())
         } else {
-            Err(format!("Operation not found: {}", operation_id))
+            Err(format!("Operation not found: {operation_id}"))
         }
     }
 
@@ -235,7 +235,7 @@ impl OperationMonitor {
             warn!("Operation {} was cancelled", operation_id);
             Ok(())
         } else {
-            Err(format!("Operation not found: {}", operation_id))
+            Err(format!("Operation not found: {operation_id}"))
         }
     }
 

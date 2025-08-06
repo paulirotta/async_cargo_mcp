@@ -135,8 +135,7 @@ pub async fn test_doc_functionality() -> Result<String> {
 
     // Store the result before canceling the client
     let result = format!(
-        "Documentation generation test results:\n- Doc result: {:?}",
-        doc_result
+        "Documentation generation test results:\n- Doc result: {doc_result:?}"
     );
 
     // Cancel the client - ignore errors since transport might already be closed

@@ -120,13 +120,13 @@ impl CommandRegistry {
             Some(command) => {
                 // Validate parameters first
                 if let Err(e) = command.validate_params(&params).await {
-                    return Err(format!("Parameter validation failed: {}", e));
+                    return Err(format!("Parameter validation failed: {e}"));
                 }
 
                 // Execute the command
                 command.execute(params, working_directory).await
             }
-            None => Err(format!("Unknown command: {}", name)),
+            None => Err(format!("Unknown command: {name}")),
         }
     }
 
@@ -191,16 +191,14 @@ impl CommandRegistry {
 
     /// Get help text for a command
     pub async fn get_command_help(&self, name: &str) -> Option<String> {
-        if let Some(command) = self.get_command(name) {
-            Some(format!(
+        self.get_command(name).map(|command| {
+            format!(
                 "Command: {}\nDescription: {}\nSchema: {}",
                 command.name(),
                 command.description(),
                 serde_json::to_string_pretty(&command.parameter_schema()).unwrap_or_default()
-            ))
-        } else {
-            None
-        }
+            )
+        })
     }
 
     /// Check availability of all registered commands
@@ -233,7 +231,7 @@ pub struct GenericCargoCommand {
 
 impl GenericCargoCommand {
     pub fn new(name: String) -> Self {
-        let description = format!("Auto-discovered cargo command: {}", name);
+        let description = format!("Auto-discovered cargo command: {name}");
         Self { name, description }
     }
 }

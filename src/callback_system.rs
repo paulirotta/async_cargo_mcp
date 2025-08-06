@@ -91,8 +91,7 @@ impl fmt::Display for ProgressUpdate {
             } => {
                 write!(
                     f,
-                    "[{}] Started: {} - {}",
-                    operation_id, command, description
+                    "[{operation_id}] Started: {command} - {description}"
                 )
             }
             ProgressUpdate::Progress {
@@ -102,17 +101,16 @@ impl fmt::Display for ProgressUpdate {
                 current_step,
             } => {
                 let progress_str = match percentage {
-                    Some(p) => format!(" ({:.1}%)", p),
+                    Some(p) => format!(" ({p:.1}%)"),
                     None => String::new(),
                 };
                 let step_str = match current_step {
-                    Some(s) => format!(" [{}]", s),
+                    Some(s) => format!(" [{s}]"),
                     None => String::new(),
                 };
                 write!(
                     f,
-                    "[{}] Progress{}: {}{}",
-                    operation_id, progress_str, message, step_str
+                    "[{operation_id}] Progress{progress_str}: {message}{step_str}"
                 )
             }
             ProgressUpdate::Output {
@@ -121,7 +119,7 @@ impl fmt::Display for ProgressUpdate {
                 is_stderr,
             } => {
                 let stream = if *is_stderr { "stderr" } else { "stdout" };
-                write!(f, "[{}] {}: {}", operation_id, stream, line)
+                write!(f, "[{operation_id}] {stream}: {line}")
             }
             ProgressUpdate::Completed {
                 operation_id,
@@ -130,8 +128,7 @@ impl fmt::Display for ProgressUpdate {
             } => {
                 write!(
                     f,
-                    "[{}] Completed in {}ms: {}",
-                    operation_id, duration_ms, message
+                    "[{operation_id}] Completed in {duration_ms}ms: {message}"
                 )
             }
             ProgressUpdate::Failed {
@@ -141,8 +138,7 @@ impl fmt::Display for ProgressUpdate {
             } => {
                 write!(
                     f,
-                    "[{}] ❌ Failed after {}ms: {}",
-                    operation_id, duration_ms, error
+                    "[{operation_id}] ❌ Failed after {duration_ms}ms: {error}"
                 )
             }
             ProgressUpdate::Cancelled {
@@ -152,8 +148,7 @@ impl fmt::Display for ProgressUpdate {
             } => {
                 write!(
                     f,
-                    "[{}] 🚫 Cancelled after {}ms: {}",
-                    operation_id, duration_ms, message
+                    "[{operation_id}] 🚫 Cancelled after {duration_ms}ms: {message}"
                 )
             }
         }

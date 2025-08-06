@@ -135,6 +135,7 @@ impl Default for MonitorConfig {
 }
 
 /// Operation monitor that tracks and manages cargo operations
+#[derive(Debug)]
 pub struct OperationMonitor {
     operations: Arc<RwLock<HashMap<String, OperationInfo>>>,
     config: MonitorConfig,
@@ -485,6 +486,43 @@ impl OperationMonitor {
                     final_count
                 );
             }
+        }
+    }
+
+    /// Wait for a specific operation to complete
+    pub async fn wait_for_operation(
+        &self,
+        operation_id: &str,
+    ) -> Result<Vec<OperationInfo>, String> {
+        loop {
+            if let Some(operation) = self.get_operation(operation_id).await {
+                match operation.state {
+                    OperationState::Completed { .. }
+                    | OperationState::Failed { .. }
+                    | OperationState::Cancelled => {
+                        return Ok(vec![operation]);
+                    }
+                    _ => {
+                        // Operation is still in progress, wait a bit
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    }
+                }
+            } else {
+                return Err(format!("Operation '{}' not found", operation_id));
+            }
+        }
+    }
+
+    /// Wait for all active operations to complete
+    pub async fn wait_for_all_operations(&self) -> Result<Vec<OperationInfo>, String> {
+        loop {
+            let active_ops = self.get_active_operations().await;
+            if active_ops.is_empty() {
+                // Return all completed operations
+                return Ok(self.get_completed_operations().await);
+            }
+            // Wait a bit before checking again
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         }
     }
 

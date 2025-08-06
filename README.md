@@ -138,6 +138,52 @@ This project is licensed under the [Apache Licence](APACHE_LICENSE.txt) or [MIT 
 - **Error Handling**: Robust error handling with descriptive messages
 - **Type Safety**: Full Rust type safety with serde serialization
 
+### LLM Workflow Support
+- **Wait Command**: Use `mcp_async_cargo_m_wait` to wait for async operations to complete
+- **Tool Hints**: Automatic hints guide LLMs on best practices for async operations
+- **Operation Tracking**: Query status and wait for specific operations or all pending operations
+- **Background Processing**: LLMs can multitask while cargo operations run in background
+
+#### Wait Command Usage
+
+The `wait` command helps LLMs handle long-running asynchronous operations properly:
+
+```javascript
+// Wait for a specific operation
+mcp_async_cargo_m_wait({
+    "operation_id": "op_123456789",
+    "timeout_secs": 300  // Optional, defaults to 300 seconds
+})
+
+// Wait for all pending operations
+mcp_async_cargo_m_wait({
+    "timeout_secs": 600  // Optional
+})
+```
+
+#### Tool Hints for LLMs
+
+When async operations are started (with `enable_async_notifications: true`), the response includes critical tool hints:
+
+```
+✅ Build operation op_123456789 started in background.
+
+� **CRITICAL Tool Hint for LLMs**: Operation 'op_123456789' is running in the background.
+⚠️  **DO NOT assume the operation is complete based on this message alone!**
+⚠️  **You must wait for completion to get actual results (success/failure/output)!**
+
+To get actual results, use:
+• `mcp_async_cargo_m_wait` with operation_id='op_123456789' to wait for this specific operation
+• `mcp_async_cargo_m_wait` with no operation_id to wait for all pending operations
+
+**Always use async-cargo-mcp MCP tools** instead of terminal commands for cargo operations.
+You will receive progress notifications as the build proceeds, but you MUST wait for completion.
+```
+
+⚠️ **Common LLM Mistake**: LLMs often assume operations are complete when they see "started in background" messages. This is incorrect! You must always wait for the actual results.
+
+This helps prevent LLMs from making premature assumptions about operation completion, ensuring reliable workflows.
+
 ## Status
 
 ### Current Capabilities

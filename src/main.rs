@@ -1,9 +1,14 @@
 //! Model Control Protocol (MCP) for Cargo with asynchronous respon handling to allow the LLM to continue processing while waiting for responses.
 
 use anyhow::Result;
-use async_cargo_mcp::cargo_tools::AsyncCargo;
+use async_cargo_mcp::{
+    cargo_tools::AsyncCargo,
+    operation_monitor::{MonitorConfig, OperationMonitor},
+};
 use clap::Parser;
-use rmcp::{ServiceExt, transport::stdio};
+use rmcp::{transport::stdio, ServiceExt};
+use std::sync::Arc;
+use tracing::info;
 use tracing_subscriber::{self, EnvFilter};
 
 /// Model Context Protocol server for Cargo operations with async support
@@ -34,13 +39,22 @@ async fn main() -> Result<()> {
         .with_ansi(false)
         .init();
 
-    tracing::info!("Starting MCP server");
+    info!("Starting MCP server");
 
-    // Create an instance of our counter router
-    let service = AsyncCargo::new().serve(stdio()).await.inspect_err(|e| {
+    // Create and run the operation monitor
+    let monitor_config = MonitorConfig::default();
+    let monitor = Arc::new(OperationMonitor::new(monitor_config));
+
+    // Create an instance of our cargo tool service
+    let service = AsyncCargo::new(monitor.clone()).serve(stdio()).await.inspect_err(|e| {
         tracing::error!("serving error: {:?}", e);
     })?;
 
+    // Wait for the service to finish
     service.waiting().await?;
+
+    // Shutdown the monitor
+    monitor.shutdown().await;
+
     Ok(())
 }

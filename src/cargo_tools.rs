@@ -1,5 +1,6 @@
 use crate::callback_system::{CallbackSender, LoggingCallbackSender, ProgressUpdate, no_callback};
 use crate::mcp_callback::mcp_callback;
+use crate::operation_monitor::OperationMonitor;
 use rmcp::{
     ErrorData, RoleServer, ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::Parameters},
@@ -10,6 +11,7 @@ use rmcp::{
 };
 use serde_json::json;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Instant;
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -34,6 +36,8 @@ pub struct RemoveDependencyRequest {
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct BuildRequest {
     pub working_directory: String,
+    /// Optional binary name to build (--bin parameter)
+    pub bin_name: Option<String>,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
@@ -41,6 +45,8 @@ pub struct BuildRequest {
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct RunRequest {
     pub working_directory: String,
+    /// Optional binary name to run (--bin parameter)
+    pub bin_name: Option<String>,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
@@ -254,23 +260,35 @@ pub struct MetadataRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct WaitRequest {
+    /// Optional operation ID to wait for. If not provided, waits for all active operations
+    pub operation_id: Option<String>,
+    /// Timeout in seconds (default: 300)
+    pub timeout_secs: Option<u64>,
+}
+
 #[derive(Clone, Debug)]
 pub struct AsyncCargo {
     tool_router: ToolRouter<AsyncCargo>,
+    monitor: Arc<OperationMonitor>,
 }
 
 impl Default for AsyncCargo {
     fn default() -> Self {
-        Self::new()
+        use crate::operation_monitor::MonitorConfig;
+        let monitor_config = MonitorConfig::default();
+        let monitor = Arc::new(OperationMonitor::new(monitor_config));
+        Self::new(monitor)
     }
 }
 
 #[tool_router]
 impl AsyncCargo {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
+    pub fn new(monitor: Arc<OperationMonitor>) -> Self {
         Self {
             tool_router: Self::tool_router(),
+            monitor,
         }
     }
 
@@ -344,63 +362,63 @@ impl AsyncCargo {
         report.push_str("=====================================\n\n");
 
         report.push_str("Core Commands (always available):\n");
-        report.push_str("✅ • build, test, run, check, doc, add, remove, update, clean, fix, search, bench, install, tree, version, fetch, rustc, metadata\n\n");
+        report.push_str("+ build, test, run, check, doc, add, remove, update, clean, fix, search, bench, install, tree, version, fetch, rustc, metadata\n\n");
 
         report.push_str("Optional Components:\n");
 
         if *availability.get("clippy").unwrap_or(&false) {
-            report.push_str("✅ clippy - Available (enhanced linting)\n");
+            report.push_str("+ clippy - Available (enhanced linting)\n");
         } else {
             report.push_str(
-                "❌ clippy - Not available (install with: rustup component add clippy)\n",
+                "- clippy - Not available (install with: rustup component add clippy)\n",
             );
         }
 
         if *availability.get("nextest").unwrap_or(&false) {
-            report.push_str("✅ nextest - Available (faster test runner)\n");
+            report.push_str("+ nextest - Available (faster test runner)\n");
         } else {
             report.push_str(
-                "❌ nextest - Not available (install with: cargo install cargo-nextest)\n",
+                "- nextest - Not available (install with: cargo install cargo-nextest)\n",
             );
         }
 
         if *availability.get("cargo-edit").unwrap_or(&false) {
-            report.push_str("✅ cargo-edit - Available (upgrade command for dependency updates)\n");
+            report.push_str("+ cargo-edit - Available (upgrade command for dependency updates)\n");
         } else {
             report.push_str(
-                "❌ cargo-edit - Not available (install with: cargo install cargo-edit)\n",
+                "- cargo-edit - Not available (install with: cargo install cargo-edit)\n",
             );
         }
 
         if *availability.get("cargo-audit").unwrap_or(&false) {
-            report.push_str("✅ cargo-audit - Available (security vulnerability scanning)\n");
+            report.push_str("+ cargo-audit - Available (security vulnerability scanning)\n");
         } else {
             report.push_str(
-                "❌ cargo-audit - Not available (install with: cargo install cargo-audit)\n",
+                "- cargo-audit - Not available (install with: cargo install cargo-audit)\n",
             );
         }
 
         if *availability.get("rustfmt").unwrap_or(&false) {
-            report.push_str("✅ rustfmt - Available (code formatting with cargo fmt)\n");
+            report.push_str("+ rustfmt - Available (code formatting with cargo fmt)\n");
         } else {
             report.push_str(
-                "❌ rustfmt - Not available (install with: rustup component add rustfmt)\n",
+                "- rustfmt - Not available (install with: rustup component add rustfmt)\n",
             );
         }
 
-        report.push_str("\n💡 Recommendations:\n");
+        report.push_str("\nRecommendations:\n");
         report.push_str(
-            "⚡ • Use 'nextest' instead of 'test' for faster test execution if available\n",
+            "* Use 'nextest' instead of 'test' for faster test execution if available\n",
         );
-        report.push_str("🔍 • Use 'clippy' for enhanced code quality checks if available\n");
+        report.push_str("* Use 'clippy' for enhanced code quality checks if available\n");
         report.push_str(
-            "⬆️ • Use 'upgrade' for intelligent dependency updates if cargo-edit is available\n",
-        );
-        report.push_str(
-            "🔒 • Use 'audit' for security vulnerability scanning if cargo-audit is available\n",
+            "* Use 'upgrade' for intelligent dependency updates if cargo-edit is available\n",
         );
         report.push_str(
-            "🔄 • Enable async notifications (enable_async_notifications=true) for long operations\n",
+            "* Use 'audit' for security vulnerability scanning if cargo-audit is available\n",
+        );
+        report.push_str(
+            "* Enable async notifications (enable_async_notifications=true) for long operations\n",
         );
 
         report
@@ -426,6 +444,85 @@ impl AsyncCargo {
             "op_{}",
             (now.timestamp_millis() - midnight.timestamp_millis()) as u64
         )
+    }
+
+    /// Generate a tool hint message for LLMs when async operations are running
+    fn generate_tool_hint(&self, operation_id: &str, operation_type: &str) -> String {
+        format!(
+            "\n\n*** CRITICAL Tool Hint for LLMs ***: Operation {} is running in the background.\n\
+            *** DO NOT assume the operation is complete based on this message alone! ***
+            *** You must wait for completion to get actual results (success/failure/output)! ***
+            To get actual results, use:\n\
+            • `mcp_async_cargo_m_wait` with operation_id='{}' to wait for this specific operation\n\
+            • `mcp_async_cargo_m_wait` with no operation_id to wait for all pending operations\n\n\
+            **Always use async-cargo-mcp MCP tools** instead of terminal commands for cargo operations.\n\
+            You will receive progress notifications as the {} proceeds, but you MUST wait for completion.",
+            operation_id, operation_id, operation_type
+        )
+    }
+
+    #[tool(
+        description = "Wait for async cargo operations to complete. Provide operation_id to wait for a specific operation, or leave empty to wait for all active operations."
+    )]
+    async fn wait(
+        &self,
+        Parameters(req): Parameters<WaitRequest>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, ErrorData> {
+        use std::time::Duration;
+        let timeout_duration = Duration::from_secs(req.timeout_secs.unwrap_or(300)); // Default 5-minute timeout
+
+        let wait_result = if let Some(op_id) = req.operation_id {
+            // Wait for a specific operation
+            tokio::time::timeout(timeout_duration, self.monitor.wait_for_operation(&op_id))
+                .await
+                .map_err(|_| ErrorData::internal_error("Wait timed out", None))?
+        } else {
+            // Wait for all active operations
+            tokio::time::timeout(timeout_duration, self.monitor.wait_for_all_operations())
+                .await
+                .map_err(|_| ErrorData::internal_error("Wait timed out for all operations", None))?
+        };
+
+        match wait_result {
+            Ok(results) => {
+                let content: Vec<Content> = results
+                    .into_iter()
+                    .map(|op_info| {
+                        let status = match &op_info.state {
+                            crate::operation_monitor::OperationState::Completed => {
+                                if let Some(Ok(message)) = &op_info.result {
+                                    format!("+ Operation '{}' completed: {}", op_info.id, message)
+                                } else {
+                                    format!("+ Operation '{}' completed successfully", op_info.id)
+                                }
+                            }
+                            crate::operation_monitor::OperationState::Failed => {
+                                if let Some(Err(error)) = &op_info.result {
+                                    format!("- Operation '{}' failed: {}", op_info.id, error)
+                                } else {
+                                    format!("- Operation '{}' failed", op_info.id)
+                                }
+                            }
+                            crate::operation_monitor::OperationState::Cancelled => {
+                                format!("x Operation '{}' was cancelled", op_info.id)
+                            }
+                            crate::operation_monitor::OperationState::TimedOut => {
+                                format!("t Operation '{}' timed out", op_info.id)
+                            }
+                            _ => format!("~ Operation '{}' is still in progress", op_info.id),
+                        };
+                        Content::text(status)
+                    })
+                    .collect();
+
+                Ok(CallToolResult::success(content))
+            }
+            Err(err) => Ok(CallToolResult::success(vec![Content::text(format!(
+                "- Wait operation failed: {}",
+                err
+            ))])),
+        }
     }
 
     #[tool(
@@ -483,8 +580,10 @@ impl AsyncCargo {
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&build_id, "build");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Build operation {build_id} started in background. You will receive progress notifications as the build proceeds."
+                "Build operation {} started in background.{}",
+                build_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -502,13 +601,18 @@ impl AsyncCargo {
         let mut cmd = Command::new("cargo");
         cmd.arg("build");
 
+        // Add --bin parameter if specified
+        if let Some(bin_name) = &req.bin_name {
+            cmd.arg("--bin").arg(bin_name);
+        }
+
         // Set working directory
         cmd.current_dir(&req.working_directory);
 
         // Execute command and collect full output
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Build operation failed in {}.\nError: Failed to execute cargo build: {}",
+                "- Build operation failed in {}.\nError: Failed to execute cargo build: {}",
                 &req.working_directory, e
             )
         })?;
@@ -517,14 +621,19 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let bin_msg = if let Some(bin_name) = &req.bin_name {
+            format!(" (binary: {})", bin_name)
+        } else {
+            String::new()
+        };
 
         if output.status.success() {
             Ok(format!(
-                "✅ Build completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "+ Build completed successfully{working_dir_msg}{bin_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Build failed{working_dir_msg}.\nError: {stderr}\nOutput: {stdout}"
+                "- Build failed{working_dir_msg}{bin_msg}.\nError: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -584,8 +693,10 @@ impl AsyncCargo {
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&run_id, "run");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🚀 Run operation {run_id} started in background. You will receive progress notifications as the application runs."
+                "Run operation {} started in background.{}",
+                run_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -603,6 +714,11 @@ impl AsyncCargo {
         let mut cmd = Command::new("cargo");
         cmd.arg("run");
 
+        // Add --bin parameter if specified
+        if let Some(bin_name) = &req.bin_name {
+            cmd.arg("--bin").arg(bin_name);
+        }
+
         // Set working directory
         cmd.current_dir(&req.working_directory);
 
@@ -615,14 +731,19 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let bin_msg = if let Some(bin_name) = &req.bin_name {
+            format!(" (binary: {})", bin_name)
+        } else {
+            String::new()
+        };
 
         if output.status.success() {
             Ok(format!(
-                "✅ Run operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "+ Run operation completed successfully{working_dir_msg}{bin_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Run operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Run operation failed{working_dir_msg}{bin_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -682,8 +803,10 @@ impl AsyncCargo {
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&test_id, "test");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🧪 Test operation {test_id} started in background. You will receive progress notifications as the tests run."
+                "Test operation {} started in background.{}",
+                test_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -718,11 +841,11 @@ impl AsyncCargo {
 
         if output.status.success() {
             Ok(format!(
-                "🧪 Test operation #{test_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Test operation #{test_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Test operation #{test_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Test operation #{test_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -782,8 +905,10 @@ impl AsyncCargo {
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&check_id, "check");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Check operation {check_id} started in background. You will receive progress notifications as the check proceeds."
+                "+ Check operation {} started in background.{}",
+                check_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -806,7 +931,7 @@ impl AsyncCargo {
 
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Check operation failed in {}.\nError: Failed to execute cargo check: {}",
+                "- Check operation failed in {}.\nError: Failed to execute cargo check: {}",
                 &req.working_directory, e
             )
         })?;
@@ -818,11 +943,11 @@ impl AsyncCargo {
 
         if output.status.success() {
             Ok(format!(
-                "✅ Check operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "+ Check operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Check operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Check operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -894,7 +1019,7 @@ impl AsyncCargo {
                 )
             } else {
                 format!(
-                    "❌ Add operation #{add_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                    "- Add operation #{add_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
                     req.name
                 )
             };
@@ -951,7 +1076,7 @@ impl AsyncCargo {
                 )
             } else {
                 format!(
-                    "❌ Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                    "- Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
                     req.name
                 )
             };
@@ -1015,8 +1140,10 @@ impl AsyncCargo {
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&update_id, "update");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "⬆️ Update operation {update_id} started in background. You will receive progress notifications as dependencies are updated."
+                "Update operation {} started in background.{}",
+                update_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1049,11 +1176,11 @@ impl AsyncCargo {
 
         if output.status.success() {
             Ok(format!(
-                "⬆️ Update operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Update operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Update operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Update operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -1113,8 +1240,10 @@ impl AsyncCargo {
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&doc_id, "documentation generation");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "📚 Documentation generation {doc_id} started in background. You will receive progress notifications as documentation is generated."
+                "📚 Documentation generation {} started in background.{}",
+                doc_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1184,7 +1313,7 @@ Output: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Documentation generation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Documentation generation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -1243,8 +1372,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&clippy_id, "clippy linting");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🔍 Clippy operation {clippy_id} started in background. You will receive progress notifications as linting proceeds."
+                "Clippy operation {} started in background.{}",
+                clippy_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1281,11 +1412,11 @@ Output: {stdout}"
 
         if output.status.success() {
             Ok(format!(
-                "🔍 Clippy operation passed with no warnings{working_dir_msg}.\nOutput: {stdout}",
+                "Clippy operation passed with no warnings{working_dir_msg}.\nOutput: {stdout}",
             ))
         } else {
             Err(format!(
-                "❌ Clippy operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}",
+                "- Clippy operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}",
             ))
         }
     }
@@ -1308,7 +1439,7 @@ Output: {stdout}"
 
         if nextest_check.is_err() || !nextest_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
-                "❌ Nextest operation #{nextest_id} failed: cargo-nextest is not installed. 
+                "- Nextest operation #{nextest_id} failed: cargo-nextest is not installed. 
 📦 Install with: cargo install cargo-nextest
 🔄 Falling back to regular cargo test is recommended."
             ))]));
@@ -1359,8 +1490,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&nextest_id, "nextest");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "⚡ Nextest operation {nextest_id} started in background. You will receive progress notifications as the fast tests run."
+                "Nextest operation {} started in background.{}",
+                nextest_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1399,11 +1532,11 @@ Output: {stdout}"
 
         if output.status.success() {
             Ok(format!(
-                "⚡ Nextest operation #{nextest_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Nextest operation #{nextest_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Nextest operation #{nextest_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Nextest operation #{nextest_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -1463,8 +1596,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&clean_id, "clean");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Clean operation {clean_id} started in background. You will receive progress notifications as the cleaning proceeds."
+                "Clean operation {} started in background.{}",
+                clean_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1486,7 +1621,7 @@ Output: {stdout}"
 
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Clean operation failed in {}.\nError: Failed to execute cargo clean: {}",
+                "- Clean operation failed in {}.\nError: Failed to execute cargo clean: {}",
                 &req.working_directory, e
             )
         })?;
@@ -1498,11 +1633,11 @@ Output: {stdout}"
 
         if output.status.success() {
             Ok(format!(
-                "🧹 Clean operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Clean operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Clean operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Clean operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -1562,8 +1697,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&fix_id, "fix");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Fix operation {fix_id} started in background. You will receive progress notifications as the fixes proceed."
+                "Fix operation {} started in background.{}",
+                fix_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1593,7 +1730,7 @@ Output: {stdout}"
 
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Fix operation failed in {}.\nError: Failed to execute cargo fix: {}",
+                "- Fix operation failed in {}.\nError: Failed to execute cargo fix: {}",
                 &req.working_directory, e
             )
         })?;
@@ -1605,11 +1742,11 @@ Output: {stdout}"
 
         if output.status.success() {
             Ok(format!(
-                "🔧 Fix operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Fix operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Fix operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Fix operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -1672,9 +1809,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&search_id, "search");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Search operation {} started in background. Searching crates.io for '{}'. You will receive progress notifications as the search proceeds.",
-                search_id, req.query
+                "Search operation {} started in background. Searching crates.io for '{}'.{}",
+                search_id, req.query, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1698,7 +1836,7 @@ Output: {stdout}"
 
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Search operation failed for query '{}'.\nError: Failed to execute cargo search: {}",
+                "- Search operation failed for query '{}'.\nError: Failed to execute cargo search: {}",
                 req.query, e
             )
         })?;
@@ -1708,12 +1846,12 @@ Output: {stdout}"
 
         if output.status.success() {
             Ok(format!(
-                "🔍 Search operation completed successfully.\nQuery: {}\nResults:\n{stdout}",
+                "Search operation completed successfully.\nQuery: {}\nResults:\n{stdout}",
                 req.query
             ))
         } else {
             Err(format!(
-                "❌ Search operation failed.\nQuery: {}\nErrors: {stderr}\nOutput: {stdout}",
+                "- Search operation failed.\nQuery: {}\nErrors: {stderr}\nOutput: {stdout}",
                 req.query
             ))
         }
@@ -1774,8 +1912,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&bench_id, "benchmark");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Benchmark operation {bench_id} started in background. You will receive progress notifications as benchmarks run."
+                "Benchmark operation {} started in background.{}",
+                bench_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1802,7 +1942,7 @@ Output: {stdout}"
 
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Benchmark operation failed in {}.\nError: Failed to execute cargo bench: {}",
+                "- Benchmark operation failed in {}.\nError: Failed to execute cargo bench: {}",
                 &req.working_directory, e
             )
         })?;
@@ -1818,7 +1958,7 @@ Output: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Benchmark operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Benchmark operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -1872,9 +2012,10 @@ Output: {stdout}"
                 let _ = callback.send_progress(completion_update).await;
             });
 
+            let tool_hint = self.generate_tool_hint(&install_id, "install");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Install operation {} started in background. Installing package '{}'. You will receive progress notifications.",
-                install_id, req.package
+                "Install operation {} started in background. Installing package '{}'.{}",
+                install_id, req.package, tool_hint
             ))]))
         } else {
             match Self::install_implementation(&req).await {
@@ -1902,7 +2043,7 @@ Output: {stdout}"
 
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Install operation failed in {}.\nError: Failed to execute cargo install: {}",
+                "- Install operation failed in {}.\nError: Failed to execute cargo install: {}",
                 &req.working_directory, e
             )
         })?;
@@ -1913,12 +2054,12 @@ Output: {stdout}"
 
         if output.status.success() {
             Ok(format!(
-                "📦 Install operation completed successfully{working_dir_msg}.\nInstalled package: {}\nOutput: {stdout}",
+                "Install operation completed successfully{working_dir_msg}.\nInstalled package: {}\nOutput: {stdout}",
                 req.package
             ))
         } else {
             Err(format!(
-                "❌ Install operation failed{working_dir_msg}.\nPackage: {}\nErrors: {stderr}\nOutput: {stdout}",
+                "- Install operation failed{working_dir_msg}.\nPackage: {}\nErrors: {stderr}\nOutput: {stdout}",
                 req.package
             ))
         }
@@ -1942,7 +2083,7 @@ Output: {stdout}"
 
         if upgrade_check.is_err() || !upgrade_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
-                "❌ Upgrade operation #{upgrade_id} failed: cargo-edit with upgrade command is not installed. 
+                "- Upgrade operation #{upgrade_id} failed: cargo-edit with upgrade command is not installed. 
 📦 Install with: cargo install cargo-edit
 🔄 Falling back to regular cargo update is recommended."
             ))]));
@@ -1993,8 +2134,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&upgrade_id, "upgrade");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "⬆️ Upgrade operation {upgrade_id} started in background. You will receive progress notifications as dependencies are upgraded."
+                "⬆️ Upgrade operation {} started in background.{}",
+                upgrade_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2071,7 +2214,7 @@ Output: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Upgrade operation #{upgrade_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Upgrade operation #{upgrade_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -2094,7 +2237,7 @@ Output: {stdout}"
 
         if audit_check.is_err() || !audit_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
-                "❌ Audit operation #{audit_id} failed: cargo-audit is not installed. 
+                "- Audit operation #{audit_id} failed: cargo-audit is not installed. 
 📦 Install with: cargo install cargo-audit
 🔒 This tool scans for known security vulnerabilities in dependencies."
             ))]));
@@ -2146,8 +2289,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&audit_id, "audit");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🔒 Audit operation {audit_id} started in background. You will receive progress notifications as security scanning proceeds."
+                "Audit operation {} started in background.{}",
+                audit_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2201,7 +2346,7 @@ Output: {stdout}"
 
         if output.status.success() {
             Ok(format!(
-                "🔒 Audit operation #{audit_id} completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {stdout}"
+                "Audit operation #{audit_id} completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {stdout}"
             ))
         } else {
             // Check if it's a vulnerability warning (exit code 1) vs actual error
@@ -2213,7 +2358,7 @@ Output: {stdout}"
                 ))
             } else {
                 Err(format!(
-                    "❌ Audit operation #{audit_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                    "- Audit operation #{audit_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
                 ))
             }
         }
@@ -2274,8 +2419,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&fmt_id, "format");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Format operation {fmt_id} started in background. You will receive progress notifications as the formatting proceeds."
+                "Format operation {} started in background.{}",
+                fmt_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2295,7 +2442,7 @@ Output: {stdout}"
 
         if fmt_check.is_err() || !fmt_check.unwrap().status.success() {
             return Err(format!(
-                "❌ Format operation failed: rustfmt is not installed in {}. 
+                "- Format operation failed: rustfmt is not installed in {}. 
 📦 Install with: rustup component add rustfmt
 ✨ This tool formats Rust code according to style guidelines.",
                 &req.working_directory
@@ -2324,7 +2471,7 @@ Output: {stdout}"
 
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Format operation failed in {}.\nError: Failed to execute cargo fmt: {}",
+                "- Format operation failed in {}.\nError: Failed to execute cargo fmt: {}",
                 &req.working_directory, e
             )
         })?;
@@ -2341,7 +2488,7 @@ Output: {stdout}"
                 ""
             };
             Ok(format!(
-                "✨ Format operation completed successfully{working_dir_msg}{check_msg}.\nOutput: {stdout}"
+                "Format operation completed successfully{working_dir_msg}{check_msg}.\nOutput: {stdout}"
             ))
         } else {
             // Check if it's a formatting issue (exit code 1) vs actual error
@@ -2353,7 +2500,7 @@ Output: {stdout}"
                 ))
             } else {
                 Err(format!(
-                    "❌ Format operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                    "- Format operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
                 ))
             }
         }
@@ -2414,8 +2561,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&tree_id, "tree");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Tree operation {tree_id} started in background. You will receive progress notifications as the dependency tree is generated."
+                "Tree operation {} started in background.{}",
+                tree_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2469,7 +2618,7 @@ Output: {stdout}"
 
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Tree operation failed in {}.\nError: Failed to execute cargo tree: {}",
+                "- Tree operation failed in {}.\nError: Failed to execute cargo tree: {}",
                 &req.working_directory, e
             )
         })?;
@@ -2481,11 +2630,11 @@ Output: {stdout}"
 
         if output.status.success() {
             Ok(format!(
-                "🌳 Tree operation completed successfully{working_dir_msg}.\nDependency tree:\n{stdout}"
+                "Tree operation completed successfully{working_dir_msg}.\nDependency tree:\n{stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Tree operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Tree operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -2522,7 +2671,7 @@ Output: {stdout}"
             )
         } else {
             format!(
-                "❌ Version operation #{version_id} failed.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Version operation #{version_id} failed.\nErrors: {stderr}\nOutput: {stdout}"
             )
         };
 
@@ -2584,8 +2733,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&fetch_id, "fetch");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "✅ Fetch operation {fetch_id} started in background. You will receive progress notifications as dependencies are fetched."
+                "Fetch operation {} started in background.{}",
+                fetch_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2634,7 +2785,7 @@ Output: {stdout}"
 
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Fetch operation failed in {}.\nError: Failed to execute cargo fetch: {}",
+                "- Fetch operation failed in {}.\nError: Failed to execute cargo fetch: {}",
                 &req.working_directory, e
             )
         })?;
@@ -2650,7 +2801,7 @@ Output: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Fetch operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Fetch operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -2711,8 +2862,10 @@ Output: {stdout}"
             });
 
             // Return immediate response to LLM - this is the "first stage"
+            let tool_hint = self.generate_tool_hint(&rustc_id, "rustc compilation");
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "🔧 Rustc operation {rustc_id} started in background. You will receive progress notifications as compilation proceeds."
+                "Rustc operation {} started in background.{}",
+                rustc_id, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2759,11 +2912,11 @@ Output: {stdout}"
 
         if output.status.success() {
             Ok(format!(
-                "🔧 Rustc operation #{rustc_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Rustc operation #{rustc_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "❌ Rustc operation #{rustc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Rustc operation #{rustc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -2846,7 +2999,7 @@ Output: {stdout}"
             )
         } else {
             format!(
-                "❌ Metadata operation #{metadata_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Metadata operation #{metadata_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             )
         };
 
@@ -3085,7 +3238,7 @@ impl AsyncCargo {
             Ok(success_msg)
         } else {
             let error_msg = format!(
-                "❌ Add operation failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                "- Add operation failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
                 req.name
             );
 
@@ -3161,7 +3314,7 @@ impl AsyncCargo {
             Ok(success_msg)
         } else {
             let error_msg = format!(
-                "❌ Remove operation failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                "- Remove operation failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
                 req.name
             );
 
@@ -3208,7 +3361,7 @@ impl AsyncCargo {
         // Execute command and collect full output
         let output = cmd.output().await.map_err(|e| {
             format!(
-                "❌ Build operation failed in {}.\nError: Failed to execute cargo build: {}",
+                "- Build operation failed in {}.\nError: Failed to execute cargo build: {}",
                 &req.working_directory, e
             )
         })?;
@@ -3221,7 +3374,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg =
-                format!("✅ Build completed successfully{working_dir_msg}.\nOutput: {stdout}");
+                format!("+ Build completed successfully{working_dir_msg}.\nOutput: {stdout}");
 
             // Send completion notification
             let _ = callback
@@ -3235,7 +3388,7 @@ impl AsyncCargo {
             Ok(success_msg)
         } else {
             let error_msg =
-                format!("❌ Build failed{working_dir_msg}.\nError: {stderr}\nOutput: {stdout}");
+                format!("- Build failed{working_dir_msg}.\nError: {stderr}\nOutput: {stdout}");
 
             // Send failure notification
             let _ = callback
@@ -3279,7 +3432,7 @@ impl AsyncCargo {
             .await;
 
         if audit_check.is_err() || !audit_check.unwrap().status.success() {
-            let error_msg = "❌ Audit operation failed: cargo-audit is not installed. 
+            let error_msg = "- Audit operation failed: cargo-audit is not installed. 
 📦 Install with: cargo install cargo-audit
 🔒 This tool scans for known security vulnerabilities in dependencies."
                 .to_string();
@@ -3357,7 +3510,7 @@ impl AsyncCargo {
                     "⚠️ Audit found security vulnerabilities{working_dir_msg}.\nVulnerabilities detected:\n{stdout}\nErrors: {stderr}"
                 )
             } else {
-                format!("❌ Audit failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}")
+                format!("- Audit failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}")
             };
 
             // For vulnerabilities, we treat it as a completion with warnings, not a failure

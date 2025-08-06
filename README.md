@@ -201,63 +201,31 @@ Restart VSCode to activate the MCP server
 
 ## Architecture
 
-### Core Components
-
-- **`cargo_tools.rs`**: MCP tool implementations for cargo commands
-- **`callback_system.rs`**: Async callback infrastructure for progress updates
-- **`command_registry.rs`**: Extensible command registration and auto-discovery
-- **`operation_monitor.rs`**: Operation lifecycle management and monitoring
-
-### Callback System
-
-Three callback implementations:
-- **`NoOpCallbackSender`**: Silent operation (default)
-- **`LoggingCallbackSender`**: Logs progress to server console
-- **`ChannelCallbackSender`**: Sends updates via async channels
-
 ### Operation States
 
-```
-Pending → Running → Completed/Failed/Cancelled/TimedOut
-```
+Each task is assigned an id used to report state changes back to the LLM:
 
-Each operation tracks:
-- Unique ID (UUID)
-- Command and description
-- Start/end timestamps
-- Working directory
-- Results and error messages
-- Cancellation token
+```
+Pending → Running → Completed | Failed | Cancelled | TimedOut
+```
 
 ## Testing
 
-Unit and integration tests:
+Integration tests on CI include both direct Json and a bundled rust MCP test client
 
-```bash
-cargo test
-```
+CodeQL static code analysis is available:
 
-A test client is included in the library and used in integration tests
-
-Test cover:
-- MCP protocol initialization
-- All available cargo commands
-- Cargo operations (doc, build, check, add, remove, test, etc.)
-- JSON-RPC communication
+<a href="https://github.com/paulirotta/async_cargo_mcp/security/code-scanning">
+    <img src="assets/codeql.svg" height="35" alt="CodeQL Static Analysis"/>
+<a>
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the [Apache License](APACHE_LICENSE.txt) or [MIT License](MIT_LICENSE.txt).
 
 ## Acknowledgments
 
-- [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) for the protocol specification
-- [rmcp](https://github.com/modelcontextprotocol/rmcp) for the Rust MCP implementation
-- Rust community for excellent async ecosystem
-
-## Development Notes
-
-**MCP Server Usage Experience**: During development and testing, the async_cargo_mcp server performed efficiently for cargo operations. The clean removal of utility commands (say_hello, echo, sum, increment/decrement/get_value) successfully focused the server on its core purpose of providing cargo command access to LLMs. All cargo operations including the full set of core commands (build, test, run, check, doc, add, remove, update, clean, fix, search, bench, install, tree, version, fetch, rustc, metadata) and optional extensions (clippy, nextest, upgrade, audit, fmt) work reliably with proper async notifications and error handling.
+- [rmcp](https://github.com/modelcontextprotocol/rust-sdk) for Antropic's official Rust MCP libraries
 
 ## Alternatives
 
@@ -269,12 +237,12 @@ The ecosystem is changing rapidly. Running without an MCP tool but adding some p
 
 [SignalWhisperer's cargo-mcp](https://github.com/SignalWhisperer/cargo-mcp)
 
-## Note for Future AI Coding Tools
+## Note for AI Coding Tools
 
-**Testing Code Changes in VS Code**: When making modifications to this codebase, you can live test your changes directly in VS Code:
+**Testing Code Changes in an MCP Server: When making modifications to this codebase, you can live test your changes directly in for example the VS Code integrated MCP Server:
 
 1. Run `cargo build --release` to compile your changes
-2. Ask the user to restart VS Code so the MCP server reloads with your updated code
-3. You can then test your modifications by calling the async-cargo-mcp tools directly in the VS Code environment
+2. Ask the user to restart VS Code or other MCP server to restart with updated code
+3. You can then test your modifications by calling the `async-cargo-mcp` tools directly in the VS Code environment
 
-This workflow allows for rapid iteration and real-time verification of changes without external setup.
+This workflow allows for rapid iteration and real-time verification of recent changes without external setup.

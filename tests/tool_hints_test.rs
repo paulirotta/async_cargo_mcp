@@ -13,6 +13,7 @@ use rmcp::service::{RequestContext, RoleServer};
 use std::sync::Arc;
 
 /// Helper to create a mock request context for testing
+#[allow(dead_code)]
 fn create_mock_context() -> RequestContext<RoleServer> {
     // Note: This is a simplified mock - in real tests we'd need proper peer setup
     // For now, this test will focus on the structure and presence of tool hints
@@ -20,6 +21,7 @@ fn create_mock_context() -> RequestContext<RoleServer> {
 }
 
 /// Test that tool hints contain expected content
+#[allow(dead_code)]
 fn verify_tool_hint_content(response_text: &str, operation_id: &str) -> bool {
     let expected_patterns = [
         "Tool Hint for LLMs",
@@ -56,15 +58,15 @@ async fn test_all_async_commands_have_tool_hints() {
 }
 
 /// Test the structure of tool hint messages
-#[test]
-fn test_tool_hint_message_structure() {
+#[tokio::test]
+async fn test_tool_hint_message_structure() {
     // Create a mock AsyncCargo instance
     let monitor = Arc::new(OperationMonitor::new(MonitorConfig::default()));
-    let cargo = AsyncCargo::new(monitor);
+    let _cargo = AsyncCargo::new(monitor);
 
     // Test the generate_tool_hint method
-    let operation_id = "op_123456789";
-    let operation_type = "test";
+    let _operation_id = "op_123456789";
+    let _operation_type = "test";
 
     // This would need to be made public or we'd need a different testing approach
     // let hint = cargo.generate_tool_hint(operation_id, operation_type);

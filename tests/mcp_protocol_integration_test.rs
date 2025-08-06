@@ -57,14 +57,12 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
         .map(|tool| tool.name.to_string())
         .collect();
 
-    println!("Available tools: {:?}", tool_names);
+    println!("Available tools: {tool_names:?}");
 
     for expected_tool in &expected_tools {
         assert!(
             tool_names.contains(&expected_tool.to_string()),
-            "{} tool should be available but was not found in: {:?}",
-            expected_tool,
-            tool_names
+            "{expected_tool} tool should be available but was not found in: {tool_names:?}"
         );
     }
 
@@ -80,8 +78,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     for unexpected_tool in &unexpected_tools {
         assert!(
             !tool_names.contains(&unexpected_tool.to_string()),
-            "Unexpected utility tool '{}' found - these should have been removed",
-            unexpected_tool
+            "Unexpected utility tool '{unexpected_tool}' found - these should have been removed"
         );
     }
 
@@ -98,8 +95,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     // Verify the test tool exists but we won't execute it to avoid recursion
     assert!(
         tool_names.contains(&"test".to_string()),
-        "test tool should be available but was not found in: {:?}",
-        tool_names
+        "test tool should be available but was not found in: {tool_names:?}"
     );
 
     println!(
@@ -115,7 +111,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
         sleep(Duration::from_millis(50)).await; // Small delay between calls
 
         // Provide appropriate arguments for tools that require them
-        let arguments = match tool_name.as_ref() {
+        let arguments = match &**tool_name {
             "add" => {
                 let obj = json!({
                     "name": "serde",
@@ -150,18 +146,16 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
         // Verify the tool returned some content (even if it's an error message)
         assert!(
             result.content.is_some() && !result.content.as_ref().unwrap().is_empty(),
-            "{} tool should return some content",
-            tool_name
+            "{tool_name} tool should return some content"
         );
 
         // Verify the result has the expected structure
         assert!(
-            result.content.as_ref().map_or(false, |c| c.len() > 0),
-            "{} tool should return at least one content item",
-            tool_name
+            result.content.as_ref().is_some_and(|c| !c.is_empty()),
+            "{tool_name} tool should return at least one content item"
         );
 
-        println!("{} tool executed successfully", tool_name);
+        println!("{tool_name} tool executed successfully");
     }
 
     // Test 4: Verify tool descriptions are present and meaningful
@@ -214,8 +208,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     assert!(
         doc_output.to_lowercase().contains("documentation")
             || doc_output.to_lowercase().contains("doc"),
-        "doc command output should mention documentation: {}",
-        doc_output
+        "doc command output should mention documentation: {doc_output}"
     );
 
     println!("doc command specific validation passed");
@@ -242,14 +235,14 @@ async fn test_mcp_protocol_flow() -> Result<()> {
     // Get server info to verify connection
     let server_info = client.peer_info();
     if let Some(info) = server_info {
-        println!("Connected to server: {:?}", info);
+        println!("Connected to server: {info:?}");
     } else {
         println!("Connected to server (info not available)");
     }
 
     // Test protocol capabilities
     let tools_result = client.list_all_tools().await?;
-    assert!(tools_result.len() > 0, "Server should provide tools");
+    assert!(!tools_result.is_empty(), "Server should provide tools");
     println!("Server provides {} tools", tools_result.len());
 
     // Test a simple tool call to verify the protocol works end-to-end
@@ -318,7 +311,7 @@ mod tests {
 
     fs::write(project_path.join("src").join("main.rs"), main_rs_content)?;
 
-    println!("Created test project at: {:?}", project_path);
+    println!("Created test project at: {project_path:?}");
 
     Ok(temp_dir)
 }

@@ -89,10 +89,7 @@ impl fmt::Display for ProgressUpdate {
                 command,
                 description,
             } => {
-                write!(
-                    f,
-                    "[{operation_id}] Started: {command} - {description}"
-                )
+                write!(f, "[{operation_id}] Started: {command} - {description}")
             }
             ProgressUpdate::Progress {
                 operation_id,
@@ -247,7 +244,7 @@ impl LoggingCallbackSender {
 #[async_trait]
 impl CallbackSender for LoggingCallbackSender {
     async fn send_progress(&self, update: ProgressUpdate) -> Result<(), CallbackError> {
-        tracing::info!("{}: {}", self.operation_name, update);
+        tracing::debug!("{}: {update}", self.operation_name);
         Ok(())
     }
 

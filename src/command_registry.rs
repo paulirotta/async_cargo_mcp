@@ -80,7 +80,7 @@ impl CommandRegistry {
             self.aliases.insert(alias.to_string(), name.clone());
         }
 
-        info!("Registered cargo command: {}", name);
+        tracing::debug!("Registered cargo command: {name}");
         self.commands.insert(name, Box::new(command));
     }
 
@@ -165,7 +165,7 @@ impl CommandRegistry {
             }
         }
 
-        info!("Auto-discovered {} new cargo commands", discovered_count);
+        tracing::debug!("Auto-discovered {discovered_count} new cargo commands");
     }
 
     /// Parse a line from `cargo --list` output

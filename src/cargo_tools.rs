@@ -850,14 +850,7 @@ impl AsyncCargo {
             // Use direct execution for synchronous operation
             use tokio::process::Command;
 
-            // TODO: Add asynchronous callback mechanism here for real-time progress updates
-            // Implementation plan:
-            // 1. Stream dependency resolution and download progress to the LLM
-            // 2. Show real-time progress for fetching crates and building dependencies
-            // 3. Provide detailed error messages if dependency resolution fails
-            // 4. Allow cancellation of long-running dependency installations
-            // 5. Show version conflict warnings and resolution suggestions
-            // This would allow streaming command output back to the LLM during long operations
+            // TODO: Add async callback mechanism for progress updates
 
             let mut cmd = Command::new("cargo");
 
@@ -934,13 +927,7 @@ impl AsyncCargo {
             // Use direct execution for synchronous operation
             use tokio::process::Command;
 
-            // TODO: Add asynchronous callback mechanism here for progress updates
-            // Implementation plan:
-            // 1. Provide real-time feedback on dependency removal process
-            // 2. Show which files are being updated during removal
-            // 3. Alert about any conflicts or issues during removal
-            // 4. Allow early termination if removal encounters problems
-            // Useful for informing the LLM about dependency removal progress
+            // TODO: Add async callback mechanism for progress updates
 
             let mut cmd = Command::new("cargo");
             cmd.arg("remove").arg(&req.name);
@@ -2985,16 +2972,16 @@ impl ServerHandler for AsyncCargo {
         request: InitializeRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<InitializeResult, ErrorData> {
-        tracing::info!("=== INITIALIZE METHOD CALLED ===");
-        tracing::info!("Initialize request: {:?}", request);
-        tracing::info!("Request context: {:?}", context);
+        tracing::debug!("=== INITIALIZE METHOD CALLED ===");
+        tracing::debug!("Initialize request: {request:?}");
+        tracing::debug!("Request context: {context:?}");
 
         if let Some(http_request_part) = context.extensions.get::<axum::http::request::Parts>() {
             let initialize_headers = &http_request_part.headers;
             let initialize_uri = &http_request_part.uri;
-            tracing::info!(?initialize_headers, %initialize_uri, "initialize from http server");
+            tracing::debug!(?initialize_headers, %initialize_uri, "initialize from http server");
         } else {
-            tracing::info!("No HTTP request parts found - this is stdio transport");
+            tracing::debug!("No HTTP request parts found - this is stdio transport");
         }
 
         // Generate and log availability report for LLM
@@ -3011,8 +2998,8 @@ impl ServerHandler for AsyncCargo {
         );
         result.instructions = Some(enhanced_instructions);
 
-        tracing::info!("Initialize result: {:?}", result);
-        tracing::info!("=== INITIALIZE METHOD RETURNING ===");
+        tracing::debug!("Initialize result: {result:?}");
+        tracing::debug!("=== INITIALIZE METHOD RETURNING ===");
         Ok(result)
     }
 }

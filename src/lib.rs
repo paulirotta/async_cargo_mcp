@@ -83,33 +83,7 @@ use tokio::process::Command;
 
 /// Test documentation generation functionality
 ///
-/// This function tests the `doc` command which generates comprehensive API documentation
-/// for the current project using `cargo doc --no-deps`. This is particularly valuable for:
-/// - Providing LLMs with up-to-date API information
-/// - Ensuring documentation generation works correctly
-/// - Verifying the doc command integration with the MCP server
-///
-/// The generated documentation serves as a complement to source code analysis,
-/// similar to popular documentation tools but tailored for real-time project understanding.
-///
-/// # Returns
-///
-/// A `Result<String>` containing either:
-/// - `Ok(String)`: Success message with path to generated documentation
-/// - `Err(anyhow::Error)`: Error details if documentation generation fails
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use async_cargo_mcp::test_doc_functionality;
-///
-/// #[tokio::main]
-/// async fn main() -> anyhow::Result<()> {
-///     let doc_result = test_doc_functionality().await?;
-///     println!("Documentation generation result:\n{}", doc_result);
-///     Ok(())
-/// }
-/// ```
+/// Tests the `doc` command to verify MCP server integration works correctly.
 pub async fn test_doc_functionality() -> Result<String> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(

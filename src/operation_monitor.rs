@@ -185,7 +185,7 @@ impl OperationMonitor {
         let mut operations = self.operations.write().await;
         operations.insert(id.clone(), operation);
 
-        info!("Registered operation {}: {}", id, description);
+        tracing::debug!("Registered operation {id}: {description}");
         id
     }
     /// Start monitoring an operation
@@ -194,9 +194,9 @@ impl OperationMonitor {
 
         if let Some(operation) = operations.get_mut(operation_id) {
             operation.start();
-            info!(
-                "Started operation {}: {}",
-                operation_id, operation.description
+            tracing::debug!(
+                "Started operation {operation_id}: {}",
+                operation.description
             );
             Ok(())
         } else {
@@ -216,7 +216,9 @@ impl OperationMonitor {
             operation.complete(result.clone());
 
             match &result {
-                Ok(msg) => info!("Operation {} completed successfully: {}", operation_id, msg),
+                Ok(msg) => {
+                    tracing::debug!("Operation {operation_id} completed successfully: {msg}")
+                }
                 Err(err) => error!("Operation {} failed: {}", operation_id, err),
             }
 

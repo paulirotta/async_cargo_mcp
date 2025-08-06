@@ -239,7 +239,7 @@ async fn test_command_in_empty_dir(command: &'static str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_add_invalid_dependency_helper(dep_name: &str) -> Result<String> {
@@ -264,7 +264,7 @@ async fn test_add_invalid_dependency_helper(dep_name: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_remove_dependency(dep_name: &str) -> Result<String> {
@@ -289,7 +289,7 @@ async fn test_remove_dependency(dep_name: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_clippy_with_args(args: &[&str]) -> Result<String> {
@@ -314,7 +314,7 @@ async fn test_clippy_with_args(args: &[&str]) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_add_dependency_helper(dep_name: &str) -> Result<String> {
@@ -339,7 +339,7 @@ async fn test_add_dependency_helper(dep_name: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_search_empty_query_helper() -> Result<String> {
@@ -364,7 +364,7 @@ async fn test_search_empty_query_helper() -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_search_query(query: &str) -> Result<String> {
@@ -389,7 +389,7 @@ async fn test_search_query(query: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_install_with_version(package: &str, version: &str) -> Result<String> {
@@ -417,7 +417,7 @@ async fn test_install_with_version(package: &str, version: &str) -> Result<Strin
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_build_command(project_path: String) -> Result<String> {
@@ -442,7 +442,7 @@ async fn test_build_command(project_path: String) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_check_command(project_path: String) -> Result<String> {
@@ -467,7 +467,7 @@ async fn test_check_command(project_path: String) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_build_command_with_path(path: &str) -> Result<String> {
@@ -492,7 +492,7 @@ async fn test_build_command_with_path(path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_build_with_null_working_dir() -> Result<String> {
@@ -517,7 +517,7 @@ async fn test_build_with_null_working_dir() -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn create_minimal_project() -> Result<TempDir> {
@@ -525,7 +525,7 @@ async fn create_minimal_project() -> Result<TempDir> {
 
     let uuid = uuid::Uuid::new_v4();
     let temp_dir = tempfile::Builder::new()
-        .prefix(&format!("cargo_mcp_minimal_{}", uuid))
+        .prefix(&format!("cargo_mcp_minimal_{uuid}"))
         .tempdir()?;
     let project_path = temp_dir.path();
 

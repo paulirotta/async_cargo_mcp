@@ -26,7 +26,7 @@ async fn test_cargo_clean_command() {
 
     // First build the project to create artifacts
     let build_result = test_cargo_tools::test_build_command(project_path).await;
-    assert!(build_result.is_ok(), "Build failed: {:?}", build_result);
+    assert!(build_result.is_ok(), "Build failed: {build_result:?}");
 
     // Now test clean
     let result = test_clean_command(project_path).await;
@@ -379,7 +379,7 @@ async fn test_availability_report() {
 async fn test_component_availability() {
     let availability = AsyncCargo::check_component_availability().await;
 
-    println!("Component availability: {:?}", availability);
+    println!("Component availability: {availability:?}");
 
     // Should check for cargo (always true), clippy, nextest, and cargo-audit
     assert!(availability.contains_key("cargo"));
@@ -458,7 +458,7 @@ async fn test_clean_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_fix_command(project_path: &str) -> Result<String> {
@@ -486,7 +486,7 @@ async fn test_fix_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_search_command(query: &str) -> Result<String> {
@@ -514,7 +514,7 @@ async fn test_search_command(query: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_bench_command(project_path: &str) -> Result<String> {
@@ -539,7 +539,7 @@ async fn test_bench_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_install_command(package: &str) -> Result<String> {
@@ -564,7 +564,7 @@ async fn test_install_command(package: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_nextest_command(project_path: &str) -> Result<String> {
@@ -589,7 +589,7 @@ async fn test_nextest_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_build_command_with_invalid_dir(invalid_path: &str) -> Result<String> {
@@ -614,7 +614,7 @@ async fn test_build_command_with_invalid_dir(invalid_path: &str) -> Result<Strin
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_build_command_with_async(project_path: &str) -> Result<String> {
@@ -642,14 +642,14 @@ async fn test_build_command_with_async(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 /// Create a test project with a warning to test cargo fix
 async fn create_test_cargo_project_with_warning() -> Result<TempDir> {
     let uuid = uuid::Uuid::new_v4();
     let temp_dir = tempfile::Builder::new()
-        .prefix(&format!("cargo_mcp_fix_test_{}_", uuid))
+        .prefix(&format!("cargo_mcp_fix_test_{uuid}_"))
         .tempdir()?;
     let project_path = temp_dir.path();
 
@@ -694,7 +694,7 @@ mod tests {
 async fn create_test_cargo_project() -> Result<TempDir> {
     let uuid = uuid::Uuid::new_v4();
     let temp_dir = tempfile::Builder::new()
-        .prefix(&format!("cargo_mcp_test_{}_", uuid))
+        .prefix(&format!("cargo_mcp_test_{uuid}_"))
         .tempdir()?;
     let project_path = temp_dir.path();
 
@@ -756,7 +756,7 @@ async fn test_audit_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_audit_command_with_async(project_path: &str) -> Result<String> {
@@ -784,7 +784,7 @@ async fn test_audit_command_with_async(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_audit_command_with_format(project_path: &str, format: &str) -> Result<String> {
@@ -812,7 +812,7 @@ async fn test_audit_command_with_format(project_path: &str, format: &str) -> Res
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 // Helper functions for new commands
@@ -839,7 +839,7 @@ async fn test_fmt_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_fmt_command_check(project_path: &str) -> Result<String> {
@@ -867,7 +867,7 @@ async fn test_fmt_command_check(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_tree_command(project_path: &str) -> Result<String> {
@@ -892,7 +892,7 @@ async fn test_tree_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_version_command() -> Result<String> {
@@ -917,7 +917,7 @@ async fn test_version_command() -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_fetch_command(project_path: &str) -> Result<String> {
@@ -942,7 +942,7 @@ async fn test_fetch_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_rustc_command(project_path: &str) -> Result<String> {
@@ -967,7 +967,7 @@ async fn test_rustc_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 async fn test_metadata_command(project_path: &str) -> Result<String> {
@@ -992,14 +992,14 @@ async fn test_metadata_command(project_path: &str) -> Result<String> {
         .await?;
 
     client.cancel().await?;
-    Ok(format!("{:?}", result))
+    Ok(format!("{result:?}"))
 }
 
 /// Create a test project with formatting issues for testing cargo fmt
 async fn create_test_cargo_project_with_formatting_issues() -> Result<TempDir> {
     let uuid = uuid::Uuid::new_v4();
     let temp_dir = tempfile::Builder::new()
-        .prefix(&format!("cargo_mcp_fmt_test_{}_", uuid))
+        .prefix(&format!("cargo_mcp_fmt_test_{uuid}_"))
         .tempdir()?;
     let project_path = temp_dir.path();
 

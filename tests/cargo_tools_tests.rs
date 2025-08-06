@@ -129,7 +129,7 @@ async fn test_cargo_test_in_temp_project() {
 async fn create_test_cargo_project() -> Result<TempDir> {
     let uuid = uuid::Uuid::new_v4();
     let temp_dir = tempfile::Builder::new()
-        .prefix(&format!("cargo_mcp_test_{}_", uuid))
+        .prefix(&format!("cargo_mcp_test_{uuid}_"))
         .tempdir()?;
     let project_path = temp_dir.path();
 

@@ -99,7 +99,7 @@ Restart VSCode to activate the MCP server
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the [Apache Licence](APACHE_LICENSE.txt) or [MIT License](MIT_LICENSE.txt).
 
 ## Acknowledgments
 

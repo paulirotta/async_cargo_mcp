@@ -17,17 +17,11 @@ use uuid::Uuid;
 /// Represents the current state of an operation
 #[derive(Debug, Clone, PartialEq)]
 pub enum OperationState {
-    /// Operation is waiting to start
     Pending,
-    /// Operation is currently running
     Running,
-    /// Operation completed successfully
     Completed,
-    /// Operation failed with an error
     Failed,
-    /// Operation was cancelled
     Cancelled,
-    /// Operation timed out
     TimedOut,
 }
 

@@ -5,36 +5,6 @@
 //! build system commands like `build`, `test`, `run`, `doc`, and dependency management operations
 //! through a standardized protocol interface.
 //!
-//! ## Key Features
-//!
-//! - **Asynchronous Operations**: All Cargo commands execute asynchronously with optional progress callbacks
-//! - **MCP Protocol Compliance**: Full implementation of the Model Context Protocol for tool integration
-//! - **Documentation Generation**: Generate and access comprehensive API documentation via the `doc` command
-//! - **Working Directory Support**: Execute commands in any specified directory
-//! - **Comprehensive Cargo Support**: Build, test, run, check, add/remove dependencies, update, and documentation generation
-//! - **Progress Monitoring**: Real-time feedback and operation monitoring for long-running tasks
-//!
-//! ## Available Commands
-//!
-//! ### Core Cargo Operations
-//! - `build`: Compile the project using `cargo build`
-//! - `test`: Run tests using `cargo test`  
-//! - `run`: Execute the project using `cargo run`
-//! - `check`: Check for errors without building using `cargo check`
-//! - `doc`: Generate documentation using `cargo doc --no-deps`
-//!
-//! ### Dependency Management
-//! - `add`: Add dependencies using `cargo add`
-//! - `remove`: Remove dependencies using `cargo remove`
-//! - `update`: Update dependencies using `cargo update`
-//!
-//! ## Documentation Generation and Usage
-//!
-//! The `doc` command is particularly valuable for LLMs and development tools as it generates
-//! comprehensive API documentation that can be accessed at `target/doc/[crate_name]/index.html`.
-//! This documentation provides up-to-date API information that complements source code analysis,
-//! similar to popular documentation tools but specifically tailored for the current project state.
-//!
 //! ## Usage Example
 //!
 //! ```rust,no_run
@@ -45,25 +15,10 @@
 //! async fn main() -> Result<()> {
 //!     // Test documentation generation
 //!     let results = test_doc_functionality().await?;
-//!     println!("Test results: {}", results);
+//!     println!("Test results: {results}");
 //!     Ok(())
 //! }
 //! ```
-//!
-//! ## Module Organization
-//!
-//! - [`cargo_tools`]: Core implementation of Cargo command handlers and MCP tool interface
-//! - [`callback_system`]: Asynchronous callback management for progress updates and notifications  
-//! - [`command_registry`]: Command registration and dispatch system for MCP tools
-//! - [`operation_monitor`]: Monitoring and lifecycle management for long-running operations
-//! - [`test_cargo_tools`]: Integration testing utilities for Cargo commands with working directory support
-//!
-//! ## Integration with Development Tools
-//!
-//! This crate is designed to be integrated into development environments, IDEs, and AI-powered
-//! coding assistants that need programmatic access to Rust build tools. The MCP protocol ensures
-//! standardized communication, while the async design allows for responsive user interfaces during
-//! long-running operations.
 
 pub mod callback_system;
 pub mod cargo_tools;
@@ -108,9 +63,7 @@ pub async fn test_doc_functionality() -> Result<String> {
         .map_err(|e| anyhow::anyhow!("Doc command failed: {}", e))?;
 
     // Store the result before canceling the client
-    let result = format!(
-        "Documentation generation test results:\n- Doc result: {doc_result:?}"
-    );
+    let result = format!("Documentation generation test results:\n- Doc result: {doc_result:?}");
 
     // Cancel the client - ignore errors since transport might already be closed
     let _ = client.cancel().await;

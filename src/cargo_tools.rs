@@ -1,7 +1,7 @@
 use crate::callback_system::{CallbackSender, LoggingCallbackSender, ProgressUpdate, no_callback};
 use crate::mcp_callback::mcp_callback;
 use rmcp::{
-    ErrorData as McpError, RoleServer, ServerHandler,
+    ErrorData, RoleServer, ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::Parameters},
     model::*,
     schemars,
@@ -429,7 +429,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<BuildRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let build_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -531,7 +531,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<RunRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let run_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -630,7 +630,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<TestRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let test_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -731,7 +731,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<CheckRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let check_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -831,7 +831,7 @@ impl AsyncCargo {
     async fn add(
         &self,
         Parameters(req): Parameters<DependencyRequest>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let add_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -884,7 +884,7 @@ impl AsyncCargo {
             }
 
             let output = cmd.output().await.map_err(|e| {
-                McpError::internal_error(format!("Failed to execute cargo add: {}", e), None)
+                ErrorData::internal_error(format!("Failed to execute cargo add: {}", e), None)
             })?;
 
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -914,7 +914,7 @@ impl AsyncCargo {
     async fn remove(
         &self,
         Parameters(req): Parameters<RemoveDependencyRequest>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let remove_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -948,7 +948,7 @@ impl AsyncCargo {
             cmd.current_dir(&req.working_directory);
 
             let output = cmd.output().await.map_err(|e| {
-                McpError::internal_error(format!("Failed to execute cargo remove: {}", e), None)
+                ErrorData::internal_error(format!("Failed to execute cargo remove: {}", e), None)
             })?;
 
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -979,7 +979,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<UpdateRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let update_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -1080,7 +1080,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<DocRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let doc_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -1215,7 +1215,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<ClippyRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let clippy_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -1320,7 +1320,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<NextestRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let nextest_id = self.generate_operation_id();
 
         // First check if nextest is available
@@ -1439,7 +1439,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<CleanRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let clean_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -1539,7 +1539,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<FixRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let fix_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -1647,7 +1647,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<SearchRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let search_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -1752,7 +1752,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<BenchRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let bench_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -1857,7 +1857,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<InstallRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let install_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -1958,7 +1958,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<UpgradeRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let upgrade_id = self.generate_operation_id();
 
         // First check if cargo-edit (upgrade command) is available
@@ -2111,7 +2111,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<AuditRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let audit_id = self.generate_operation_id();
 
         // First check if cargo-audit is available
@@ -2255,7 +2255,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<FmtRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let fmt_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -2396,7 +2396,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<TreeRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let tree_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -2527,7 +2527,7 @@ Output: {stdout}",
     async fn version(
         &self,
         Parameters(req): Parameters<VersionRequest>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         use tokio::process::Command;
 
         let version_id = self.generate_operation_id();
@@ -2541,7 +2541,7 @@ Output: {stdout}",
         }
 
         let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo version: {}", e), None)
+            ErrorData::internal_error(format!("Failed to execute cargo version: {}", e), None)
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -2567,7 +2567,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<FetchRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let fetch_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -2694,7 +2694,7 @@ Output: {stdout}",
         &self,
         Parameters(req): Parameters<RustcRequest>,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let rustc_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
@@ -2807,7 +2807,7 @@ Output: {stdout}",
     async fn metadata(
         &self,
         Parameters(req): Parameters<MetadataRequest>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         use tokio::process::Command;
 
         let metadata_id = self.generate_operation_id();
@@ -2855,7 +2855,7 @@ Output: {stdout}",
         cmd.current_dir(&req.working_directory);
 
         let output = cmd.output().await.map_err(|e| {
-            McpError::internal_error(format!("Failed to execute cargo metadata: {}", e), None)
+            ErrorData::internal_error(format!("Failed to execute cargo metadata: {}", e), None)
         })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -2906,7 +2906,7 @@ impl ServerHandler for AsyncCargo {
         &self,
         _request: Option<PaginatedRequestParam>,
         _: RequestContext<RoleServer>,
-    ) -> Result<ListResourcesResult, McpError> {
+    ) -> Result<ListResourcesResult, ErrorData> {
         Ok(ListResourcesResult {
             resources: vec![
                 self._create_resource_text("str:////Users/to/some/path/", "cwd"),
@@ -2920,7 +2920,7 @@ impl ServerHandler for AsyncCargo {
         &self,
         ReadResourceRequestParam { uri }: ReadResourceRequestParam,
         _: RequestContext<RoleServer>,
-    ) -> Result<ReadResourceResult, McpError> {
+    ) -> Result<ReadResourceResult, ErrorData> {
         match uri.as_str() {
             "str:////Users/to/some/path/" => {
                 let cwd = "/Users/to/some/path/";
@@ -2934,7 +2934,7 @@ impl ServerHandler for AsyncCargo {
                     contents: vec![ResourceContents::text(memo, uri)],
                 })
             }
-            _ => Err(McpError::resource_not_found(
+            _ => Err(ErrorData::resource_not_found(
                 "resource_not_found",
                 Some(json!({
                     "uri": uri
@@ -2947,7 +2947,7 @@ impl ServerHandler for AsyncCargo {
         &self,
         _request: Option<PaginatedRequestParam>,
         _: RequestContext<RoleServer>,
-    ) -> Result<ListPromptsResult, McpError> {
+    ) -> Result<ListPromptsResult, ErrorData> {
         Ok(ListPromptsResult {
             next_cursor: None,
             prompts: vec![Prompt::new(
@@ -2966,13 +2966,13 @@ impl ServerHandler for AsyncCargo {
         &self,
         GetPromptRequestParam { name, arguments }: GetPromptRequestParam,
         _: RequestContext<RoleServer>,
-    ) -> Result<GetPromptResult, McpError> {
+    ) -> Result<GetPromptResult, ErrorData> {
         match name.as_str() {
             "example_prompt" => {
                 let message = arguments
                     .and_then(|json| json.get("message")?.as_str().map(|s| s.to_string()))
                     .ok_or_else(|| {
-                        McpError::invalid_params("No message provided to example_prompt", None)
+                        ErrorData::invalid_params("No message provided to example_prompt", None)
                     })?;
 
                 let prompt =
@@ -2985,7 +2985,7 @@ impl ServerHandler for AsyncCargo {
                     }],
                 })
             }
-            _ => Err(McpError::invalid_params("prompt not found", None)),
+            _ => Err(ErrorData::invalid_params("prompt not found", None)),
         }
     }
 
@@ -2993,7 +2993,7 @@ impl ServerHandler for AsyncCargo {
         &self,
         _request: Option<PaginatedRequestParam>,
         _: RequestContext<RoleServer>,
-    ) -> Result<ListResourceTemplatesResult, McpError> {
+    ) -> Result<ListResourceTemplatesResult, ErrorData> {
         Ok(ListResourceTemplatesResult {
             next_cursor: None,
             resource_templates: Vec::new(),
@@ -3004,7 +3004,7 @@ impl ServerHandler for AsyncCargo {
         &self,
         request: InitializeRequestParam,
         context: RequestContext<RoleServer>,
-    ) -> Result<InitializeResult, McpError> {
+    ) -> Result<InitializeResult, ErrorData> {
         tracing::info!("=== INITIALIZE METHOD CALLED ===");
         tracing::info!("Initialize request: {:?}", request);
         tracing::info!("Request context: {:?}", context);

@@ -167,7 +167,7 @@ mcp_async_cargo_m_wait({
 When async operations are started (with `enable_async_notifications: true`), the response includes critical tool hints:
 
 ```
-✅ Build operation op_123456789 started in background.
+Build operation op_123456789 started in background.
 
 � **CRITICAL Tool Hint for LLMs**: Operation 'op_123456789' is running in the background.
 **DO NOT assume the operation is complete based on this message alone!**

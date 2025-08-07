@@ -596,26 +596,64 @@ impl AsyncCargo {
                     .map(|op_info| {
                         let status = match &op_info.state {
                             crate::operation_monitor::OperationState::Completed => {
-                                if let Some(Ok(message)) = &op_info.result {
-                                    format!("+ Operation '{}' completed: {}", op_info.id, message)
+                                if let Some(Ok(output)) = &op_info.result {
+                                    // Return full successful output for LLM consumption
+                                    format!(
+                                        "OPERATION COMPLETED: '{}'\n\
+                                        Command: {}\n\
+                                        Description: {}\n\
+                                        Working Directory: {}\n\
+                                        \n\
+                                        === FULL OUTPUT ===\n\
+                                        {}",
+                                        op_info.id,
+                                        op_info.command,
+                                        op_info.description,
+                                        op_info.working_directory.as_deref().unwrap_or("Unknown"),
+                                        output
+                                    )
                                 } else {
-                                    format!("+ Operation '{}' completed successfully", op_info.id)
+                                    format!("Operation '{}' completed successfully (no detailed output available)", op_info.id)
                                 }
                             }
                             crate::operation_monitor::OperationState::Failed => {
-                                if let Some(Err(error)) = &op_info.result {
-                                    format!("- Operation '{}' failed: {}", op_info.id, error)
+                                if let Some(Err(error_output)) = &op_info.result {
+                                    // Return full error output for LLM consumption - this is the key fix!
+                                    format!(
+                                        "OPERATION FAILED: '{}'\n\
+                                        Command: {}\n\
+                                        Description: {}\n\
+                                        Working Directory: {}\n\
+                                        \n\
+                                        === FULL ERROR OUTPUT ===\n\
+                                        {}",
+                                        op_info.id,
+                                        op_info.command,
+                                        op_info.description,
+                                        op_info.working_directory.as_deref().unwrap_or("Unknown"),
+                                        error_output
+                                    )
                                 } else {
-                                    format!("- Operation '{}' failed", op_info.id)
+                                    format!("Operation '{}' failed (no detailed error output available)", op_info.id)
                                 }
                             }
                             crate::operation_monitor::OperationState::Cancelled => {
-                                format!("x Operation '{}' was cancelled", op_info.id)
+                                format!(
+                                    "🚫 OPERATION CANCELLED: '{}'\n\
+                                    Command: {}\n\
+                                    Description: {}",
+                                    op_info.id, op_info.command, op_info.description
+                                )
                             }
                             crate::operation_monitor::OperationState::TimedOut => {
-                                format!("t Operation '{}' timed out", op_info.id)
+                                format!(
+                                    "⏰ OPERATION TIMED OUT: '{}'\n\
+                                    Command: {}\n\
+                                    Description: {}",
+                                    op_info.id, op_info.command, op_info.description
+                                )
                             }
-                            _ => format!("~ Operation '{}' is still in progress", op_info.id),
+                            _ => format!("🔄 Operation '{}' is still in progress", op_info.id),
                         };
                         Content::text(status)
                     })
@@ -648,11 +686,12 @@ impl AsyncCargo {
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let build_id_clone = build_id.clone();
+            let monitor = self.monitor.clone();
 
             // Spawn background task for actual build work
             tokio::spawn(async move {
                 // Create MCP callback sender to notify the LLM client
-                let callback = mcp_callback(peer, build_id_clone.clone());
+                let callback = mcp_callback(peer.clone(), build_id_clone.clone());
 
                 // Send started notification immediately
                 let _ = callback
@@ -665,6 +704,12 @@ impl AsyncCargo {
 
                 // Do the actual build work
                 let result = Self::build_implementation(&req_clone).await;
+
+                // Store the result in the operation monitor for later retrieval by wait
+                // This ensures the full output is available
+                let _ = monitor
+                    .complete_operation(&build_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
                 let completion_update = match result {

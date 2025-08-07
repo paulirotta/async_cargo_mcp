@@ -298,7 +298,7 @@ impl CargoCommand for GenericCargoCommand {
             ))
         } else {
             Err(format!(
-                "❌ cargo {} failed.\nError: {}\nOutput: {}",
+                "cargo {} failed.\nError: {}\nOutput: {}",
                 self.name, stderr, stdout
             ))
         }

@@ -133,10 +133,7 @@ impl fmt::Display for ProgressUpdate {
                 error,
                 duration_ms,
             } => {
-                write!(
-                    f,
-                    "[{operation_id}] ❌ Failed after {duration_ms}ms: {error}"
-                )
+                write!(f, "[{operation_id}] Failed after {duration_ms}ms: {error}")
             }
             ProgressUpdate::Cancelled {
                 operation_id,

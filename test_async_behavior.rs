@@ -19,11 +19,11 @@ fn main() {
         .expect("Failed to create test project");
 
     if !output.status.success() {
-        println!("❌ Failed to create test project");
+        println!("Failed to create test project");
         return;
     }
 
-    println!("✅ Test project created");
+    println!("Test project created");
 
     // Test 1: Build with async notifications disabled (baseline)
     println!("\n📊 Test 1: Synchronous build (baseline)");
@@ -45,7 +45,7 @@ fn main() {
     // This would ideally be tested with an actual MCP client
     // For now, we're validating that the code compiles and the infrastructure is in place
 
-    println!("✅ Async infrastructure verified!");
+    println!("Async infrastructure verified!");
     println!("🔧 The build command already implements 2-stage async pattern:");
     println!("   1. Immediate response when enable_async_notifications=true");
     println!("   2. Background task sends MCP progress notifications");

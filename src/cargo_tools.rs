@@ -38,6 +38,44 @@ pub struct BuildRequest {
     pub working_directory: String,
     /// Optional binary name to build (--bin parameter)
     pub bin_name: Option<String>,
+    /// Build all packages in the workspace
+    pub workspace: Option<bool>,
+    /// Exclude packages from the build
+    pub exclude: Option<Vec<String>>,
+    /// Build only this package's library
+    pub lib: Option<bool>,
+    /// Build all binaries
+    pub bins: Option<bool>,
+    /// Build all examples
+    pub examples: Option<bool>,
+    /// Build only the specified example
+    pub example: Option<String>,
+    /// Build all tests
+    pub tests: Option<bool>,
+    /// Build only the specified test target
+    pub test: Option<String>,
+    /// Build all targets
+    pub all_targets: Option<bool>,
+    /// Space or comma separated list of features to activate
+    pub features: Option<Vec<String>>,
+    /// Activate all available features
+    pub all_features: Option<bool>,
+    /// Do not activate the `default` feature
+    pub no_default_features: Option<bool>,
+    /// Build artifacts in release mode, with optimizations
+    pub release: Option<bool>,
+    /// Build artifacts with the specified profile
+    pub profile: Option<String>,
+    /// Number of parallel jobs, defaults to # of CPUs
+    pub jobs: Option<u32>,
+    /// Build for the target triple
+    pub target: Option<String>,
+    /// Directory for all generated artifacts
+    pub target_dir: Option<String>,
+    /// Path to Cargo.toml
+    pub manifest_path: Option<String>,
+    /// Additional arguments to pass to build
+    pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
@@ -47,6 +85,26 @@ pub struct RunRequest {
     pub working_directory: String,
     /// Optional binary name to run (--bin parameter)
     pub bin_name: Option<String>,
+    /// Arguments to pass to the binary being run (after -- separator)
+    pub binary_args: Option<Vec<String>>,
+    /// Space or comma separated list of features to activate
+    pub features: Option<Vec<String>>,
+    /// Activate all available features
+    pub all_features: Option<bool>,
+    /// Do not activate the `default` feature
+    pub no_default_features: Option<bool>,
+    /// Build artifacts in release mode, with optimizations
+    pub release: Option<bool>,
+    /// Build artifacts with the specified profile
+    pub profile: Option<String>,
+    /// Build for the target triple
+    pub target: Option<String>,
+    /// Number of parallel jobs, defaults to # of CPUs
+    pub jobs: Option<u32>,
+    /// Path to Cargo.toml
+    pub manifest_path: Option<String>,
+    /// Additional cargo arguments
+    pub cargo_args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
@@ -54,6 +112,56 @@ pub struct RunRequest {
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct TestRequest {
     pub working_directory: String,
+    /// Test name filter - if specified, only run tests containing this string
+    pub test_name: Option<String>,
+    /// Arguments for the test binary (after -- separator)  
+    pub test_args: Option<Vec<String>>,
+    /// Additional arguments to pass to cargo test
+    pub args: Option<Vec<String>>,
+    /// Package to run tests for
+    pub package: Option<String>,
+    /// Test all packages in the workspace
+    pub workspace: Option<bool>,
+    /// Exclude packages from the test
+    pub exclude: Option<Vec<String>>,
+    /// Test only this package's library
+    pub lib: Option<bool>,
+    /// Test all binaries
+    pub bins: Option<bool>,
+    /// Test only the specified binary
+    pub bin: Option<String>,
+    /// Test all examples
+    pub examples: Option<bool>,
+    /// Test only the specified example
+    pub example: Option<String>,
+    /// Test all test targets
+    pub tests: Option<bool>,
+    /// Test only the specified test target
+    pub test: Option<String>,
+    /// Test all targets (does not include doctests)
+    pub all_targets: Option<bool>,
+    /// Test only this library's documentation
+    pub doc: Option<bool>,
+    /// Space or comma separated list of features to activate
+    pub features: Option<Vec<String>>,
+    /// Activate all available features
+    pub all_features: Option<bool>,
+    /// Do not activate the `default` feature
+    pub no_default_features: Option<bool>,
+    /// Build artifacts in release mode, with optimizations
+    pub release: Option<bool>,
+    /// Build artifacts with the specified profile
+    pub profile: Option<String>,
+    /// Number of parallel jobs, defaults to # of CPUs
+    pub jobs: Option<u32>,
+    /// Build for the target triple
+    pub target: Option<String>,
+    /// Compile, but don't run tests
+    pub no_run: Option<bool>,
+    /// Run all tests regardless of failure
+    pub no_fail_fast: Option<bool>,
+    /// Path to Cargo.toml
+    pub manifest_path: Option<String>,
     /// Enable async callback notifications for operation progress
     pub enable_async_notifications: Option<bool>,
 }
@@ -369,9 +477,8 @@ impl AsyncCargo {
         if *availability.get("clippy").unwrap_or(&false) {
             report.push_str("+ clippy - Available (enhanced linting)\n");
         } else {
-            report.push_str(
-                "- clippy - Not available (install with: rustup component add clippy)\n",
-            );
+            report
+                .push_str("- clippy - Not available (install with: rustup component add clippy)\n");
         }
 
         if *availability.get("nextest").unwrap_or(&false) {
@@ -407,9 +514,8 @@ impl AsyncCargo {
         }
 
         report.push_str("\nRecommendations:\n");
-        report.push_str(
-            "* Use 'nextest' instead of 'test' for faster test execution if available\n",
-        );
+        report
+            .push_str("* Use 'nextest' instead of 'test' for faster test execution if available\n");
         report.push_str("* Use 'clippy' for enhanced code quality checks if available\n");
         report.push_str(
             "* Use 'upgrade' for intelligent dependency updates if cargo-edit is available\n",
@@ -455,7 +561,7 @@ impl AsyncCargo {
             To get actual results, use:\n\
             • `mcp_async_cargo_m_wait` with operation_id='{}' to wait for this specific operation\n\
             • `mcp_async_cargo_m_wait` with no operation_id to wait for all pending operations\n\n\
-            **Always use async-cargo-mcp MCP tools** instead of terminal commands for cargo operations.\n\
+            **Always use async_cargo_mcp MCP tools** instead of terminal commands for cargo operations.\n\
             You will receive progress notifications as the {} proceeds, but you MUST wait for completion.",
             operation_id, operation_id, operation_type
         )
@@ -601,9 +707,96 @@ impl AsyncCargo {
         let mut cmd = Command::new("cargo");
         cmd.arg("build");
 
-        // Add --bin parameter if specified
+        // Add package selection
+        if req.workspace.unwrap_or(false) {
+            cmd.arg("--workspace");
+        }
+
+        if let Some(exclude) = &req.exclude {
+            for package in exclude {
+                cmd.arg("--exclude").arg(package);
+            }
+        }
+
+        // Add target selection
+        if req.lib.unwrap_or(false) {
+            cmd.arg("--lib");
+        }
+
+        if req.bins.unwrap_or(false) {
+            cmd.arg("--bins");
+        }
+
         if let Some(bin_name) = &req.bin_name {
             cmd.arg("--bin").arg(bin_name);
+        }
+
+        if req.examples.unwrap_or(false) {
+            cmd.arg("--examples");
+        }
+
+        if let Some(example) = &req.example {
+            cmd.arg("--example").arg(example);
+        }
+
+        if req.tests.unwrap_or(false) {
+            cmd.arg("--tests");
+        }
+
+        if let Some(test) = &req.test {
+            cmd.arg("--test").arg(test);
+        }
+
+        if req.all_targets.unwrap_or(false) {
+            cmd.arg("--all-targets");
+        }
+
+        // Add feature selection
+        if let Some(features) = &req.features {
+            if !features.is_empty() {
+                cmd.arg("--features").arg(features.join(","));
+            }
+        }
+
+        if req.all_features.unwrap_or(false) {
+            cmd.arg("--all-features");
+        }
+
+        if req.no_default_features.unwrap_or(false) {
+            cmd.arg("--no-default-features");
+        }
+
+        // Add compilation options
+        if req.release.unwrap_or(false) {
+            cmd.arg("--release");
+        }
+
+        if let Some(profile) = &req.profile {
+            cmd.arg("--profile").arg(profile);
+        }
+
+        if let Some(jobs) = req.jobs {
+            cmd.arg("--jobs").arg(jobs.to_string());
+        }
+
+        if let Some(target) = &req.target {
+            cmd.arg("--target").arg(target);
+        }
+
+        if let Some(target_dir) = &req.target_dir {
+            cmd.arg("--target-dir").arg(target_dir);
+        }
+
+        // Add manifest options
+        if let Some(manifest_path) = &req.manifest_path {
+            cmd.arg("--manifest-path").arg(manifest_path);
+        }
+
+        // Add additional arguments
+        if let Some(args) = &req.args {
+            for arg in args {
+                cmd.arg(arg);
+            }
         }
 
         // Set working directory
@@ -714,9 +907,65 @@ impl AsyncCargo {
         let mut cmd = Command::new("cargo");
         cmd.arg("run");
 
+        // Add feature selection
+        if let Some(features) = &req.features {
+            if !features.is_empty() {
+                cmd.arg("--features").arg(features.join(","));
+            }
+        }
+
+        if req.all_features.unwrap_or(false) {
+            cmd.arg("--all-features");
+        }
+
+        if req.no_default_features.unwrap_or(false) {
+            cmd.arg("--no-default-features");
+        }
+
+        // Add compilation options
+        if req.release.unwrap_or(false) {
+            cmd.arg("--release");
+        }
+
+        if let Some(profile) = &req.profile {
+            cmd.arg("--profile").arg(profile);
+        }
+
+        if let Some(target) = &req.target {
+            cmd.arg("--target").arg(target);
+        }
+
+        if let Some(jobs) = req.jobs {
+            cmd.arg("--jobs").arg(jobs.to_string());
+        }
+
+        // Add manifest path
+        if let Some(manifest_path) = &req.manifest_path {
+            cmd.arg("--manifest-path").arg(manifest_path);
+        }
+
         // Add --bin parameter if specified
         if let Some(bin_name) = &req.bin_name {
             cmd.arg("--bin").arg(bin_name);
+        }
+
+        // Add additional cargo arguments
+        if let Some(cargo_args) = &req.cargo_args {
+            for arg in cargo_args {
+                cmd.arg(arg);
+            }
+        }
+
+        // Add binary arguments after -- separator
+        if let Some(binary_args) = &req.binary_args {
+            if !binary_args.is_empty() {
+                eprintln!("DEBUG: Adding binary args: {:?}", binary_args);
+                cmd.arg("--");
+                for arg in binary_args {
+                    cmd.arg(arg);
+                    eprintln!("DEBUG: Added binary arg: {}", arg);
+                }
+            }
         }
 
         // Set working directory
@@ -737,13 +986,23 @@ impl AsyncCargo {
             String::new()
         };
 
+        let args_msg = if let Some(binary_args) = &req.binary_args {
+            if !binary_args.is_empty() {
+                format!(" with args: [{}]", binary_args.join(", "))
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
         if output.status.success() {
             Ok(format!(
-                "+ Run operation completed successfully{working_dir_msg}{bin_msg}.\nOutput: {stdout}"
+                "+ Run operation completed successfully{working_dir_msg}{bin_msg}{args_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "- Run operation failed{working_dir_msg}{bin_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Run operation failed{working_dir_msg}{bin_msg}{args_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -826,6 +1085,126 @@ impl AsyncCargo {
         let mut cmd = Command::new("cargo");
         cmd.arg("test");
 
+        // Add package selection
+        if let Some(package) = &req.package {
+            cmd.arg("--package").arg(package);
+        }
+
+        if req.workspace.unwrap_or(false) {
+            cmd.arg("--workspace");
+        }
+
+        if let Some(exclude) = &req.exclude {
+            for pkg in exclude {
+                cmd.arg("--exclude").arg(pkg);
+            }
+        }
+
+        // Add target selection
+        if req.lib.unwrap_or(false) {
+            cmd.arg("--lib");
+        }
+
+        if req.bins.unwrap_or(false) {
+            cmd.arg("--bins");
+        }
+
+        if let Some(bin) = &req.bin {
+            cmd.arg("--bin").arg(bin);
+        }
+
+        if req.examples.unwrap_or(false) {
+            cmd.arg("--examples");
+        }
+
+        if let Some(example) = &req.example {
+            cmd.arg("--example").arg(example);
+        }
+
+        if req.tests.unwrap_or(false) {
+            cmd.arg("--tests");
+        }
+
+        if let Some(test) = &req.test {
+            cmd.arg("--test").arg(test);
+        }
+
+        if req.all_targets.unwrap_or(false) {
+            cmd.arg("--all-targets");
+        }
+
+        if req.doc.unwrap_or(false) {
+            cmd.arg("--doc");
+        }
+
+        // Add feature selection
+        if let Some(features) = &req.features {
+            if !features.is_empty() {
+                cmd.arg("--features").arg(features.join(","));
+            }
+        }
+
+        if req.all_features.unwrap_or(false) {
+            cmd.arg("--all-features");
+        }
+
+        if req.no_default_features.unwrap_or(false) {
+            cmd.arg("--no-default-features");
+        }
+
+        // Add compilation options
+        if req.release.unwrap_or(false) {
+            cmd.arg("--release");
+        }
+
+        if let Some(profile) = &req.profile {
+            cmd.arg("--profile").arg(profile);
+        }
+
+        if let Some(jobs) = req.jobs {
+            cmd.arg("--jobs").arg(jobs.to_string());
+        }
+
+        if let Some(target) = &req.target {
+            cmd.arg("--target").arg(target);
+        }
+
+        // Add test options
+        if req.no_run.unwrap_or(false) {
+            cmd.arg("--no-run");
+        }
+
+        if req.no_fail_fast.unwrap_or(false) {
+            cmd.arg("--no-fail-fast");
+        }
+
+        // Add manifest options
+        if let Some(manifest_path) = &req.manifest_path {
+            cmd.arg("--manifest-path").arg(manifest_path);
+        }
+
+        // Add additional cargo arguments
+        if let Some(args) = &req.args {
+            for arg in args {
+                cmd.arg(arg);
+            }
+        }
+
+        // Add test name filter as positional argument
+        if let Some(test_name) = &req.test_name {
+            cmd.arg(test_name);
+        }
+
+        // Add test arguments after -- separator
+        if let Some(test_args) = &req.test_args {
+            if !test_args.is_empty() {
+                cmd.arg("--");
+                for arg in test_args {
+                    cmd.arg(arg);
+                }
+            }
+        }
+
         // Set working directory
         cmd.current_dir(&req.working_directory);
 
@@ -838,14 +1217,19 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let test_filter_msg = if let Some(test_name) = &req.test_name {
+            format!(" (filter: {})", test_name)
+        } else {
+            String::new()
+        };
 
         if output.status.success() {
             Ok(format!(
-                "Test operation #{test_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Test operation #{test_id} completed successfully{working_dir_msg}{test_filter_msg}.\nOutput: {stdout}"
             ))
         } else {
             Err(format!(
-                "- Test operation #{test_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Test operation #{test_id} failed{working_dir_msg}{test_filter_msg}.\nErrors: {stderr}\nOutput: {stdout}"
             ))
         }
     }
@@ -2670,9 +3054,7 @@ Output: {stdout}"
                 "📋 Version operation #{version_id} completed successfully.\nCargo version information:\n{stdout}"
             )
         } else {
-            format!(
-                "- Version operation #{version_id} failed.\nErrors: {stderr}\nOutput: {stdout}"
-            )
+            format!("- Version operation #{version_id} failed.\nErrors: {stderr}\nOutput: {stdout}")
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))

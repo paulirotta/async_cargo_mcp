@@ -20,6 +20,10 @@ path = "src/main.rs"
 name = "client"
 path = "src/client.rs"
 
+[[bin]]
+name = "test_args"
+path = "src/bin/test_args.rs"
+
 [dependencies]
 anyhow = "1.0.98"
 async-trait = "0.1.88" # Remove this once Stable Rust supports Box<dyn TraitWithAsyncMethods>

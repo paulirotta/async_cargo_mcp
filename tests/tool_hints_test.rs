@@ -28,7 +28,7 @@ fn verify_tool_hint_content(response_text: &str, operation_id: &str) -> bool {
         "running in the background",
         "mcp_async_cargo_m_wait",
         operation_id,
-        "async-cargo-mcp MCP tools",
+        "async_cargo_mcp MCP tools",
         "DO NOT PROCEED",
     ];
 
@@ -77,7 +77,7 @@ async fn test_tool_hint_message_structure() {
         "running in the background",
         "mcp_async_cargo_m_wait",
         "operation_id",
-        "async-cargo-mcp MCP tools",
+        "async_cargo_mcp MCP tools",
         "DO NOT PROCEED",
     ];
 

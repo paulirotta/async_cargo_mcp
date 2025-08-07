@@ -19,7 +19,7 @@ mod comprehensive_tool_hints_tests {
             "*** DO NOT assume the operation is complete",
             "*** You must wait for completion to get actual results",
             "`mcp_async_cargo_m_wait`",
-            "**Always use async-cargo-mcp MCP tools**",
+            "**Always use async_cargo_mcp MCP tools**",
         ];
 
         println!(

@@ -593,20 +593,18 @@ impl OperationMonitor {
                     id: operation_id.to_string(),
                     command: "unknown".to_string(),
                     description: format!(
-                        "No operation found with ID '{}'. It may be very old and cleaned up, or the ID may be incorrect. Please check the operation ID or use wait without operation_id to see all active operations.",
-                        operation_id
+                        "No operation found with ID '{operation_id}'. It may be very old and cleaned up, or the ID may be incorrect. Please check the operation ID or use wait without operation_id to see all active operations."
                     ),
                     state: OperationState::Failed,
                     start_time: Instant::now(),
                     end_time: Some(Instant::now()),
                     timeout_duration: None,
                     result: Some(Ok(format!(
-                        "No operation found with ID '{}'. This could mean:\n\
+                        "No operation found with ID '{operation_id}'. This could mean:\n\
                         • The operation completed long ago and was cleaned up\n\
                         • The operation ID is incorrect or mistyped\n\
                         • The operation never existed\n\
-                        To see current operations, use wait without specifying an operation ID.",
-                        operation_id
+                        To see current operations, use wait without specifying an operation ID."
                     ))),
                     working_directory: None,
                     cancellation_token: CancellationToken::new(),
@@ -943,7 +941,7 @@ mod tests {
         for invalid_id in invalid_ids {
             let result = monitor.wait_for_operation(invalid_id).await;
             // Should now succeed with helpful information instead of returning an error
-            assert!(result.is_ok(), "wait_for_operation should never fail for invalid ID '{}'", invalid_id);
+            assert!(result.is_ok(), "wait_for_operation should never fail for invalid ID '{invalid_id}'");
             
             let operations = result.unwrap();
             assert_eq!(operations.len(), 1);

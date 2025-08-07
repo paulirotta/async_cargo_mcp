@@ -169,8 +169,8 @@ When async operations are started (with `enable_async_notifications: true`), the
 ✅ Build operation op_123456789 started in background.
 
 � **CRITICAL Tool Hint for LLMs**: Operation 'op_123456789' is running in the background.
-⚠️  **DO NOT assume the operation is complete based on this message alone!**
-⚠️  **You must wait for completion to get actual results (success/failure/output)!**
+**DO NOT assume the operation is complete based on this message alone!**
+**You must wait for completion to get actual results (success/failure/output)!**
 
 To get actual results, use:
 • `mcp_async_cargo_m_wait` with operation_id='op_123456789' to wait for this specific operation
@@ -180,7 +180,7 @@ To get actual results, use:
 You will receive progress notifications as the build proceeds, but you MUST wait for completion.
 ```
 
-⚠️ **Common LLM Mistake**: LLMs often assume operations are complete when they see "started in background" messages. This is incorrect! You must always wait for the actual results.
+**Common LLM Mistake**: LLMs often assume operations are complete when they see "started in background" messages. This is incorrect! You must always wait for the actual results.
 
 This helps prevent LLMs from making premature assumptions about operation completion, ensuring reliable workflows.
 
@@ -283,7 +283,7 @@ The ecosystem is changing rapidly. Running without an MCP tool but adding some p
 
 [SignalWhisperer's cargo-mcp](https://github.com/SignalWhisperer/cargo-mcp)
 
-## Note for AI Coding Tools
+## Notes for AI Coding Tools
 
 **Testing Code Changes in an MCP Server: When making modifications to this codebase, you can live test your changes directly in for example the VS Code integrated MCP Server:
 

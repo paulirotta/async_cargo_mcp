@@ -2723,7 +2723,7 @@ Output: {stdout}"
 
             if vulnerability_detected {
                 Err(format!(
-                    "⚠️ Audit operation #{audit_id} found security vulnerabilities{working_dir_msg}.\nVulnerabilities detected:\n{stdout}\nErrors: {stderr}"
+                    "Audit operation #{audit_id} found security vulnerabilities{working_dir_msg}.\nVulnerabilities detected:\n{stdout}\nErrors: {stderr}"
                 ))
             } else {
                 Err(format!(
@@ -2864,7 +2864,7 @@ Output: {stdout}"
 
             if formatting_issues {
                 Ok(format!(
-                    "⚠️ Format operation found formatting issues{working_dir_msg}.\nFiles need formatting:\n{stdout}\nErrors: {stderr}"
+                    "Format operation found formatting issues{working_dir_msg}.\nFiles need formatting:\n{stdout}\nErrors: {stderr}"
                 ))
             } else {
                 Err(format!(
@@ -3870,7 +3870,7 @@ impl AsyncCargo {
 
             let result_msg = if vulnerability_detected {
                 format!(
-                    "⚠️ Audit found security vulnerabilities{working_dir_msg}.\nVulnerabilities detected:\n{stdout}\nErrors: {stderr}"
+                    "Audit found security vulnerabilities{working_dir_msg}.\nVulnerabilities detected:\n{stdout}\nErrors: {stderr}"
                 )
             } else {
                 format!("- Audit failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}")

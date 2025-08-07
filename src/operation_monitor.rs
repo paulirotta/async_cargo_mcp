@@ -119,6 +119,8 @@ pub struct MonitorConfig {
     pub cleanup_interval: Duration,
     /// Maximum number of completed operations to keep in history
     pub max_history_size: usize,
+    /// Maximum number of completed operations to keep in completion history (for wait operations)
+    pub max_completion_history_size: usize,
     /// Whether to automatically clean up completed operations
     pub auto_cleanup: bool,
 }
@@ -129,6 +131,7 @@ impl Default for MonitorConfig {
             default_timeout: Duration::from_secs(300), // 5 minutes
             cleanup_interval: Duration::from_secs(30), // 30 seconds
             max_history_size: 1000,
+            max_completion_history_size: 5000, // Keep more completion history for wait operations
             auto_cleanup: true,
         }
     }
@@ -138,6 +141,8 @@ impl Default for MonitorConfig {
 #[derive(Debug)]
 pub struct OperationMonitor {
     operations: Arc<RwLock<HashMap<String, OperationInfo>>>,
+    /// Completion history to track operations that have finished, even after cleanup
+    completion_history: Arc<RwLock<HashMap<String, OperationInfo>>>,
     config: MonitorConfig,
     cleanup_token: CancellationToken,
 }
@@ -147,6 +152,7 @@ impl OperationMonitor {
     pub fn new(config: MonitorConfig) -> Self {
         let monitor = Self {
             operations: Arc::new(RwLock::new(HashMap::new())),
+            completion_history: Arc::new(RwLock::new(HashMap::new())),
             config,
             cleanup_token: CancellationToken::new(),
         };
@@ -209,6 +215,13 @@ impl OperationMonitor {
 
         if let Some(operation) = operations.get_mut(operation_id) {
             operation.complete(result.clone());
+
+            // Store completed operation in completion history for future wait operations
+            let completed_operation = operation.clone();
+            drop(operations); // Release the write lock early
+
+            let mut completion_history = self.completion_history.write().await;
+            completion_history.insert(operation_id.to_string(), completed_operation);
 
             match &result {
                 Ok(msg) => {
@@ -414,6 +427,7 @@ impl OperationMonitor {
     /// Start the cleanup task for removing old operations
     fn start_cleanup_task(&self) {
         let operations = Arc::clone(&self.operations);
+        let completion_history = Arc::clone(&self.completion_history);
         let config = self.config.clone();
         let cleanup_token = self.cleanup_token.clone();
 
@@ -423,7 +437,7 @@ impl OperationMonitor {
             loop {
                 tokio::select! {
                     _ = interval.tick() => {
-                        Self::cleanup_operations(&operations, &config).await;
+                        Self::cleanup_operations(&operations, &completion_history, &config).await;
                     }
                     _ = cleanup_token.cancelled() => {
                         debug!("Operation cleanup task cancelled");
@@ -437,6 +451,7 @@ impl OperationMonitor {
     /// Clean up old completed operations
     async fn cleanup_operations(
         operations: &Arc<RwLock<HashMap<String, OperationInfo>>>,
+        completion_history: &Arc<RwLock<HashMap<String, OperationInfo>>>,
         config: &MonitorConfig,
     ) {
         let mut ops = operations.write().await;
@@ -474,6 +489,13 @@ impl OperationMonitor {
 
             let to_remove = ops.len() - config.max_history_size;
             for (id, _) in completed_ops.into_iter().take(to_remove) {
+                // Before removing from operations, ensure it's in completion history
+                if let Some(operation) = ops.get(&id) {
+                    if !operation.is_active() {
+                        let mut completion_history = completion_history.write().await;
+                        completion_history.insert(id.clone(), operation.clone());
+                    }
+                }
                 ops.remove(&id);
             }
 
@@ -487,6 +509,25 @@ impl OperationMonitor {
                 );
             }
         }
+
+        // Also limit completion history size to prevent unbounded growth
+        let mut completion_history = completion_history.write().await;
+        if completion_history.len() > config.max_completion_history_size {
+            let mut completed_ops: Vec<_> = completion_history
+                .iter()
+                .map(|(id, op)| (id.clone(), op.end_time.unwrap_or(now)))
+                .collect();
+
+            // Sort by end time (oldest first)
+            completed_ops.sort_by_key(|(_, end_time)| *end_time);
+
+            let to_remove = completion_history.len() - config.max_completion_history_size;
+            for (id, _) in completed_ops.into_iter().take(to_remove) {
+                completion_history.remove(&id);
+            }
+
+            debug!("Cleaned up {} old completion history entries", to_remove);
+        }
     }
 
     /// Wait for a specific operation to complete
@@ -494,6 +535,15 @@ impl OperationMonitor {
         &self,
         operation_id: &str,
     ) -> Result<Vec<OperationInfo>, String> {
+        // First check if the operation is already completed in the completion history
+        {
+            let completion_history = self.completion_history.read().await;
+            if let Some(completed_operation) = completion_history.get(operation_id) {
+                return Ok(vec![completed_operation.clone()]);
+            }
+        }
+
+        // If not in completion history, check active operations
         loop {
             if let Some(operation) = self.get_operation(operation_id).await {
                 match operation.state {
@@ -508,6 +558,13 @@ impl OperationMonitor {
                     }
                 }
             } else {
+                // Check completion history one more time in case operation completed
+                // and was cleaned up while we were checking
+                let completion_history = self.completion_history.read().await;
+                if let Some(completed_operation) = completion_history.get(operation_id) {
+                    return Ok(vec![completed_operation.clone()]);
+                }
+
                 return Err(format!("Operation '{operation_id}' not found"));
             }
         }
@@ -727,5 +784,77 @@ mod tests {
 
         let operation = monitor.get_operation(&id).await.unwrap();
         assert_eq!(operation.state, OperationState::Cancelled);
+    }
+
+    #[tokio::test]
+    async fn test_wait_for_already_completed_operation() {
+        // This test reproduces the race condition bug where waiting for an operation
+        // that has already completed returns an error instead of success.
+        let monitor = OperationMonitor::new(MonitorConfig::default());
+
+        // Register and immediately complete an operation
+        let id = monitor
+            .register_operation("test".to_string(), "Test operation".to_string(), None, None)
+            .await;
+
+        monitor.start_operation(&id).await.unwrap();
+        monitor
+            .complete_operation(&id, Ok("Success".to_string()))
+            .await
+            .unwrap();
+
+        // Simulate the case where automatic cleanup might remove the operation
+        // For now, just test that waiting for a completed operation works
+        let result = monitor.wait_for_operation(&id).await;
+
+        // This should succeed and return the completed operation info
+        // Currently it will succeed, but let's test the more complex case
+        assert!(result.is_ok());
+        let operations = result.unwrap();
+        assert_eq!(operations.len(), 1);
+        assert_eq!(operations[0].state, OperationState::Completed);
+    }
+
+    #[tokio::test]
+    async fn test_wait_for_operation_cleaned_up_by_automatic_cleanup() {
+        // This test specifically reproduces the race condition where an operation
+        // is completed and then cleaned up by the automatic cleanup process
+        // before a wait call is made.
+        let mut config = MonitorConfig::default();
+        config.max_history_size = 0; // Force immediate cleanup of completed operations from main map
+        config.max_completion_history_size = 100; // But keep completion history for wait operations
+        config.auto_cleanup = true;
+
+        let monitor = OperationMonitor::new(config);
+
+        // Register, start, and complete an operation
+        let id = monitor
+            .register_operation("test".to_string(), "Test operation".to_string(), None, None)
+            .await;
+
+        monitor.start_operation(&id).await.unwrap();
+        monitor
+            .complete_operation(&id, Ok("Success".to_string()))
+            .await
+            .unwrap();
+
+        // Force cleanup by manually calling it (simulating what the background task does)
+        {
+            let operations = std::sync::Arc::clone(&monitor.operations);
+            let completion_history = std::sync::Arc::clone(&monitor.completion_history);
+            let config = monitor.config.clone();
+            OperationMonitor::cleanup_operations(&operations, &completion_history, &config).await;
+        }
+
+        // Now try to wait for the operation - this should return success indicating
+        // it was already completed, not an error
+        let result = monitor.wait_for_operation(&id).await;
+
+        // After our fix, this should succeed and return the completed operation
+        assert!(result.is_ok());
+        let operations = result.unwrap();
+        assert_eq!(operations.len(), 1);
+        assert_eq!(operations[0].state, OperationState::Completed);
+        assert_eq!(operations[0].id, id);
     }
 }

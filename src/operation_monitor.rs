@@ -497,8 +497,8 @@ impl OperationMonitor {
         loop {
             if let Some(operation) = self.get_operation(operation_id).await {
                 match operation.state {
-                    OperationState::Completed { .. }
-                    | OperationState::Failed { .. }
+                    OperationState::Completed
+                    | OperationState::Failed
                     | OperationState::Cancelled => {
                         return Ok(vec![operation]);
                     }
@@ -508,7 +508,7 @@ impl OperationMonitor {
                     }
                 }
             } else {
-                return Err(format!("Operation '{}' not found", operation_id));
+                return Err(format!("Operation '{operation_id}' not found"));
             }
         }
     }

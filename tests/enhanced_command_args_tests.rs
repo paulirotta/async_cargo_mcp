@@ -115,7 +115,7 @@ fn integration_test_multiply() {
     let src_dir = temp_dir.path().join("src");
     fs::create_dir_all(&src_dir)?;
 
-    let main_rs_with_tests = format!("{}\n\n{}", main_rs, unit_test);
+    let main_rs_with_tests = format!("{main_rs}\n\n{unit_test}");
     fs::write(src_dir.join("lib.rs"), main_rs_with_tests)?;
     fs::write(
         src_dir.join("main.rs"),

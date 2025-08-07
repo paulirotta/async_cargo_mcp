@@ -9,7 +9,7 @@ fn main() {
     println!("Received {} arguments:", args.len() - 1);
     
     for (i, arg) in args.iter().skip(1).enumerate() {
-        println!("  arg[{}]: {}", i, arg);
+        println!("  arg[{i}]: {arg}");
     }
     
     // Special behavior for testing

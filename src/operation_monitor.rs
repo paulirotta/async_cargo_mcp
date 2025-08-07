@@ -214,6 +214,13 @@ impl OperationMonitor {
         let mut operations = self.operations.write().await;
 
         if let Some(operation) = operations.get_mut(operation_id) {
+            // Debug logging to see what result we're storing
+            tracing::debug!(
+                "Completing operation '{}' with result: {:?}",
+                operation_id,
+                result
+            );
+
             operation.complete(result.clone());
 
             // Store completed operation in completion history for future wait operations
@@ -464,10 +471,11 @@ impl OperationMonitor {
         for (id, operation) in ops.iter_mut() {
             if operation.is_active()
                 && let Some(timeout_duration) = operation.timeout_duration
-                    && operation.start_time.elapsed() > timeout_duration {
-                        operation.timeout();
-                        timed_out_ops.push(id.clone());
-                    }
+                && operation.start_time.elapsed() > timeout_duration
+            {
+                operation.timeout();
+                timed_out_ops.push(id.clone());
+            }
         }
 
         for id in timed_out_ops {
@@ -489,10 +497,11 @@ impl OperationMonitor {
             for (id, _) in completed_ops.into_iter().take(to_remove) {
                 // Before removing from operations, ensure it's in completion history
                 if let Some(operation) = ops.get(&id)
-                    && !operation.is_active() {
-                        let mut completion_history = completion_history.write().await;
-                        completion_history.insert(id.clone(), operation.clone());
-                    }
+                    && !operation.is_active()
+                {
+                    let mut completion_history = completion_history.write().await;
+                    completion_history.insert(id.clone(), operation.clone());
+                }
                 ops.remove(&id);
             }
 
@@ -912,13 +921,13 @@ mod tests {
         assert!(result.is_ok(), "wait_for_operation should never fail");
         let operations = result.unwrap();
         assert_eq!(operations.len(), 1);
-        
+
         // Should contain helpful information about the missing operation
         let op_info = &operations[0];
         assert_eq!(op_info.id, "nonexistent_id");
         assert!(op_info.description.contains("No operation found"));
         assert!(op_info.description.contains("nonexistent_id"));
-        
+
         // Should have a helpful result message
         if let Some(Ok(message)) = &op_info.result {
             assert!(message.contains("No operation found"));
@@ -938,14 +947,17 @@ mod tests {
         for invalid_id in invalid_ids {
             let result = monitor.wait_for_operation(invalid_id).await;
             // Should now succeed with helpful information instead of returning an error
-            assert!(result.is_ok(), "wait_for_operation should never fail for invalid ID '{invalid_id}'");
-            
+            assert!(
+                result.is_ok(),
+                "wait_for_operation should never fail for invalid ID '{invalid_id}'"
+            );
+
             let operations = result.unwrap();
             assert_eq!(operations.len(), 1);
-            
+
             let op_info = &operations[0];
             assert_eq!(op_info.id, invalid_id);
-            
+
             // Empty/whitespace IDs should get specific handling
             if invalid_id.trim().is_empty() {
                 assert!(op_info.description.contains("empty ID"));
@@ -1009,17 +1021,21 @@ mod tests {
             let operations = std::sync::Arc::clone(&monitor.operations);
             let completion_history = std::sync::Arc::clone(&monitor.completion_history);
             let config_ref = monitor.config.clone();
-            OperationMonitor::cleanup_operations(&operations, &completion_history, &config_ref).await;
+            OperationMonitor::cleanup_operations(&operations, &completion_history, &config_ref)
+                .await;
         }
 
         // Wait should handle this gracefully and never return an error
         let result = monitor.wait_for_operation(&id).await;
         // Should now succeed with helpful information instead of returning an error
-        assert!(result.is_ok(), "wait_for_operation should never fail even when operation is cleaned up");
-        
+        assert!(
+            result.is_ok(),
+            "wait_for_operation should never fail even when operation is cleaned up"
+        );
+
         let operations = result.unwrap();
         assert_eq!(operations.len(), 1);
-        
+
         // Should contain helpful information about the missing/cleaned operation
         let op_info = &operations[0];
         assert_eq!(op_info.id, id);

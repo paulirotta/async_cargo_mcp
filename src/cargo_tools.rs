@@ -617,6 +617,9 @@ impl AsyncCargo {
                                 }
                             }
                             crate::operation_monitor::OperationState::Failed => {
+                                // Debug logging to see what result we actually have
+                                tracing::debug!("Failed operation '{}': result = {:?}", op_info.id, op_info.result);
+                                
                                 if let Some(Err(error_output)) = &op_info.result {
                                     // Return full error output for LLM consumption - this is the key fix!
                                     format!(

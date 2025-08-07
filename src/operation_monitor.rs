@@ -820,10 +820,12 @@ mod tests {
         // This test specifically reproduces the race condition where an operation
         // is completed and then cleaned up by the automatic cleanup process
         // before a wait call is made.
-        let mut config = MonitorConfig::default();
-        config.max_history_size = 0; // Force immediate cleanup of completed operations from main map
-        config.max_completion_history_size = 100; // But keep completion history for wait operations
-        config.auto_cleanup = true;
+        let config = MonitorConfig {
+            max_history_size: 0, // Force immediate cleanup of completed operations from main map
+            max_completion_history_size: 100, // But keep completion history for wait operations
+            auto_cleanup: true,
+            ..Default::default()
+        };
 
         let monitor = OperationMonitor::new(config);
 

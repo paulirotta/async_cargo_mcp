@@ -794,11 +794,10 @@ impl AsyncCargo {
         }
 
         // Add feature selection
-        if let Some(features) = &req.features {
-            if !features.is_empty() {
+        if let Some(features) = &req.features
+            && !features.is_empty() {
                 cmd.arg("--features").arg(features.join(","));
             }
-        }
 
         if req.all_features.unwrap_or(false) {
             cmd.arg("--all-features");
@@ -949,11 +948,10 @@ impl AsyncCargo {
         cmd.arg("run");
 
         // Add feature selection
-        if let Some(features) = &req.features {
-            if !features.is_empty() {
+        if let Some(features) = &req.features
+            && !features.is_empty() {
                 cmd.arg("--features").arg(features.join(","));
             }
-        }
 
         if req.all_features.unwrap_or(false) {
             cmd.arg("--all-features");
@@ -998,8 +996,8 @@ impl AsyncCargo {
         }
 
         // Add binary arguments after -- separator
-        if let Some(binary_args) = &req.binary_args {
-            if !binary_args.is_empty() {
+        if let Some(binary_args) = &req.binary_args
+            && !binary_args.is_empty() {
                 eprintln!("DEBUG: Adding binary args: {binary_args:?}");
                 cmd.arg("--");
                 for arg in binary_args {
@@ -1007,7 +1005,6 @@ impl AsyncCargo {
                     eprintln!("DEBUG: Added binary arg: {arg}");
                 }
             }
-        }
 
         // Set working directory
         cmd.current_dir(&req.working_directory);
@@ -1178,11 +1175,10 @@ impl AsyncCargo {
         }
 
         // Add feature selection
-        if let Some(features) = &req.features {
-            if !features.is_empty() {
+        if let Some(features) = &req.features
+            && !features.is_empty() {
                 cmd.arg("--features").arg(features.join(","));
             }
-        }
 
         if req.all_features.unwrap_or(false) {
             cmd.arg("--all-features");
@@ -1236,14 +1232,13 @@ impl AsyncCargo {
         }
 
         // Add test arguments after -- separator
-        if let Some(test_args) = &req.test_args {
-            if !test_args.is_empty() {
+        if let Some(test_args) = &req.test_args
+            && !test_args.is_empty() {
                 cmd.arg("--");
                 for arg in test_args {
                     cmd.arg(arg);
                 }
             }
-        }
 
         // Set working directory
         cmd.current_dir(&req.working_directory);
@@ -1415,11 +1410,10 @@ impl AsyncCargo {
             cmd.current_dir(&req.working_directory);
 
             // Add optional features
-            if let Some(features) = &req.features {
-                if !features.is_empty() {
+            if let Some(features) = &req.features
+                && !features.is_empty() {
                     cmd.arg("--features").arg(features.join(","));
                 }
-            }
 
             // Add optional flag
             if req.optional.unwrap_or(false) {
@@ -3000,11 +2994,10 @@ Output: {stdout}"
         }
 
         // Add features if specified
-        if let Some(features) = &req.features {
-            if !features.is_empty() {
+        if let Some(features) = &req.features
+            && !features.is_empty() {
                 cmd.args(["--features", &features.join(",")]);
             }
-        }
 
         // Add all-features flag if requested
         if req.all_features.unwrap_or(false) {
@@ -3169,11 +3162,10 @@ Output: {stdout}"
         }
 
         // Add features if specified
-        if let Some(features) = &req.features {
-            if !features.is_empty() {
+        if let Some(features) = &req.features
+            && !features.is_empty() {
                 cmd.args(["--features", &features.join(",")]);
             }
-        }
 
         // Add all-features flag if requested
         if req.all_features.unwrap_or(false) {
@@ -3299,12 +3291,11 @@ Output: {stdout}"
         }
 
         // Add rustc-specific arguments after --
-        if let Some(rustc_args) = &req.rustc_args {
-            if !rustc_args.is_empty() {
+        if let Some(rustc_args) = &req.rustc_args
+            && !rustc_args.is_empty() {
                 cmd.arg("--");
                 cmd.args(rustc_args);
             }
-        }
 
         cmd.current_dir(&req.working_directory);
 
@@ -3359,11 +3350,10 @@ Output: {stdout}"
         }
 
         // Add features if specified
-        if let Some(features) = &req.features {
-            if !features.is_empty() {
+        if let Some(features) = &req.features
+            && !features.is_empty() {
                 cmd.args(["--features", &features.join(",")]);
             }
-        }
 
         // Add all-features flag if requested
         if req.all_features.unwrap_or(false) {
@@ -3605,11 +3595,10 @@ impl AsyncCargo {
         cmd.current_dir(&req.working_directory);
 
         // Add optional features
-        if let Some(features) = &req.features {
-            if !features.is_empty() {
+        if let Some(features) = &req.features
+            && !features.is_empty() {
                 cmd.arg("--features").arg(features.join(","));
             }
-        }
 
         // Add optional flag
         if req.optional.unwrap_or(false) {

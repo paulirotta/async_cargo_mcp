@@ -462,14 +462,12 @@ impl OperationMonitor {
         let mut timed_out_ops = Vec::new();
 
         for (id, operation) in ops.iter_mut() {
-            if operation.is_active() {
-                if let Some(timeout_duration) = operation.timeout_duration {
-                    if operation.start_time.elapsed() > timeout_duration {
+            if operation.is_active()
+                && let Some(timeout_duration) = operation.timeout_duration
+                    && operation.start_time.elapsed() > timeout_duration {
                         operation.timeout();
                         timed_out_ops.push(id.clone());
                     }
-                }
-            }
         }
 
         for id in timed_out_ops {
@@ -490,12 +488,11 @@ impl OperationMonitor {
             let to_remove = ops.len() - config.max_history_size;
             for (id, _) in completed_ops.into_iter().take(to_remove) {
                 // Before removing from operations, ensure it's in completion history
-                if let Some(operation) = ops.get(&id) {
-                    if !operation.is_active() {
+                if let Some(operation) = ops.get(&id)
+                    && !operation.is_active() {
                         let mut completion_history = completion_history.write().await;
                         completion_history.insert(id.clone(), operation.clone());
                     }
-                }
                 ops.remove(&id);
             }
 

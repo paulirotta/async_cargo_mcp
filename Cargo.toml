@@ -1,6 +1,6 @@
 [package]
 name = "async_cargo_mcp"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 description = "The package provides a BLAS source of choice."
 authors = ["Paul Houghton <paul.irotta@example.com>"]
@@ -18,11 +18,7 @@ path = "src/main.rs"
 
 [[bin]]
 name = "client"
-path = "src/client.rs"
-
-[[bin]]
-name = "test_args"
-path = "src/bin/test_args.rs"
+path = "src/bin/client.rs"
 
 [dependencies]
 anyhow = "1.0.98"

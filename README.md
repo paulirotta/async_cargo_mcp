@@ -10,27 +10,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org/)
 
-**Model Context Protocol (MCP) server for Cargo with asynchronous response handling and comprehensive operation monitoring.**
+**Model Context Protocol (MCP) cargo tool automating simultaneous AI thinking and Rust tool use
 
-This project provides a high-performance MCP server that allows Large Language Models (LLMs) to interact with Rust's Cargo build system operations. It supports both synchronous and asynchronous execution. For long-running tasks, asynchronous operations allow the LLM to continue with other tasks while the `async_cargo_mcp` process works in the background as a concurrent agent.
-
-## Features
-
-- **Walk and chew gum at the same time**: Long-running cargo commands return immediately. Callbacks notifify of progress. This allows the LLM to continue concurrent thinking or other tool commands. The LLM may not think of or expect this unless you prompt it.
-- **Comprehensive Cargo Commands**: Implementation of all core cargo commands useful to an LLM: `build`, `test`, `run`, `check`, `doc`, `add`, `remove`, `update`, `clean`, `fix`, `search`, `bench`, `install`, `tree`, `version`, `fetch`, `rustc`, `metadata`
-- **Optional Cargo Extension Commands**: If installed, the LLM can use:
-    - `clippy` for enhanced linting and code quality checks
-    - `nextest` for faster test execution
-    - `upgrade` (from cargo-edit) for intelligent dependency upgrades and package management
-    - `audit` (from cargo-audit) to audit Cargo.lock for crates with security vulnerabilities
-    - `fmt` (from rustfmt) for code formatting
-- **Typed Parameters**: Command parameters are strongly-typed with JSON schema validation to the the LLM on the straight-and-narrow path to success
-
-## Status
-
-It works with STDIN/STDOUT (not yet SSE), it is fast. It is not heavily field tested.
-Here is an example of Claude Sonnet 4 using `async-cargo-mcp` and thinking at the same time:
-
+Example: `Claude Sonnet 4`
 > ..
 > **Now let me run the full test suite to verify that all tests pass with my fixes:**
 >
@@ -43,6 +25,24 @@ Here is an example of Claude Sonnet 4 using `async-cargo-mcp` and thinking at th
 > agent-plan.md+3-3
 > ```
 > ..
+
+After installing `async_cargo_mcp`, you save development time by enabling your LLM to launch background Rust Cargo operations while continuing to think or update planning documents. LLMs can choose synchronous or asynchronous execution. For long-running tasks, asynchronous operations let the LLM proceed with other work while this tool builds and tests in the background. Callbacks are part of the MCP specification. The implementation uses [Anthropic's official `rmcp` Rust SDK](https://github.com/modelcontextprotocol/rust-sdk).
+
+## Features
+
+- **Walk and chew gum at the same time**: Long-running cargo commands immediately free the LLM for other tasks. The MCP tool uses callbacks to notifify when the task is done.
+- **Comprehensive Cargo Commands**: Implementation of all core cargo commands useful to an LLM: `build`, `test`, `run`, `check`, `doc`, `add`, `remove`, `update`, `clean`, `fix`, `search`, `bench`, `install`, `tree`, `version`, `fetch`, `rustc`, `metadata`
+- **Optional Cargo Extension Commands**: If installed, the LLM can use:
+    - `clippy` for enhanced linting and code quality checks
+    - `nextest` for faster test execution
+    - `upgrade` (from cargo-edit) for intelligent dependency upgrades and package management
+    - `audit` (from cargo-audit) to audit Cargo.lock for crates with security vulnerabilities
+    - `fmt` (from rustfmt) for code formatting
+- **Typed Parameters**: Command parameters are strongly-typed with JSON schema validation to the the LLM on the straight-and-narrow path to success
+
+## Status
+
+It works with STDIN/STDOUT (not yet SSE), it is fast. It is not heavily field tested. Some models are better than others at tool use, and we continue to iterate solutions to encourage them to use `async-cargo-mcp` to best effect with graceful fallback.
 
 ### Current Capabilities
 - All cargo commands implemented with fairly comprehensive integration test coverage

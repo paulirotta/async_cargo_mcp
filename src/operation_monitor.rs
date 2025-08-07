@@ -128,8 +128,8 @@ pub struct MonitorConfig {
 impl Default for MonitorConfig {
     fn default() -> Self {
         Self {
-            default_timeout: Duration::from_secs(300), // 5 minutes
-            cleanup_interval: Duration::from_secs(30), // 30 seconds
+            default_timeout: Duration::from_secs(300),    // 5 minutes
+            cleanup_interval: Duration::from_secs(21600), // 6 hours - less aggressive for long user sessions
             max_history_size: 1000,
             max_completion_history_size: 5000, // Keep more completion history for wait operations
             auto_cleanup: true,
@@ -531,10 +531,33 @@ impl OperationMonitor {
     }
 
     /// Wait for a specific operation to complete
+    /// This method never fails - it always returns helpful information even for unknown operations
     pub async fn wait_for_operation(
         &self,
         operation_id: &str,
     ) -> Result<Vec<OperationInfo>, String> {
+        // Validate operation ID
+        if operation_id.is_empty() || operation_id.trim().is_empty() {
+            // Create a helpful info message for empty/invalid IDs
+            let info = OperationInfo {
+                id: operation_id.to_string(),
+                command: "unknown".to_string(),
+                description:
+                    "No operation found with empty ID. Please provide a valid operation ID."
+                        .to_string(),
+                state: OperationState::Failed,
+                start_time: Instant::now(),
+                end_time: Some(Instant::now()),
+                timeout_duration: None,
+                result: Some(Err(
+                    "Invalid operation ID: empty or whitespace-only ID provided".to_string(),
+                )),
+                working_directory: None,
+                cancellation_token: CancellationToken::new(),
+            };
+            return Ok(vec![info]);
+        }
+
         // First check if the operation is already completed in the completion history
         {
             let completion_history = self.completion_history.read().await;
@@ -565,7 +588,30 @@ impl OperationMonitor {
                     return Ok(vec![completed_operation.clone()]);
                 }
 
-                return Err(format!("Operation '{operation_id}' not found"));
+                // Operation not found - provide helpful information instead of error
+                let info = OperationInfo {
+                    id: operation_id.to_string(),
+                    command: "unknown".to_string(),
+                    description: format!(
+                        "No operation found with ID '{}'. It may be very old and cleaned up, or the ID may be incorrect. Please check the operation ID or use wait without operation_id to see all active operations.",
+                        operation_id
+                    ),
+                    state: OperationState::Failed,
+                    start_time: Instant::now(),
+                    end_time: Some(Instant::now()),
+                    timeout_duration: None,
+                    result: Some(Ok(format!(
+                        "No operation found with ID '{}'. This could mean:\n\
+                        • The operation completed long ago and was cleaned up\n\
+                        • The operation ID is incorrect or mistyped\n\
+                        • The operation never existed\n\
+                        To see current operations, use wait without specifying an operation ID.",
+                        operation_id
+                    ))),
+                    working_directory: None,
+                    cancellation_token: CancellationToken::new(),
+                };
+                return Ok(vec![info]);
             }
         }
     }
@@ -858,5 +904,203 @@ mod tests {
         assert_eq!(operations.len(), 1);
         assert_eq!(operations[0].state, OperationState::Completed);
         assert_eq!(operations[0].id, id);
+    }
+
+    #[tokio::test]
+    async fn test_wait_for_nonexistent_operation_never_fails() {
+        let monitor = OperationMonitor::new(MonitorConfig::default());
+
+        // This should never return an error, even for non-existent operation IDs
+        let result = monitor.wait_for_operation("nonexistent_id").await;
+
+        // Should now succeed with helpful information instead of returning an error
+        assert!(result.is_ok(), "wait_for_operation should never fail");
+        let operations = result.unwrap();
+        assert_eq!(operations.len(), 1);
+        
+        // Should contain helpful information about the missing operation
+        let op_info = &operations[0];
+        assert_eq!(op_info.id, "nonexistent_id");
+        assert!(op_info.description.contains("No operation found"));
+        assert!(op_info.description.contains("nonexistent_id"));
+        
+        // Should have a helpful result message
+        if let Some(Ok(message)) = &op_info.result {
+            assert!(message.contains("No operation found"));
+            assert!(message.contains("nonexistent_id"));
+        } else {
+            panic!("Expected helpful result message for missing operation");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_wait_for_invalid_operation_id_never_fails() {
+        let monitor = OperationMonitor::new(MonitorConfig::default());
+
+        // Test with various invalid operation IDs
+        let invalid_ids = vec!["", "   ", "invalid-id", "123", "op_!@#$%"];
+
+        for invalid_id in invalid_ids {
+            let result = monitor.wait_for_operation(invalid_id).await;
+            // Should now succeed with helpful information instead of returning an error
+            assert!(result.is_ok(), "wait_for_operation should never fail for invalid ID '{}'", invalid_id);
+            
+            let operations = result.unwrap();
+            assert_eq!(operations.len(), 1);
+            
+            let op_info = &operations[0];
+            assert_eq!(op_info.id, invalid_id);
+            
+            // Empty/whitespace IDs should get specific handling
+            if invalid_id.trim().is_empty() {
+                assert!(op_info.description.contains("empty ID"));
+            } else {
+                assert!(op_info.description.contains("No operation found"));
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_wait_returns_full_result_for_completed_operation() {
+        let monitor = OperationMonitor::new(MonitorConfig::default());
+
+        let id = monitor
+            .register_operation("test".to_string(), "Test operation".to_string(), None, None)
+            .await;
+
+        monitor.start_operation(&id).await.unwrap();
+        let test_result = "Operation completed successfully with detailed output";
+        monitor
+            .complete_operation(&id, Ok(test_result.to_string()))
+            .await
+            .unwrap();
+
+        // Wait should return the full result even if operation is already completed
+        let result = monitor.wait_for_operation(&id).await.unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].state, OperationState::Completed);
+
+        // Should contain the full result content
+        if let Some(Ok(message)) = &result[0].result {
+            assert_eq!(message, test_result);
+        } else {
+            panic!("Expected completed operation result");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_wait_handles_operation_cleaned_from_completion_history() {
+        let config = MonitorConfig {
+            max_history_size: 0,
+            max_completion_history_size: 0, // Force immediate cleanup from completion history too
+            auto_cleanup: true,
+            ..Default::default()
+        };
+
+        let monitor = OperationMonitor::new(config);
+
+        let id = monitor
+            .register_operation("test".to_string(), "Test operation".to_string(), None, None)
+            .await;
+
+        monitor.start_operation(&id).await.unwrap();
+        monitor
+            .complete_operation(&id, Ok("Success".to_string()))
+            .await
+            .unwrap();
+
+        // Force cleanup of both main operations and completion history
+        {
+            let operations = std::sync::Arc::clone(&monitor.operations);
+            let completion_history = std::sync::Arc::clone(&monitor.completion_history);
+            let config_ref = monitor.config.clone();
+            OperationMonitor::cleanup_operations(&operations, &completion_history, &config_ref).await;
+        }
+
+        // Wait should handle this gracefully and never return an error
+        let result = monitor.wait_for_operation(&id).await;
+        // Should now succeed with helpful information instead of returning an error
+        assert!(result.is_ok(), "wait_for_operation should never fail even when operation is cleaned up");
+        
+        let operations = result.unwrap();
+        assert_eq!(operations.len(), 1);
+        
+        // Should contain helpful information about the missing/cleaned operation
+        let op_info = &operations[0];
+        assert_eq!(op_info.id, id);
+        assert!(op_info.description.contains("No operation found"));
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_wait_operations_same_id() {
+        let monitor = std::sync::Arc::new(OperationMonitor::new(MonitorConfig::default()));
+
+        let id = monitor
+            .register_operation("test".to_string(), "Test operation".to_string(), None, None)
+            .await;
+
+        monitor.start_operation(&id).await.unwrap();
+
+        // Launch multiple concurrent wait operations for the same ID
+        let monitor_clone1 = std::sync::Arc::clone(&monitor);
+        let monitor_clone2 = std::sync::Arc::clone(&monitor);
+        let monitor_clone3 = std::sync::Arc::clone(&monitor);
+        let id_clone1 = id.clone();
+        let id_clone2 = id.clone();
+        let id_clone3 = id.clone();
+
+        let wait1 =
+            tokio::spawn(async move { monitor_clone1.wait_for_operation(&id_clone1).await });
+        let wait2 =
+            tokio::spawn(async move { monitor_clone2.wait_for_operation(&id_clone2).await });
+        let wait3 =
+            tokio::spawn(async move { monitor_clone3.wait_for_operation(&id_clone3).await });
+
+        // Give waits time to start
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Complete the operation
+        monitor
+            .complete_operation(&id, Ok("Success".to_string()))
+            .await
+            .unwrap();
+
+        // All waits should succeed
+        let result1 = wait1.await.unwrap().unwrap();
+        let result2 = wait2.await.unwrap().unwrap();
+        let result3 = wait3.await.unwrap().unwrap();
+
+        assert_eq!(result1.len(), 1);
+        assert_eq!(result2.len(), 1);
+        assert_eq!(result3.len(), 1);
+        assert_eq!(result1[0].state, OperationState::Completed);
+        assert_eq!(result2[0].state, OperationState::Completed);
+        assert_eq!(result3[0].state, OperationState::Completed);
+    }
+
+    #[tokio::test]
+    async fn test_long_cleanup_timeout_config() {
+        // Test that 6-hour cleanup timeout can be set
+        let config = MonitorConfig {
+            cleanup_interval: Duration::from_secs(21600), // 6 hours
+            ..Default::default()
+        };
+
+        let monitor = OperationMonitor::new(config);
+
+        let id = monitor
+            .register_operation("test".to_string(), "Test operation".to_string(), None, None)
+            .await;
+
+        monitor.start_operation(&id).await.unwrap();
+        monitor
+            .complete_operation(&id, Ok("Success".to_string()))
+            .await
+            .unwrap();
+
+        // Operation should still be accessible since cleanup interval is very long
+        let result = monitor.wait_for_operation(&id).await.unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].state, OperationState::Completed);
     }
 }

@@ -164,6 +164,9 @@ jobs:
       - name: Cargo Clippy
         run: cargo clippy --locked
 
+      - name: Cargo Clippy Tests
+        run: cargo clippy --tests --locked
+
       - name: Cargo Doc
         run: |
           cargo doc --no-deps

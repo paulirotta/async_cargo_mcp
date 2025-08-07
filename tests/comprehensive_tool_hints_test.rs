@@ -19,14 +19,14 @@ mod comprehensive_tool_hints_tests {
             "*** DO NOT assume the operation is complete",
             "*** You must wait for completion to get actual results",
             "`mcp_async_cargo_m_wait`",
-            "**Always use async-cargo-mcp MCP tools**",
+            "**Always use async_cargo_mcp MCP tools**",
         ];
 
         println!(
             "Testing tool hint requirements for {} async commands",
             async_commands.len()
         );
-        println!("Required phrases in tool hints: {:?}", required_phrases);
+        println!("Required phrases in tool hints: {required_phrases:?}");
 
         // This test serves as documentation that:
         // 1. All async operations should include tool hints when enable_async_notifications=true
@@ -56,7 +56,7 @@ mod comprehensive_tool_hints_tests {
             "handle timeouts gracefully",
         ];
 
-        println!("Wait command features: {:?}", wait_command_features);
+        println!("Wait command features: {wait_command_features:?}");
         assert!(
             wait_command_features.len() >= 6,
             "Wait command should be comprehensive"
@@ -73,8 +73,8 @@ mod comprehensive_tool_hints_tests {
             "include binary name in success/error messages",
         ];
 
-        println!("Commands with --bin support: {:?}", bin_support_commands);
-        println!("Binary parameter features: {:?}", bin_features);
+        println!("Commands with --bin support: {bin_support_commands:?}");
+        println!("Binary parameter features: {bin_features:?}");
 
         assert!(
             bin_support_commands.contains(&"build"),
@@ -98,8 +98,7 @@ mod comprehensive_tool_hints_tests {
         ];
 
         println!(
-            "Unicode characters removed from LLM messages: {:?}",
-            problematic_unicode
+            "Unicode characters removed from LLM messages: {problematic_unicode:?}"
         );
 
         // These characters should no longer appear in:
@@ -126,8 +125,7 @@ mod comprehensive_tool_hints_tests {
         ];
 
         println!(
-            "Critical behaviors prevented by tool hints: {:?}",
-            prevented_behaviors
+            "Critical behaviors prevented by tool hints: {prevented_behaviors:?}"
         );
 
         // The tool hints are specifically designed to prevent these common mistakes

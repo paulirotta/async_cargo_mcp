@@ -1,6 +1,6 @@
 # Async Cargo MCP
 
-<img src="assets/async-cargo-mcp-logo.png" height="65" align="right" alt="Async Cargo MCP Logo"/>
+<img src="assets/async_cargo_mcp-logo.png" height="65" align="right" alt="Async Cargo MCP Logo"/>
 
 <a href="https://github.com/paulirotta/async_cargo_mcp/security/code-scanning">
     <img src="assets/codeql.svg" height="35" alt="CodeQL Static Analysis"/>
@@ -42,7 +42,7 @@ After installing `async_cargo_mcp`, you save development time by enabling your L
 
 ## Status
 
-It works with STDIN/STDOUT (not yet SSE), it is fast. It is not heavily field tested. Some models are better than others at tool use, and we continue to iterate solutions to encourage them to use `async-cargo-mcp` to best effect with graceful fallback.
+It works with STDIN/STDOUT (not yet SSE), it is fast. It is not heavily field tested. Some models are better than others at tool use, and we continue to iterate solutions to encourage them to use `async_cargo_mcp` to best effect with graceful fallback.
 
 ### Current Capabilities
 - All cargo commands implemented with fairly comprehensive integration test coverage
@@ -169,18 +169,18 @@ When async operations are started (with `enable_async_notifications: true`), the
 ✅ Build operation op_123456789 started in background.
 
 � **CRITICAL Tool Hint for LLMs**: Operation 'op_123456789' is running in the background.
-⚠️  **DO NOT assume the operation is complete based on this message alone!**
-⚠️  **You must wait for completion to get actual results (success/failure/output)!**
+**DO NOT assume the operation is complete based on this message alone!**
+**You must wait for completion to get actual results (success/failure/output)!**
 
 To get actual results, use:
 • `mcp_async_cargo_m_wait` with operation_id='op_123456789' to wait for this specific operation
 • `mcp_async_cargo_m_wait` with no operation_id to wait for all pending operations
 
-**Always use async-cargo-mcp MCP tools** instead of terminal commands for cargo operations.
+**Always use async_cargo_mcp MCP tools** instead of terminal commands for cargo operations.
 You will receive progress notifications as the build proceeds, but you MUST wait for completion.
 ```
 
-⚠️ **Common LLM Mistake**: LLMs often assume operations are complete when they see "started in background" messages. This is incorrect! You must always wait for the actual results.
+**Common LLM Mistake**: LLMs often assume operations are complete when they see "started in background" messages. This is incorrect! You must always wait for the actual results.
 
 This helps prevent LLMs from making premature assumptions about operation completion, ensuring reliable workflows.
 
@@ -283,12 +283,12 @@ The ecosystem is changing rapidly. Running without an MCP tool but adding some p
 
 [SignalWhisperer's cargo-mcp](https://github.com/SignalWhisperer/cargo-mcp)
 
-## Note for AI Coding Tools
+## Notes for AI Coding Tools
 
 **Testing Code Changes in an MCP Server: When making modifications to this codebase, you can live test your changes directly in for example the VS Code integrated MCP Server:
 
 1. Run `cargo build --release` to compile your changes
 2. Ask the user to restart VS Code or other MCP server to restart with updated code
-3. You can then test your modifications by calling the `async-cargo-mcp` tools directly in the VS Code environment
+3. You can then test your modifications by calling the `async_cargo_mcp` tools directly in the VS Code environment
 
 This workflow allows for rapid iteration and real-time verification of recent changes without external setup.

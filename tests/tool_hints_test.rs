@@ -28,7 +28,7 @@ fn verify_tool_hint_content(response_text: &str, operation_id: &str) -> bool {
         "running in the background",
         "mcp_async_cargo_m_wait",
         operation_id,
-        "async-cargo-mcp MCP tools",
+        "async_cargo_mcp MCP tools",
         "DO NOT PROCEED",
     ];
 
@@ -50,7 +50,7 @@ async fn test_all_async_commands_have_tool_hints() {
 
     println!("Commands that should have tool hints when enable_async_notifications=true:");
     for cmd in async_commands_with_hints {
-        println!("  - {}", cmd);
+        println!("  - {cmd}");
     }
 
     // TODO: Implement actual async command testing with mocked MCP context
@@ -77,13 +77,13 @@ async fn test_tool_hint_message_structure() {
         "running in the background",
         "mcp_async_cargo_m_wait",
         "operation_id",
-        "async-cargo-mcp MCP tools",
+        "async_cargo_mcp MCP tools",
         "DO NOT PROCEED",
     ];
 
     println!("Expected tool hint structure should contain:");
     for element in expected_hint_structure {
-        println!("  - {}", element);
+        println!("  - {element}");
     }
 }
 
@@ -100,7 +100,7 @@ fn test_wait_command_documentation() {
 
     println!("Wait command should support:");
     for feature in wait_command_features {
-        println!("  - {}", feature);
+        println!("  - {feature}");
     }
 }
 

@@ -4,8 +4,7 @@
 //! Including error handling, availability checks, and edge cases.
 
 use anyhow::Result;
-use async_cargo_mcp::cargo_tools::AsyncCargo;
-use async_cargo_mcp::test_cargo_tools;
+use async_cargo_mcp::{cargo_tools::AsyncCargo, test_cargo_tools};
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,

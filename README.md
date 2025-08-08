@@ -1,6 +1,6 @@
 # Async Cargo MCP
 
-<img src="assets/async_cargo_mcp-logo.png" height="65" align="right" alt="Async Cargo MCP Logo"/>
+<img src="./assets/async-cargo-mcp-logo.png" height="65" align="right" alt="Async Cargo MCP Logo"/>
 
 <a href="https://github.com/paulirotta/async_cargo_mcp/security/code-scanning">
     <img src="assets/codeql.svg" height="35" alt="CodeQL Static Analysis"/>

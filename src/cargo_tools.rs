@@ -1,4 +1,4 @@
-use crate::callback_system::{CallbackSender, LoggingCallbackSender, ProgressUpdate, no_callback};
+use crate::callback_system::{CallbackSender, ProgressUpdate, no_callback};
 use crate::mcp_callback::mcp_callback;
 use crate::operation_monitor::OperationMonitor;
 use rmcp::{
@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct DependencyRequest {
     pub name: String,
     pub version: Option<String>,
@@ -25,7 +25,7 @@ pub struct DependencyRequest {
     pub enable_async_notifications: Option<bool>,
 }
 
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct RemoveDependencyRequest {
     pub name: String,
     pub working_directory: String,
@@ -1456,82 +1456,68 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO ADD: Safer than terminal cargo. Use enable_async_notifications=true for complex dependencies to multitask. Handles version conflicts"
+        description = "CARGO ADD: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Handles version conflicts"
     )]
     async fn add(
         &self,
         Parameters(req): Parameters<DependencyRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let add_id = self.generate_operation_id();
+        
+        // Always use synchronous execution for Cargo.toml modifications
+        use tokio::process::Command;
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
-            // Use the callback-enabled version for async notifications
-            let callback: Box<dyn CallbackSender> =
-                Box::new(LoggingCallbackSender::new(format!("cargo_add_{add_id}")));
+        let mut cmd = Command::new("cargo");
 
-            match self.add_with_callback(req, Some(callback)).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
+        // Build the dependency specification
+        let dep_spec = if let Some(version) = &req.version {
+            format!("{}@{}", req.name, version)
         } else {
-            // Use direct execution for synchronous operation
-            use tokio::process::Command;
+            req.name.clone()
+        };
 
-            // TODO: Add async callback mechanism for progress updates
+        cmd.arg("add").arg(&dep_spec);
 
-            let mut cmd = Command::new("cargo");
+        // Set working directory
+        cmd.current_dir(&req.working_directory);
 
-            // Build the dependency specification
-            let dep_spec = if let Some(version) = &req.version {
-                format!("{}@{}", req.name, version)
-            } else {
-                req.name.clone()
-            };
-
-            cmd.arg("add").arg(&dep_spec);
-
-            // Set working directory
-            cmd.current_dir(&req.working_directory);
-
-            // Add optional features
-            if let Some(features) = &req.features
-                && !features.is_empty() {
-                    cmd.arg("--features").arg(features.join(","));
-                }
-
-            // Add optional flag
-            if req.optional.unwrap_or(false) {
-                cmd.arg("--optional");
+        // Add optional features
+        if let Some(features) = &req.features
+            && !features.is_empty() {
+                cmd.arg("--features").arg(features.join(","));
             }
 
-            let output = cmd.output().await.map_err(|e| {
-                ErrorData::internal_error(format!("Failed to execute cargo add: {e}"), None)
-            })?;
-
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-
-            let working_dir_msg = format!(" in {}", &req.working_directory);
-
-            let result_msg = if output.status.success() {
-                format!(
-                    "➕ Add operation #{add_id} completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
-                    req.name
-                )
-            } else {
-                format!(
-                    "- Add operation #{add_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
-                    req.name
-                )
-            };
-
-            Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+        // Add optional flag
+        if req.optional.unwrap_or(false) {
+            cmd.arg("--optional");
         }
+
+        let output = cmd.output().await.map_err(|e| {
+            ErrorData::internal_error(format!("Failed to execute cargo add: {e}"), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "➕ Add operation #{add_id} completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
+                req.name
+            )
+        } else {
+            format!(
+                "- Add operation #{add_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                req.name
+            )
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
     #[tool(
-        description = "CARGO REMOVE: Safer than terminal cargo. Fast operation - async not needed. Prevents Cargo.toml corruption"
+        description = "CARGO REMOVE: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Prevents Cargo.toml corruption"
     )]
     async fn remove(
         &self,
@@ -1539,52 +1525,37 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let remove_id = self.generate_operation_id();
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
-            // Use the callback-enabled version for async notifications
-            let callback: Box<dyn CallbackSender> = Box::new(LoggingCallbackSender::new(format!(
-                "cargo_remove_{remove_id}"
-            )));
+        // Always use synchronous execution for Cargo.toml modifications
+        use tokio::process::Command;
 
-            match self.remove_with_callback(req, Some(callback)).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
+        let mut cmd = Command::new("cargo");
+        cmd.arg("remove").arg(&req.name);
+
+        // Set working directory
+        cmd.current_dir(&req.working_directory);
+
+        let output = cmd.output().await.map_err(|e| {
+            ErrorData::internal_error(format!("Failed to execute cargo remove: {e}"), None)
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+
+        let result_msg = if output.status.success() {
+            format!(
+                "➖ Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
+                req.name
+            )
         } else {
-            // Use direct execution for synchronous operation
-            use tokio::process::Command;
+            format!(
+                "- Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                req.name
+            )
+        };
 
-            // TODO: Add async callback mechanism for progress updates
-
-            let mut cmd = Command::new("cargo");
-            cmd.arg("remove").arg(&req.name);
-
-            // Set working directory
-            cmd.current_dir(&req.working_directory);
-
-            let output = cmd.output().await.map_err(|e| {
-                ErrorData::internal_error(format!("Failed to execute cargo remove: {e}"), None)
-            })?;
-
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-
-            let working_dir_msg = format!(" in {}", &req.working_directory);
-
-            let result_msg = if output.status.success() {
-                format!(
-                    "➖ Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
-                    req.name
-                )
-            } else {
-                format!(
-                    "- Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
-                    req.name
-                )
-            };
-
-            Ok(CallToolResult::success(vec![Content::text(result_msg)]))
-        }
+        Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
     #[tool(
@@ -2705,12 +2676,12 @@ Output: {stdout}"
     }
 
     #[tool(
-        description = "CARGO UPGRADE: Safer than terminal cargo. Use enable_async_notifications=true for large projects to multitask. Updates dependencies to latest versions using cargo-edit"
+        description = "CARGO UPGRADE: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Updates dependencies to latest versions using cargo-edit"
     )]
     async fn upgrade(
         &self,
         Parameters(req): Parameters<UpgradeRequest>,
-        context: RequestContext<RoleServer>,
+        _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
         let upgrade_id = self.generate_operation_id();
 
@@ -2728,77 +2699,10 @@ Output: {stdout}"
             ))]));
         }
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
-            // TRUE 2-STAGE ASYNC PATTERN:
-            // 1. Send immediate response that operation has started
-            // 2. Spawn background task to do actual work and send notifications
-
-            let peer = context.peer.clone();
-            let req_clone = req.clone();
-            let upgrade_id_clone = upgrade_id.clone();
-            let monitor = self.monitor.clone();
-
-            // Register operation before spawn
-            self.register_async_operation(
-                &upgrade_id,
-                "cargo upgrade",
-                "Upgrading dependencies in background",
-                Some(req.working_directory.clone()),
-            )
-            .await;
-
-            // Spawn background task for actual upgrade work
-            tokio::spawn(async move {
-                // Create MCP callback sender to notify the LLM client
-                let callback = mcp_callback(peer, upgrade_id_clone.clone());
-
-                // Send started notification immediately
-                let _ = callback
-                    .send_progress(ProgressUpdate::Started {
-                        operation_id: upgrade_id_clone.clone(),
-                        command: "cargo upgrade".to_string(),
-                        description: "Upgrading dependencies in background".to_string(),
-                    })
-                    .await;
-
-                // Do the actual upgrade work
-                let started_at = Instant::now();
-                let result = Self::upgrade_implementation(&req_clone).await;
-                // Store for wait
-                let _ = monitor
-                    .complete_operation(&upgrade_id_clone, result.clone())
-                    .await;
-
-                // Send completion notification
-                let duration_ms = started_at.elapsed().as_millis() as u64;
-                let completion_update = match result {
-                    Ok(msg) => ProgressUpdate::Completed {
-                        operation_id: upgrade_id_clone,
-                        message: msg,
-                        duration_ms,
-                    },
-                    Err(err) => ProgressUpdate::Failed {
-                        operation_id: upgrade_id_clone,
-                        error: err,
-                        duration_ms,
-                    },
-                };
-
-                let _ = callback.send_progress(completion_update).await;
-            });
-
-            // Return immediate response to LLM - this is the "first stage"
-            let tool_hint = self.generate_tool_hint(&upgrade_id, "upgrade");
-            Ok(CallToolResult::success(vec![Content::text(format!(
-                "⬆️ Upgrade operation {upgrade_id} started in background.{tool_hint}"
-            ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::upgrade_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
+        // Always use synchronous execution for Cargo.toml modifications
+        match Self::upgrade_implementation(&req).await {
+            Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+            Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
         }
     }
 
@@ -3882,6 +3786,22 @@ impl ServerHandler for AsyncCargo {
 
 /// Async cargo operations with callback support
 impl AsyncCargo {
+    // Small wrappers to reuse existing callback-based implementations while returning a Result<String,String>
+    pub async fn build_add_result(
+        &self,
+        req: DependencyRequest,
+        callback: Option<Box<dyn CallbackSender>>,
+    ) -> Result<String, String> {
+        self.add_with_callback(req, callback).await
+    }
+
+    pub async fn build_remove_result(
+        &self,
+        req: RemoveDependencyRequest,
+        callback: Option<Box<dyn CallbackSender>>,
+    ) -> Result<String, String> {
+        self.remove_with_callback(req, callback).await
+    }
     /// Add a dependency with optional async callback notifications
     pub async fn add_with_callback(
         &self,

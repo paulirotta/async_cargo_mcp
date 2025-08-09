@@ -31,7 +31,7 @@ After installing `async_cargo_mcp`, you save development time by enabling your L
 
 ## Features
 
-- **Walk and chew gum at the same time**: Long-running cargo commands immediately free the LLM for other tasks. The MCP tool uses callbacks to notifify when the task is done.
+- **Walk and chew gum at the same time**: Long-running cargo commands immediately free the LLM for other tasks. The MCP tool uses callbacks to notifify when the task is done. It encourages the LLM to multitask to save wall clock time, but works smoothly if it chooses not to.
 - **Comprehensive Cargo Commands**: Implementation of all core cargo commands useful to an LLM: `build`, `test`, `run`, `check`, `doc`, `add`, `remove`, `update`, `clean`, `fix`, `search`, `bench`, `install`, `tree`, `version`, `fetch`, `rustc`, `metadata`
 - **Optional Cargo Extension Commands**: If installed, the LLM can use:
     - `clippy` for enhanced linting and code quality checks
@@ -119,6 +119,7 @@ This project is licensed under the [Apache Licence](APACHE_LICENSE.txt) or [MIT 
 - **Non-blocking Execution**: LLMs can continue processing while cargo operations run in background
 - **Real-time Progress Updates**: Stream operation status and timing information
 - **Callback System**: Pluggable callback architecture (NoOp, Logging, Channel-based)
+- **Synchronous-only Commands**: `add`, `remove`, and `upgrade` always run synchronously since they modify Cargo.toml
 
 ### Operation Monitoring & Management
 - **Comprehensive Tracking**: Monitor operation lifecycle from pending → running → completed/failed/cancelled/timed out

@@ -393,6 +393,28 @@ impl Default for AsyncCargo {
 
 #[tool_router]
 impl AsyncCargo {
+    /// Register and start an async operation with the monitor using the external operation_id.
+    async fn register_async_operation(
+        &self,
+        operation_id: &str,
+        command: &str,
+        description: &str,
+        working_directory: Option<String>,
+    ) {
+        // Register with the external ID so `wait` can find it immediately
+        let _ = self
+            .monitor
+            .register_operation_with_id(
+                operation_id.to_string(),
+                command.to_string(),
+                description.to_string(),
+                None,
+                working_directory,
+            )
+            .await;
+        // Mark as started
+        let _ = self.monitor.start_operation(operation_id).await;
+    }
     pub fn new(monitor: Arc<OperationMonitor>) -> Self {
         Self {
             tool_router: Self::tool_router(),
@@ -678,7 +700,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<BuildRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let build_id = self.generate_operation_id();
+    let build_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -690,6 +712,15 @@ impl AsyncCargo {
             let req_clone = req.clone();
             let build_id_clone = build_id.clone();
             let monitor = self.monitor.clone();
+
+            // Register operation BEFORE spawning so wait() can find it immediately
+            self.register_async_operation(
+                &build_id,
+                "cargo build",
+                "Building project in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual build work
             tokio::spawn(async move {
@@ -705,26 +736,28 @@ impl AsyncCargo {
                     })
                     .await;
 
+                let started_at = Instant::now();
                 // Do the actual build work
                 let result = Self::build_implementation(&req_clone).await;
 
                 // Store the result in the operation monitor for later retrieval by wait
-                // This ensures the full output is available
+                // This ensures the full output (stdout/stderr) is available to `wait`
                 let _ = monitor
                     .complete_operation(&build_id_clone, result.clone())
                     .await;
 
-                // Send completion notification
+                // Send completion notification with measured duration
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: build_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: build_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -894,6 +927,16 @@ impl AsyncCargo {
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let run_id_clone = run_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn so wait() can find it immediately
+            self.register_async_operation(
+                &run_id,
+                "cargo run",
+                "Running application in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual run work
             tokio::spawn(async move {
@@ -910,19 +953,26 @@ impl AsyncCargo {
                     .await;
 
                 // Do the actual run work
+                let started_at = Instant::now();
                 let result = Self::run_implementation(&req_clone).await;
 
+                // Store result for wait()
+                let _ = monitor
+                    .complete_operation(&run_id_clone, result.clone())
+                    .await;
+
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: run_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: run_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -1067,6 +1117,16 @@ impl AsyncCargo {
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let test_id_clone = test_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &test_id,
+                "cargo test",
+                "Running test suite in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual test work
             tokio::spawn(async move {
@@ -1083,19 +1143,25 @@ impl AsyncCargo {
                     .await;
 
                 // Do the actual test work
+                let started_at = Instant::now();
                 let result = Self::test_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&test_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: test_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: test_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -1291,6 +1357,16 @@ impl AsyncCargo {
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let check_id_clone = check_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &check_id,
+                "cargo check",
+                "Checking project in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual check work
             tokio::spawn(async move {
@@ -1307,19 +1383,25 @@ impl AsyncCargo {
                     .await;
 
                 // Do the actual check work
+                let started_at = Instant::now();
                 let result = Self::check_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&check_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: check_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: check_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -1524,6 +1606,16 @@ impl AsyncCargo {
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let update_id_clone = update_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &update_id,
+                "cargo update",
+                "Updating dependencies in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual update work
             tokio::spawn(async move {
@@ -1540,19 +1632,25 @@ impl AsyncCargo {
                     .await;
 
                 // Do the actual update work
+                let started_at = Instant::now();
                 let result = Self::update_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&update_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: update_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: update_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -1623,6 +1721,16 @@ impl AsyncCargo {
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let doc_id_clone = doc_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &doc_id,
+                "cargo doc",
+                "Generating documentation in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual doc generation work
             tokio::spawn(async move {
@@ -1639,19 +1747,25 @@ impl AsyncCargo {
                     .await;
 
                 // Do the actual doc generation work
+                let started_at = Instant::now();
                 let result = Self::doc_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&doc_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: doc_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: doc_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -1754,6 +1868,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let clippy_id_clone = clippy_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &clippy_id,
+                "cargo clippy",
+                "Running linter in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual clippy work
             tokio::spawn(async move {
@@ -1770,19 +1894,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual clippy work
+                let started_at = Instant::now();
                 let result = Self::clippy_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&clippy_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: clippy_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: clippy_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -1871,6 +2001,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let nextest_id_clone = nextest_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &nextest_id,
+                "cargo nextest run",
+                "Running fast test suite in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual nextest work
             tokio::spawn(async move {
@@ -1887,19 +2027,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual nextest work
+                let started_at = Instant::now();
                 let result = Self::nextest_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&nextest_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: nextest_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: nextest_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -1976,6 +2122,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let clean_id_clone = clean_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &clean_id,
+                "cargo clean",
+                "Cleaning build artifacts in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual clean work
             tokio::spawn(async move {
@@ -1992,19 +2148,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual clean work
+                let started_at = Instant::now();
                 let result = Self::clean_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&clean_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: clean_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: clean_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -2076,6 +2238,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let fix_id_clone = fix_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &fix_id,
+                "cargo fix",
+                "Fixing compiler warnings in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual fix work
             tokio::spawn(async move {
@@ -2092,19 +2264,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual fix work
+                let started_at = Instant::now();
                 let result = Self::fix_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&fix_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: fix_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: fix_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -2184,6 +2362,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let search_id_clone = search_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &search_id,
+                "cargo search",
+                &format!("Searching crates.io for '{}' in background", req.query),
+                None,
+            )
+            .await;
 
             // Spawn background task for actual search work
             tokio::spawn(async move {
@@ -2203,19 +2391,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual search work
+                let started_at = Instant::now();
                 let result = Self::search_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&search_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: search_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: search_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -2290,6 +2484,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let bench_id_clone = bench_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &bench_id,
+                "cargo bench",
+                "Running benchmarks in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual bench work
             tokio::spawn(async move {
@@ -2306,19 +2510,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual bench work
+                let started_at = Instant::now();
                 let result = Self::bench_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&bench_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: bench_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: bench_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -2391,6 +2601,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let install_id_clone = install_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &install_id,
+                "cargo install",
+                &format!("Installing package '{}' in background", req.package),
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual install work
             tokio::spawn(async move {
@@ -2407,18 +2627,24 @@ Output: {stdout}"
                     })
                     .await;
 
+                let started_at = Instant::now();
                 let result = Self::install_implementation(&req_clone).await;
 
+                let _ = monitor
+                    .complete_operation(&install_id_clone, result.clone())
+                    .await;
+
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: install_id_clone,
                         message: msg,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: install_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -2511,6 +2737,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let upgrade_id_clone = upgrade_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &upgrade_id,
+                "cargo upgrade",
+                "Upgrading dependencies in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual upgrade work
             tokio::spawn(async move {
@@ -2527,19 +2763,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual upgrade work
+                let started_at = Instant::now();
                 let result = Self::upgrade_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&upgrade_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: upgrade_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: upgrade_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -2664,6 +2906,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let audit_id_clone = audit_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &audit_id,
+                "cargo audit",
+                "Scanning for security vulnerabilities in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual audit work
             tokio::spawn(async move {
@@ -2681,19 +2933,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual audit work
+                let started_at = Instant::now();
                 let result = Self::audit_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&audit_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: audit_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: audit_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -2794,6 +3052,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let fmt_id_clone = fmt_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &fmt_id,
+                "cargo fmt",
+                "Formatting code in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual format work
             tokio::spawn(async move {
@@ -2810,19 +3078,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual format work
+                let started_at = Instant::now();
                 let result = Self::fmt_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&fmt_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: fmt_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: fmt_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -2935,6 +3209,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let tree_id_clone = tree_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &tree_id,
+                "cargo tree",
+                "Generating dependency tree in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual tree work
             tokio::spawn(async move {
@@ -2951,19 +3235,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual tree work
+                let started_at = Instant::now();
                 let result = Self::tree_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&tree_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: tree_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: tree_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -3103,6 +3393,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let fetch_id_clone = fetch_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &fetch_id,
+                "cargo fetch",
+                "Fetching dependencies in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual fetch work
             tokio::spawn(async move {
@@ -3119,19 +3419,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual fetch work
+                let started_at = Instant::now();
                 let result = Self::fetch_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&fetch_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: fetch_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: fetch_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -3229,6 +3535,16 @@ Output: {stdout}"
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let rustc_id_clone = rustc_id.clone();
+            let monitor = self.monitor.clone();
+
+            // Register operation before spawn
+            self.register_async_operation(
+                &rustc_id,
+                "cargo rustc",
+                "Compiling with custom rustc options in background",
+                Some(req.working_directory.clone()),
+            )
+            .await;
 
             // Spawn background task for actual rustc work
             tokio::spawn(async move {
@@ -3246,19 +3562,25 @@ Output: {stdout}"
                     .await;
 
                 // Do the actual rustc work
+                let started_at = Instant::now();
                 let result = Self::rustc_implementation(&req_clone).await;
+                // Store for wait
+                let _ = monitor
+                    .complete_operation(&rustc_id_clone, result.clone())
+                    .await;
 
                 // Send completion notification
+                let duration_ms = started_at.elapsed().as_millis() as u64;
                 let completion_update = match result {
                     Ok(msg) => ProgressUpdate::Completed {
                         operation_id: rustc_id_clone,
                         message: msg,
-                        duration_ms: 0, // TODO: Add actual timing
+                        duration_ms,
                     },
                     Err(err) => ProgressUpdate::Failed {
                         operation_id: rustc_id_clone,
                         error: err,
-                        duration_ms: 0,
+                        duration_ms,
                     },
                 };
 
@@ -3544,9 +3866,9 @@ impl ServerHandler for AsyncCargo {
 
         let mut result = self.get_info();
 
-        // Add availability information to the instructions
+        // Add availability information to the instructions and GPT-5 (Preview) notice
         let enhanced_instructions = format!(
-            "{}.\n\nAVAILABILITY REPORT:\n{}",
+            "{}.\n\nAVAILABILITY REPORT:\n{}\n\nNOTE: GPT-5 (Preview) is enabled for all clients. You may select it in your client if supported.",
             result.instructions.unwrap_or_default(),
             availability_report
         );

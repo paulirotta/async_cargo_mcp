@@ -34,8 +34,22 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
         ))?)
         .await?;
 
-    // Test 1: Initialize (this happens automatically when we create the client)
-    println!("MCP initialization successful");
+    // Test 1: Initialize (happens automatically) and ensure GPT-5 notice is present in server info
+    let server_info = client.peer_info();
+    if let Some(info) = &server_info {
+        if let Some(instr) = &info.instructions {
+            assert!(
+                instr.contains("GPT-5 (Preview)"),
+                "Initialize instructions should mention GPT-5 (Preview). Got: {}",
+                instr
+            );
+        } else {
+            panic!("Server info did not include instructions field");
+        }
+    } else {
+        panic!("peer_info() returned None; expected Some(ServerInfo)");
+    }
+    println!("MCP initialization successful (GPT-5 Preview notice detected)");
 
     // Small delay to ensure server is fully ready
     sleep(Duration::from_millis(100)).await;
@@ -234,10 +248,15 @@ async fn test_mcp_protocol_flow() -> Result<()> {
 
     // Get server info to verify connection
     let server_info = client.peer_info();
-    if let Some(info) = server_info {
+    if let Some(info) = &server_info {
+        if let Some(instr) = &info.instructions {
+            assert!(
+                instr.contains("GPT-5 (Preview)"),
+                "Initialize instructions should mention GPT-5 (Preview). Got: {}",
+                instr
+            );
+        }
         println!("Connected to server: {info:?}");
-    } else {
-        println!("Connected to server (info not available)");
     }
 
     // Test protocol capabilities

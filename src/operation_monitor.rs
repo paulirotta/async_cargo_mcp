@@ -189,6 +189,38 @@ impl OperationMonitor {
         tracing::debug!("Registered operation {id}: {description}");
         id
     }
+
+    /// Register a new operation with an externally supplied ID.
+    /// This is used when the user-facing ID (e.g., in tool hints/progress tokens)
+    /// must match the monitor's ID so that `wait` can retrieve results by that ID.
+    pub async fn register_operation_with_id(
+        &self,
+        id: String,
+        command: String,
+        description: String,
+        timeout_duration: Option<Duration>,
+        working_directory: Option<String>,
+    ) -> String {
+        let mut operation = OperationInfo::new(
+            command,
+            description.clone(),
+            timeout_duration.or(Some(self.config.default_timeout)),
+            working_directory,
+        );
+        // Override the randomly generated UUID with the provided external ID
+        operation.id = id.clone();
+
+        debug!(
+            "Registering external operation: {} - {}",
+            id, operation.description
+        );
+
+        let mut operations = self.operations.write().await;
+        operations.insert(id.clone(), operation);
+
+        tracing::debug!("Registered external operation {id}: {description}");
+        id
+    }
     /// Start monitoring an operation
     pub async fn start_operation(&self, operation_id: &str) -> Result<(), String> {
         let mut operations = self.operations.write().await;

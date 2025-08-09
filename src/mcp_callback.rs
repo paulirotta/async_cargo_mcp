@@ -45,7 +45,7 @@ impl CallbackSender for McpCallbackSender {
                 );
                 ProgressNotificationParam {
                     progress_token: progress_token.clone(),
-                    progress: 0,
+                    progress: 0.0,
                     total: None,
                     message: Some(format!("{command}: {description}")),
                 }
@@ -57,13 +57,13 @@ impl CallbackSender for McpCallbackSender {
                 current_step: _,
             } => {
                 let progress = match percentage {
-                    Some(pct) => (pct * 100.0) as u32,
-                    None => 50, // Default progress if unknown
+                    Some(pct) => pct * 100.0,
+                    None => 50.0, // Default progress if unknown
                 };
                 ProgressNotificationParam {
                     progress_token: progress_token.clone(),
                     progress,
-                    total: Some(100),
+                    total: Some(100.0),
                     message: Some(message.clone()),
                 }
             }
@@ -75,8 +75,8 @@ impl CallbackSender for McpCallbackSender {
                 // For output updates, we'll increment progress slightly
                 ProgressNotificationParam {
                     progress_token: progress_token.clone(),
-                    progress: 75, // Arbitrary progress for output
-                    total: Some(100),
+                    progress: 75.0, // Arbitrary progress for output
+                    total: Some(100.0),
                     message: Some(if is_stderr {
                         format!("stderr: {line}")
                     } else {
@@ -92,8 +92,8 @@ impl CallbackSender for McpCallbackSender {
                 debug!("Completed operation {}: {}", operation_id, message);
                 ProgressNotificationParam {
                     progress_token: progress_token.clone(),
-                    progress: 100,
-                    total: Some(100),
+                    progress: 100.0,
+                    total: Some(100.0),
                     message: Some(message.clone()),
                 }
             }
@@ -105,8 +105,8 @@ impl CallbackSender for McpCallbackSender {
                 warn!("Failed operation {}: {}", operation_id, error);
                 ProgressNotificationParam {
                     progress_token: progress_token.clone(),
-                    progress: 100, // Mark as complete even on failure
-                    total: Some(100),
+                    progress: 100.0, // Mark as complete even on failure
+                    total: Some(100.0),
                     message: Some(format!("Failed: {error}")),
                 }
             }
@@ -118,8 +118,8 @@ impl CallbackSender for McpCallbackSender {
                 warn!("Cancelled operation {}: {}", operation_id, message);
                 ProgressNotificationParam {
                     progress_token: progress_token.clone(),
-                    progress: 100, // Mark as complete even when cancelled
-                    total: Some(100),
+                    progress: 100.0, // Mark as complete even when cancelled
+                    total: Some(100.0),
                     message: Some(format!("Cancelled: {message}")),
                 }
             }

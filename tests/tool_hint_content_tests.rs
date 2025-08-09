@@ -13,6 +13,7 @@ fn tool_hint_contains_required_phrases() {
         "running in the background",
         "DO NOT PROCEED",
         "You must wait for completion",
+        "Next step:",
         "mcp_async_cargo_m_wait",
         op_id,
         "async_cargo_mcp MCP tools",

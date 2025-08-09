@@ -157,6 +157,12 @@ mcp_async_cargo_m_wait({
     "timeout_secs": 300  // Optional, defaults to 300 seconds
 })
 
+// Wait for multiple specific operations
+mcp_async_cargo_m_wait({
+    "operation_ids": ["op_build", "op_test", "op_clippy"],
+    "timeout_secs": 600  // Optional
+})
+
 // Wait for all pending operations
 mcp_async_cargo_m_wait({
     "timeout_secs": 600  // Optional
@@ -176,9 +182,11 @@ Build operation op_123456789 started in background.
 
 To get actual results, use:
 • `mcp_async_cargo_m_wait` with operation_id='op_123456789' to wait for this specific operation
+• `mcp_async_cargo_m_wait` with operation_ids=['op_a','op_b'] to wait for several operations together
 • `mcp_async_cargo_m_wait` with no operation_id to wait for all pending operations
 
 **Always use async_cargo_mcp MCP tools** instead of terminal commands for cargo operations.
+While tools run, keep planning/writing code/tests. When you’re ready to use results, wait for the specific operation(s) you need next.
 You will receive progress notifications as the build proceeds, but you MUST wait for completion.
 ```
 

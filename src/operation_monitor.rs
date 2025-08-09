@@ -465,6 +465,12 @@ impl OperationMonitor {
 
     /// Start the cleanup task for removing old operations
     fn start_cleanup_task(&self) {
+        // If there's no Tokio runtime, skip starting the background task gracefully.
+        // This avoids panics in non-async contexts (e.g., certain unit tests).
+        if tokio::runtime::Handle::try_current().is_err() {
+            debug!("Tokio runtime not available; skipping operation cleanup task startup");
+            return;
+        }
         let operations = Arc::clone(&self.operations);
         let completion_history = Arc::clone(&self.completion_history);
         let config = self.config.clone();

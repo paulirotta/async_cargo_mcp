@@ -5,12 +5,9 @@
 //! 2. Tool hints contain the expected guidance for LLMs
 //! 3. The wait command is properly referenced in hints
 
-use async_cargo_mcp::{
-    cargo_tools::AsyncCargo,
-    operation_monitor::{MonitorConfig, OperationMonitor},
-};
+use async_cargo_mcp::cargo_tools::AsyncCargo;
 use rmcp::service::{RequestContext, RoleServer};
-use std::sync::Arc;
+// no additional imports needed
 
 /// Helper to create a mock request context for testing
 #[allow(dead_code)]
@@ -57,34 +54,20 @@ async fn test_all_async_commands_have_tool_hints() {
     // This would require setting up proper request contexts and verifying responses
 }
 
-/// Test the structure of tool hint messages
-#[tokio::test]
-async fn test_tool_hint_message_structure() {
-    // Create a mock AsyncCargo instance
-    let monitor = Arc::new(OperationMonitor::new(MonitorConfig::default()));
-    let _cargo = AsyncCargo::new(monitor);
+/// Test the structure and content of tool hint messages using the public preview API
+#[test]
+fn test_tool_hint_message_structure() {
+    // Use the public helper to generate a preview without needing to construct full context
+    let operation_id = "op_123456789";
+    let operation_type = "test";
 
-    // Test the generate_tool_hint method
-    let _operation_id = "op_123456789";
-    let _operation_type = "test";
+    let hint = AsyncCargo::tool_hint_preview(operation_id, operation_type);
 
-    // This would need to be made public or we'd need a different testing approach
-    // let hint = cargo.generate_tool_hint(operation_id, operation_type);
-
-    // For now, let's test the expected structure manually
-    let expected_hint_structure = vec![
-        "Tool Hint for LLMs",
-        "running in the background",
-        "mcp_async_cargo_m_wait",
-        "operation_id",
-        "async_cargo_mcp MCP tools",
-        "DO NOT PROCEED",
-    ];
-
-    println!("Expected tool hint structure should contain:");
-    for element in expected_hint_structure {
-        println!("  - {element}");
-    }
+    assert!(
+        verify_tool_hint_content(&hint, operation_id),
+        "Tool hint did not contain required guidance. Got:\n{}",
+        hint
+    );
 }
 
 /// Test that wait command is properly documented

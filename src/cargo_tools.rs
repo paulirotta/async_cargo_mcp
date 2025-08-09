@@ -576,16 +576,13 @@ impl AsyncCargo {
 
     /// Generate a tool hint message for LLMs when async operations are running
     fn generate_tool_hint(&self, operation_id: &str, operation_type: &str) -> String {
-        format!(
-            "\n\n*** CRITICAL Tool Hint for LLMs ***: Operation {operation_id} is running in the background.\n\
-            *** DO NOT assume the operation is complete based on this message alone! ***
-            *** You must wait for completion to get actual results (success/failure/output)! ***
-            To get actual results, use:\n\
-            • `mcp_async_cargo_m_wait` with operation_id='{operation_id}' to wait for this specific operation\n\
-            • `mcp_async_cargo_m_wait` with no operation_id to wait for all pending operations\n\n\
-            **Always use async_cargo_mcp MCP tools** instead of terminal commands for cargo operations.\n\
-            You will receive progress notifications as the {operation_type} proceeds, but you MUST wait for completion."
-        )
+        crate::tool_hints::preview(operation_id, operation_type)
+    }
+
+
+    /// Public helper to preview the standardized tool hint content.
+    pub fn tool_hint_preview(operation_id: &str, operation_type: &str) -> String {
+        crate::tool_hints::preview(operation_id, operation_type)
     }
 
     #[tool(

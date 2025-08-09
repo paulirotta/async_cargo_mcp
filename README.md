@@ -125,7 +125,7 @@ This project is licensed under the [Apache Licence](APACHE_LICENSE.txt) or [MIT 
 - **Comprehensive Tracking**: Monitor operation lifecycle from pending → running → completed/failed/cancelled/timed out
 - **Timeout Handling**: Configurable timeouts with automatic cancellation of long-running operations
 - **Operation Statistics**: Success/failure rates, average duration, detailed metrics
-- **Automatic Cleanup**: Background task removes old completed operations
+- **Automatic Cleanup**: During long sessions a background task removes old completed operations
 - **Cancellation Support**: Cancel running operations with proper cleanup
 
 ### Extensible Architecture
@@ -170,7 +170,7 @@ When async operations are started (with `enable_async_notifications: true`), the
 ```
 Build operation op_123456789 started in background.
 
-� **CRITICAL Tool Hint for LLMs**: Operation 'op_123456789' is running in the background.
+**CRITICAL Tool Hint for LLMs**: Operation 'op_123456789' is running in the background.
 **DO NOT assume the operation is complete based on this message alone!**
 **You must wait for completion to get actual results (success/failure/output)!**
 

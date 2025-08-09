@@ -3642,7 +3642,7 @@ impl ServerHandler for AsyncCargo {
                 .enable_tools()
                 .build(),
             server_info: Implementation::from_build_env(),
-            instructions: Some("Rust cargo operations with async support. For builds/tests >1s, use enable_async_notifications=true to multitask efficiently while operations run. Safer than terminal commands.".to_string()),
+            instructions: Some("Rust cargo operations with async support.\n\nGolden rules for LLM agents:\n1) Always use async_cargo_mcp MCP tools for ALL cargo operations. Do not run cargo in a terminal.\n2) For builds/tests >1s, set enable_async_notifications=true to multitask while work runs.\n3) After starting an async operation, you MUST call mcp_async_cargo_m_wait to retrieve results before making decisions.\n\nThese tools are safer than terminal commands and provide structured output, progress callbacks, and isolation.".to_string()),
         }
     }
 

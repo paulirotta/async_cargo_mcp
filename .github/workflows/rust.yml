@@ -161,6 +161,11 @@ jobs:
         run: |
           cargo build --locked
 
+      - name: Cargo Fmt (check)
+        run: |
+          rustup component add rustfmt || true
+          cargo fmt --all -- --check
+
       - name: Cargo Clippy
         run: cargo clippy --locked
 

@@ -97,9 +97,7 @@ mod comprehensive_tool_hints_tests {
             "✅", "❌", "🧪", "🚀", "🔍", "⚡", "🧹", "🔧", "📦", "⬆️", "📚", "💡",
         ];
 
-        println!(
-            "Unicode characters removed from LLM messages: {problematic_unicode:?}"
-        );
+        println!("Unicode characters removed from LLM messages: {problematic_unicode:?}");
 
         // These characters should no longer appear in:
         // - Tool hint messages
@@ -124,9 +122,7 @@ mod comprehensive_tool_hints_tests {
             "Missing actual success/failure information",
         ];
 
-        println!(
-            "Critical behaviors prevented by tool hints: {prevented_behaviors:?}"
-        );
+        println!("Critical behaviors prevented by tool hints: {prevented_behaviors:?}");
 
         // The tool hints are specifically designed to prevent these common mistakes
         // that LLMs make when handling async operations

@@ -6,14 +6,14 @@
 
 use anyhow::Result;
 use rmcp::{
+    ServiceExt,
     model::CallToolRequestParam,
     object,
-    ServiceExt,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
+use std::fs;
 use tempfile::TempDir;
 use tokio::process::Command;
-use std::fs;
 
 #[tokio::test]
 async fn test_async_build_then_wait_returns_full_output() -> Result<()> {
@@ -23,9 +23,11 @@ async fn test_async_build_then_wait_returns_full_output() -> Result<()> {
 
     // Start the MCP server via cargo run so the binary used is current
     let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(|cmd| {
-            cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
-        }))?)
+        .serve(TokioChildProcess::new(Command::new("cargo").configure(
+            |cmd| {
+                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
+            },
+        ))?)
         .await?;
 
     // Kick off async build with enable_async_notifications=true
@@ -59,10 +61,15 @@ async fn test_async_build_then_wait_returns_full_output() -> Result<()> {
     let wait_text = format!("{:?}", wait_result.content);
     // Expect our formatted result from wait() with the FULL OUTPUT marker
     assert!(wait_text.contains("OPERATION COMPLETED") || wait_text.contains("OPERATION FAILED"));
-    assert!(wait_text.contains("=== FULL"), "Wait output should contain full output marker: {wait_text}");
+    assert!(
+        wait_text.contains("=== FULL"),
+        "Wait output should contain full output marker: {wait_text}"
+    );
     // And at least some typical cargo build line
     assert!(
-        wait_text.contains("Compiling") || wait_text.contains("Finished") || wait_text.contains("Building"),
+        wait_text.contains("Compiling")
+            || wait_text.contains("Finished")
+            || wait_text.contains("Building"),
         "Expected cargo build lines in wait output: {wait_text}"
     );
 
@@ -82,13 +89,17 @@ fn extract_operation_id(s: &str) -> Option<String> {
                 break;
             }
         }
-        if id.starts_with("op_") { return Some(id); }
+        if id.starts_with("op_") {
+            return Some(id);
+        }
     }
     None
 }
 
 async fn create_test_project() -> Result<TempDir> {
-    let dir = tempfile::Builder::new().prefix("cargo_mcp_async_build_").tempdir()?;
+    let dir = tempfile::Builder::new()
+        .prefix("cargo_mcp_async_build_")
+        .tempdir()?;
     let path = dir.path();
 
     fs::write(

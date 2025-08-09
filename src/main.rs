@@ -6,7 +6,7 @@ use async_cargo_mcp::{
     operation_monitor::{MonitorConfig, OperationMonitor},
 };
 use clap::Parser;
-use rmcp::{transport::stdio, ServiceExt};
+use rmcp::{ServiceExt, transport::stdio};
 use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{self, EnvFilter};
@@ -46,9 +46,12 @@ async fn main() -> Result<()> {
     let monitor = Arc::new(OperationMonitor::new(monitor_config));
 
     // Create an instance of our cargo tool service
-    let service = AsyncCargo::new(monitor.clone()).serve(stdio()).await.inspect_err(|e| {
-        tracing::error!("serving error: {:?}", e);
-    })?;
+    let service = AsyncCargo::new(monitor.clone())
+        .serve(stdio())
+        .await
+        .inspect_err(|e| {
+            tracing::error!("serving error: {:?}", e);
+        })?;
 
     // Wait for the service to finish
     service.waiting().await?;

@@ -581,7 +581,6 @@ impl AsyncCargo {
         crate::tool_hints::preview(operation_id, operation_type)
     }
 
-
     /// Public helper to preview the standardized tool hint content.
     pub fn tool_hint_preview(operation_id: &str, operation_type: &str) -> String {
         crate::tool_hints::preview(operation_id, operation_type)
@@ -604,7 +603,9 @@ impl AsyncCargo {
                 // Treat empty list same as waiting for all
                 tokio::time::timeout(timeout_duration, self.monitor.wait_for_all_operations())
                     .await
-                    .map_err(|_| ErrorData::internal_error("Wait timed out for all operations", None))?
+                    .map_err(|_| {
+                        ErrorData::internal_error("Wait timed out for all operations", None)
+                    })?
             } else {
                 // Wait for each ID concurrently and collect using join handles
                 let monitor = self.monitor.clone();
@@ -659,7 +660,9 @@ impl AsyncCargo {
                     merged
                 })
                 .await
-                .map_err(|_| ErrorData::internal_error("Wait timed out for specified operations", None))?;
+                .map_err(|_| {
+                    ErrorData::internal_error("Wait timed out for specified operations", None)
+                })?;
                 Ok(combined)
             }
         } else if let Some(op_id) = req.operation_id {
@@ -704,7 +707,7 @@ impl AsyncCargo {
                             crate::operation_monitor::OperationState::Failed => {
                                 // Debug logging to see what result we actually have
                                 tracing::debug!("Failed operation '{}': result = {:?}", op_info.id, op_info.result);
-                                
+
                                 if let Some(Err(error_output)) = &op_info.result {
                                     // Return full error output for LLM consumption - this is the key fix!
                                     format!(
@@ -763,7 +766,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<BuildRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-    let build_id = self.generate_operation_id();
+        let build_id = self.generate_operation_id();
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -894,9 +897,10 @@ impl AsyncCargo {
 
         // Add feature selection
         if let Some(features) = &req.features
-            && !features.is_empty() {
-                cmd.arg("--features").arg(features.join(","));
-            }
+            && !features.is_empty()
+        {
+            cmd.arg("--features").arg(features.join(","));
+        }
 
         if req.all_features.unwrap_or(false) {
             cmd.arg("--all-features");
@@ -1065,9 +1069,10 @@ impl AsyncCargo {
 
         // Add feature selection
         if let Some(features) = &req.features
-            && !features.is_empty() {
-                cmd.arg("--features").arg(features.join(","));
-            }
+            && !features.is_empty()
+        {
+            cmd.arg("--features").arg(features.join(","));
+        }
 
         if req.all_features.unwrap_or(false) {
             cmd.arg("--all-features");
@@ -1113,14 +1118,15 @@ impl AsyncCargo {
 
         // Add binary arguments after -- separator
         if let Some(binary_args) = &req.binary_args
-            && !binary_args.is_empty() {
-                eprintln!("DEBUG: Adding binary args: {binary_args:?}");
-                cmd.arg("--");
-                for arg in binary_args {
-                    cmd.arg(arg);
-                    eprintln!("DEBUG: Added binary arg: {arg}");
-                }
+            && !binary_args.is_empty()
+        {
+            eprintln!("DEBUG: Adding binary args: {binary_args:?}");
+            cmd.arg("--");
+            for arg in binary_args {
+                cmd.arg(arg);
+                eprintln!("DEBUG: Added binary arg: {arg}");
             }
+        }
 
         // Set working directory
         cmd.current_dir(&req.working_directory);
@@ -1308,9 +1314,10 @@ impl AsyncCargo {
 
         // Add feature selection
         if let Some(features) = &req.features
-            && !features.is_empty() {
-                cmd.arg("--features").arg(features.join(","));
-            }
+            && !features.is_empty()
+        {
+            cmd.arg("--features").arg(features.join(","));
+        }
 
         if req.all_features.unwrap_or(false) {
             cmd.arg("--all-features");
@@ -1365,12 +1372,13 @@ impl AsyncCargo {
 
         // Add test arguments after -- separator
         if let Some(test_args) = &req.test_args
-            && !test_args.is_empty() {
-                cmd.arg("--");
-                for arg in test_args {
-                    cmd.arg(arg);
-                }
+            && !test_args.is_empty()
+        {
+            cmd.arg("--");
+            for arg in test_args {
+                cmd.arg(arg);
             }
+        }
 
         // Set working directory
         cmd.current_dir(&req.working_directory);
@@ -1526,7 +1534,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<DependencyRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let add_id = self.generate_operation_id();
-        
+
         // Always use synchronous execution for Cargo.toml modifications
         use tokio::process::Command;
 
@@ -1546,9 +1554,10 @@ impl AsyncCargo {
 
         // Add optional features
         if let Some(features) = &req.features
-            && !features.is_empty() {
-                cmd.arg("--features").arg(features.join(","));
-            }
+            && !features.is_empty()
+        {
+            cmd.arg("--features").arg(features.join(","));
+        }
 
         // Add optional flag
         if req.optional.unwrap_or(false) {
@@ -3255,9 +3264,10 @@ Output: {stdout}"
 
         // Add features if specified
         if let Some(features) = &req.features
-            && !features.is_empty() {
-                cmd.args(["--features", &features.join(",")]);
-            }
+            && !features.is_empty()
+        {
+            cmd.args(["--features", &features.join(",")]);
+        }
 
         // Add all-features flag if requested
         if req.all_features.unwrap_or(false) {
@@ -3439,9 +3449,10 @@ Output: {stdout}"
 
         // Add features if specified
         if let Some(features) = &req.features
-            && !features.is_empty() {
-                cmd.args(["--features", &features.join(",")]);
-            }
+            && !features.is_empty()
+        {
+            cmd.args(["--features", &features.join(",")]);
+        }
 
         // Add all-features flag if requested
         if req.all_features.unwrap_or(false) {
@@ -3584,10 +3595,11 @@ Output: {stdout}"
 
         // Add rustc-specific arguments after --
         if let Some(rustc_args) = &req.rustc_args
-            && !rustc_args.is_empty() {
-                cmd.arg("--");
-                cmd.args(rustc_args);
-            }
+            && !rustc_args.is_empty()
+        {
+            cmd.arg("--");
+            cmd.args(rustc_args);
+        }
 
         cmd.current_dir(&req.working_directory);
 
@@ -3643,9 +3655,10 @@ Output: {stdout}"
 
         // Add features if specified
         if let Some(features) = &req.features
-            && !features.is_empty() {
-                cmd.args(["--features", &features.join(",")]);
-            }
+            && !features.is_empty()
+        {
+            cmd.args(["--features", &features.join(",")]);
+        }
 
         // Add all-features flag if requested
         if req.all_features.unwrap_or(false) {
@@ -3904,9 +3917,10 @@ impl AsyncCargo {
 
         // Add optional features
         if let Some(features) = &req.features
-            && !features.is_empty() {
-                cmd.arg("--features").arg(features.join(","));
-            }
+            && !features.is_empty()
+        {
+            cmd.arg("--features").arg(features.join(","));
+        }
 
         // Add optional flag
         if req.optional.unwrap_or(false) {

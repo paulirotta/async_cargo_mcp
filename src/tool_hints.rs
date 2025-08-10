@@ -10,8 +10,10 @@ pub fn preview(operation_id: &str, operation_type: &str) -> String {
  - Continue your work (planning, coding, testing) while this runs\n\
  - When you need results, call: `mcp_async_cargo_m_wait` with operation_id='{operation_id}'\n\
  - For all pending operations: call `mcp_async_cargo_m_wait` without parameters\n\
+\n+Next step: When you are ready to consume results, call `mcp_async_cargo_m_wait` with operation_id='{operation_id}'.\n\n
+
 3. **IMPORTANT**:\n\
- - Always use async_cargo_mcp tools for ALL cargo operations\n\
+- Always use async_cargo_mcp MCP tools for ALL cargo operations\n\
  - Never run cargo directly in terminal\n\
  - Only wait for results when you're ready to use them\n\
  - You'll receive a notification with results when complete\n\n\

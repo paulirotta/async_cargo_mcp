@@ -3,23 +3,26 @@
 use async_cargo_mcp::tool_hints;
 
 #[test]
-fn tool_hint_contains_required_phrases() {
+fn tool_hint_preview_invariants() {
     let op_id = "op_123456789";
+    let operation_type = "test";
     // Use the pure preview API which requires no async runtime
-    let hint = tool_hints::preview(op_id, "test");
+    let hint = tool_hints::preview(op_id, operation_type);
 
-    let required = [
-        "CRITICAL Tool Hint for LLMs",
-        "running in the background",
-        "DO NOT PROCEED",
-        "You must wait for completion",
-        "Next step:",
+    // Invariants that should always hold, even if wording changes slightly
+    let invariant_substrings = [
+        "ASYNC CARGO OPERATION: ", // heading prefix
+        operation_type,
+        op_id, // includes operation id
+        "STATUS",
+        "NEXT STEPS",
+        "IMPORTANT",
         "mcp_async_cargo_m_wait",
-        op_id,
-        "async_cargo_mcp MCP tools",
+        "async_cargo_mcp", // tool family mention
+        "Never run cargo directly in terminal",
     ];
 
-    for needle in required {
+    for needle in invariant_substrings {
         assert!(
             hint.contains(needle),
             "expected hint to contain: {needle}\nfull hint:\n{hint}"

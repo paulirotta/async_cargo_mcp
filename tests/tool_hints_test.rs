@@ -5,7 +5,7 @@
 //! 2. Tool hints contain the expected guidance for LLMs
 //! 3. The wait command is properly referenced in hints
 
-use async_cargo_mcp::cargo_tools::AsyncCargo;
+use async_cargo_mcp::{cargo_tools::AsyncCargo, tool_hints};
 use rmcp::service::{RequestContext, RoleServer};
 // no additional imports needed
 
@@ -17,22 +17,7 @@ fn create_mock_context() -> RequestContext<RoleServer> {
     todo!("Mock context setup needed for full integration test")
 }
 
-/// Test that tool hints contain expected content
-#[allow(dead_code)]
-fn verify_tool_hint_content(response_text: &str, operation_id: &str) -> bool {
-    let expected_patterns = [
-        "Tool Hint for LLMs",
-        "running in the background",
-        "mcp_async_cargo_m_wait",
-        operation_id,
-        "async_cargo_mcp MCP tools",
-        "DO NOT PROCEED",
-    ];
-
-    expected_patterns
-        .iter()
-        .all(|pattern| response_text.contains(pattern))
-}
+// Helper removed: tests now rely on preview() content for maintainability
 
 /// Integration test to verify tool hints are present in async responses
 #[tokio::test]
@@ -54,19 +39,18 @@ async fn test_all_async_commands_have_tool_hints() {
     // This would require setting up proper request contexts and verifying responses
 }
 
-/// Test the structure and content of tool hint messages using the public preview API
+/// Test the preview() contract: AsyncCargo::tool_hint_preview delegates to tool_hints::preview
 #[test]
-fn test_tool_hint_message_structure() {
-    // Use the public helper to generate a preview without needing to construct full context
+fn test_tool_hint_preview_delegation() {
     let operation_id = "op_123456789";
     let operation_type = "test";
 
-    let hint = AsyncCargo::tool_hint_preview(operation_id, operation_type);
+    let via_async_cargo = AsyncCargo::tool_hint_preview(operation_id, operation_type);
+    let via_tool_hints = tool_hints::preview(operation_id, operation_type);
 
-    assert!(
-        verify_tool_hint_content(&hint, operation_id),
-        "Tool hint did not contain required guidance. Got:\n{}",
-        hint
+    assert_eq!(
+        via_async_cargo, via_tool_hints,
+        "tool_hint_preview should return the exact preview() output"
     );
 }
 

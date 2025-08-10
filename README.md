@@ -13,8 +13,6 @@
 **Model Context Protocol (MCP) cargo tool automating simultaneous AI thinking and Rust tool use
 
 Example: `Claude Sonnet 4`
-> ..
->
 > **Now let me run the full test suite to verify that all tests pass with my fixes:**
 >
 > ---
@@ -25,7 +23,46 @@ Example: `Claude Sonnet 4`
 > ```
 > agent-plan.md+3-3
 > ```
-> ..
+
+Example: `GPT-5`
+> 
+> **I'll run clippy fix, build, nextest, and fmt across the workspace to ensure the changes compile and pass checks.**
+>
+> ```
+> async_cargo_mcp (MCP Server)
+> async_cargo_mcp (MCP Server)
+> async_cargo_mcp (MCP Server)
+> async_cargo_mcp (MCP Server)
+> async_cargo_mcp (MCP Server)  
+> ⬇️ agent-plan.md <span style="color:green;">+4</span> <span style="color:red;">-5</span>
+
+Example job start from the point of view of the LLM running this MCP service:
+> **Input**
+> ```json
+> {
+>   "working_directory": "/Users/paul/github/nb_lifeline3/rust/ml_tools",
+>   "args": [
+>     "--fix",
+>     "--allow-dirty"
+>   ],
+>   "enable_async_notifications": true
+> }
+> ```
+> **Output**
+> ```
+> Clippy operation op_43831394 started in background.
+> 
+> *** CRITICAL Tool Hint for LLMs ***: Operation op_43831394 is running in the background.
+> *** DO NOT PROCEED assuming the operation is complete based on this message alone! ***
+> *** You must wait for completion to get actual results (success/failure/output)! ***
+> Next step: When you are ready to consume results, call `mcp_async_cargo_m_wait` with operation_id='op_43831394'.
+> To wait for all pending operations, call `mcp_async_cargo_m_wait` with no operation_id.
+> 
+> **Always use async_cargo_mcp MCP tools** for ALL cargo operations. **Do not run cargo in a terminal.**
+> While tools run, keep planning/writing code/tests. When you’re ready to use results, wait for the specific operation(s) you need next.
+> You will receive a notifications with results when the clippy linting finishes.
+> ```
+
 
 After installing `async_cargo_mcp`, you save development time by enabling your LLM to launch background Rust Cargo operations while continuing to think or update planning documents. LLMs can choose synchronous or asynchronous execution. For long-running tasks, asynchronous operations let the LLM proceed with other work while this tool builds and tests in the background. Callbacks are part of the MCP specification. The implementation uses [Anthropic's official `rmcp` Rust SDK](https://github.com/modelcontextprotocol/rust-sdk).
 
@@ -171,24 +208,7 @@ mcp_async_cargo_m_wait({
 
 #### Tool Hints for LLMs
 
-When async operations are started (with `enable_async_notifications: true`), the response includes critical tool hints:
-
-```
-Build operation op_123456789 started in background.
-
-**CRITICAL Tool Hint for LLMs**: Operation 'op_123456789' is running in the background.
-**DO NOT assume the operation is complete based on this message alone!**
-**You must wait for completion to get actual results (success/failure/output)!**
-
-To get actual results, use:
-• `mcp_async_cargo_m_wait` with operation_id='op_123456789' to wait for this specific operation
-• `mcp_async_cargo_m_wait` with operation_ids=['op_a','op_b'] to wait for several operations together
-• `mcp_async_cargo_m_wait` with no operation_id to wait for all pending operations
-
-**Always use async_cargo_mcp MCP tools** instead of terminal commands for cargo operations.
-While tools run, keep planning/writing code/tests. When you’re ready to use results, wait for the specific operation(s) you need next.
-You will receive progress notifications as the build proceeds, but you MUST wait for completion.
-```
+When async operations are started (with `enable_async_notifications: true`), the **initial response** includes critical tool hints and job ID to help you continue thinking while the MCP completes the operations before later sending by webhook the **completion message with job ID and result**.
 
 **Common LLM Mistake**: LLMs often assume operations are complete when they see "started in background" messages. This is incorrect! You must always wait for the actual results.
 

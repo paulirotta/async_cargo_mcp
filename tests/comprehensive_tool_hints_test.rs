@@ -5,6 +5,7 @@
 
 #[cfg(test)]
 mod comprehensive_tool_hints_tests {
+    use async_cargo_mcp::tool_hints;
 
     #[test]
     fn test_tool_hint_requirements() {
@@ -14,19 +15,26 @@ mod comprehensive_tool_hints_tests {
             "bench", "install", "upgrade", "audit", "fmt", "tree", "fetch", "rustc",
         ];
 
-        let required_phrases = vec![
-            "*** CRITICAL Tool Hint for LLMs ***",
-            "*** DO NOT assume the operation is complete",
-            "*** You must wait for completion to get actual results",
-            "`mcp_async_cargo_m_wait`",
-            "**Always use async_cargo_mcp MCP tools**",
+        let op_id = "op_preview_demo";
+        let operation_type = "build";
+        let preview = tool_hints::preview(op_id, operation_type);
+
+        let required_sections = vec![
+            "ASYNC CARGO OPERATION:",
+            operation_type,
+            op_id,
+            "STATUS",
+            "NEXT STEPS",
+            "IMPORTANT",
+            "mcp_async_cargo_m_wait",
+            "async_cargo_mcp",
         ];
 
         println!(
-            "Testing tool hint requirements for {} async commands",
+            "Testing tool hint requirements across {} async commands",
             async_commands.len()
         );
-        println!("Required phrases in tool hints: {required_phrases:?}");
+        println!("Preview excerpt: {}", &preview[..preview.len().min(140)]);
 
         // This test serves as documentation that:
         // 1. All async operations should include tool hints when enable_async_notifications=true
@@ -38,10 +46,12 @@ mod comprehensive_tool_hints_tests {
             async_commands.len() > 15,
             "Should have comprehensive command coverage"
         );
-        assert!(
-            required_phrases.len() >= 5,
-            "Should have comprehensive warning phrases"
-        );
+        for needle in required_sections {
+            assert!(
+                preview.contains(needle),
+                "Preview missing section: {needle}\n{preview}"
+            );
+        }
     }
 
     #[test]

@@ -1,6 +1,7 @@
 //! Verify async check returns full output via wait and progress notifications
 
 use anyhow::Result;
+use async_cargo_mcp::tool_hints;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
@@ -39,10 +40,17 @@ async fn test_async_check_then_wait_returns_full_output() -> Result<()> {
 
     let first_text = format!("{:?}", check_result.content);
     assert!(first_text.contains("started in background"));
-    assert!(first_text.contains("Tool Hint"));
 
     let op_id = extract_operation_id(&first_text).expect("operation id should be present");
     assert!(op_id.starts_with("op_"));
+
+    // Verify the standardized preview() hint is included (accept raw or debug-escaped forms)
+    let expected_hint = tool_hints::preview(&op_id, "check");
+    let expected_hint_debug = expected_hint.replace('\n', "\\n");
+    assert!(
+        first_text.contains(&expected_hint_debug) || first_text.contains(&expected_hint),
+        "Initial async response must include preview() content.\nExpected preview (raw or debug-escaped):\n{expected_hint}\n--- Escaped ---\n{expected_hint_debug}\nGot:\n{first_text}"
+    );
 
     // Wait for completion
     let wait_result = client

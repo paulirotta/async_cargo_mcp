@@ -5,6 +5,7 @@
 //! the full captured output from cargo build.
 
 use anyhow::Result;
+use async_cargo_mcp::tool_hints;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
@@ -44,11 +45,19 @@ async fn test_async_build_then_wait_returns_full_output() -> Result<()> {
     let first_text = format!("{:?}", build_result.content);
     // Should include a hint and an operation id string we can extract
     assert!(first_text.contains("started in background"));
-    assert!(first_text.contains("Tool Hint"));
 
     // Extract operation id using the known prefix `op_`
     let op_id = extract_operation_id(&first_text).expect("operation id should be present");
     assert!(op_id.starts_with("op_"));
+
+    // The initial async response should include the standardized preview() hint.
+    // first_text is built via Debug formatting (escapes newlines), so accept either raw or escaped forms.
+    let expected_hint = tool_hints::preview(&op_id, "build");
+    let expected_hint_debug = expected_hint.replace('\n', "\\n");
+    assert!(
+        first_text.contains(&expected_hint_debug) || first_text.contains(&expected_hint),
+        "Initial async response must include preview() content.\nExpected preview (raw or debug-escaped):\n{expected_hint}\n--- Escaped ---\n{expected_hint_debug}\nGot:\n{first_text}"
+    );
 
     // Now wait for the operation to complete and verify the output content
     let wait_result = client

@@ -2,6 +2,7 @@
 //! Mirrors the async build test but for `clean` to ensure parity across commands.
 
 use anyhow::Result;
+use async_cargo_mcp::tool_hints;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
@@ -40,10 +41,17 @@ async fn test_async_clean_then_wait_returns_status() -> Result<()> {
 
     let first_text = format!("{:?}", clean_result.content);
     assert!(first_text.contains("started in background"));
-    assert!(first_text.contains("Tool Hint"));
 
     // Extract operation id and wait
     let op_id = extract_operation_id(&first_text).expect("operation id should be present");
+
+    // Verify the standardized preview() hint is included (accept raw or debug-escaped forms)
+    let expected_hint = tool_hints::preview(&op_id, "clean");
+    let expected_hint_debug = expected_hint.replace('\n', "\\n");
+    assert!(
+        first_text.contains(&expected_hint_debug) || first_text.contains(&expected_hint),
+        "Initial async response must include preview() content.\nExpected preview (raw or debug-escaped):\n{expected_hint}\n--- Escaped ---\n{expected_hint_debug}\nGot:\n{first_text}"
+    );
     let wait_result = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),

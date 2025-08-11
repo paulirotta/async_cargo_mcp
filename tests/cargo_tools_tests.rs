@@ -168,3 +168,24 @@ mod tests {
 
     Ok(temp_dir)
 }
+
+/// Test cargo doc in a temporary project
+#[tokio::test]
+async fn test_cargo_doc_generates() {
+    let temp_project = create_test_cargo_project()
+        .await
+        .expect("Failed to create test project");
+    let project_path = temp_project.path().to_str().unwrap();
+
+    let result = test_cargo_tools::test_doc_command_with_content(project_path).await;
+
+    match result {
+        Ok(output) => {
+            println!("Doc test output: {output}");
+            assert!(output.contains("Documentation generated at:"));
+        }
+        Err(e) => {
+            panic!("Doc test failed: {e}");
+        }
+    }
+}

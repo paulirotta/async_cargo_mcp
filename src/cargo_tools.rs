@@ -1829,6 +1829,8 @@ impl AsyncCargo {
         }
     }
 
+    // (HTML content parsing removed; doc tool reports path only)
+
     /// Internal implementation of doc generation logic
     async fn doc_implementation(req: &DocRequest) -> Result<String, String> {
         use tokio::process::Command;
@@ -1879,12 +1881,7 @@ impl AsyncCargo {
             );
 
             Ok(format!(
-                "📚 Documentation generation completed successfully{working_dir_msg}.
-Documentation generated at: {doc_path}
-The generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.
-💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.
-
-Output: {stdout}"
+                "📚 Documentation generation completed successfully{working_dir_msg}.\nDocumentation generated at: {doc_path}\nThe generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.\n💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.\n\nOutput: {stdout}"
             ))
         } else {
             Err(format!(

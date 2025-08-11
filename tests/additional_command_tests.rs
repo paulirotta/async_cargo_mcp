@@ -5,20 +5,23 @@
 
 use anyhow::Result;
 use async_cargo_mcp::{cargo_tools::AsyncCargo, test_cargo_tools};
+mod common;
+use common::test_project::{
+    create_basic_project, create_project_with_formatting_issues, create_project_with_warning,
+};
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
-use std::{env, fs};
-use tempfile::TempDir;
+use std::env;
 use tokio::process::Command;
 
 /// Test cargo clean command
 #[tokio::test]
 async fn test_cargo_clean_command() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -46,7 +49,7 @@ async fn test_cargo_clean_command() {
 /// Test cargo fix command with --allow-dirty flag
 #[tokio::test]
 async fn test_cargo_fix_command() {
-    let temp_project = create_test_cargo_project_with_warning()
+    let temp_project = create_project_with_warning()
         .await
         .expect("Failed to create test project with warning");
     let project_path = temp_project.path().to_str().unwrap();
@@ -85,7 +88,7 @@ async fn test_cargo_search_command() {
 /// Test cargo bench command (expect failure since no benchmarks defined)
 #[tokio::test]
 async fn test_cargo_bench_command() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -125,7 +128,7 @@ async fn test_cargo_install_error_handling() {
 /// Test cargo audit command availability and basic functionality
 #[tokio::test]
 async fn test_cargo_audit_command() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -147,7 +150,7 @@ async fn test_cargo_audit_command() {
 /// Test cargo audit command with async notifications
 #[tokio::test]
 async fn test_cargo_audit_with_async() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -173,7 +176,7 @@ async fn test_cargo_audit_with_async() {
 /// Test cargo fmt command
 #[tokio::test]
 async fn test_cargo_fmt_command() {
-    let temp_project = create_test_cargo_project_with_formatting_issues()
+    let temp_project = create_project_with_formatting_issues()
         .await
         .expect("Failed to create test project with formatting issues");
     let project_path = temp_project.path().to_str().unwrap();
@@ -194,7 +197,7 @@ async fn test_cargo_fmt_command() {
 /// Test cargo fmt command with check flag
 #[tokio::test]
 async fn test_cargo_fmt_check() {
-    let temp_project = create_test_cargo_project_with_formatting_issues()
+    let temp_project = create_project_with_formatting_issues()
         .await
         .expect("Failed to create test project with formatting issues");
     let project_path = temp_project.path().to_str().unwrap();
@@ -215,7 +218,7 @@ async fn test_cargo_fmt_check() {
 /// Test cargo tree command
 #[tokio::test]
 async fn test_cargo_tree_command() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -252,7 +255,7 @@ async fn test_cargo_version_command() {
 /// Test cargo fetch command
 #[tokio::test]
 async fn test_cargo_fetch_command() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -273,7 +276,7 @@ async fn test_cargo_fetch_command() {
 /// Test cargo rustc command
 #[tokio::test]
 async fn test_cargo_rustc_command() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -294,7 +297,7 @@ async fn test_cargo_rustc_command() {
 /// Test cargo metadata command
 #[tokio::test]
 async fn test_cargo_metadata_command() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -315,7 +318,7 @@ async fn test_cargo_metadata_command() {
 /// Test cargo audit with various format options
 #[tokio::test]
 async fn test_cargo_audit_formats() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -337,7 +340,7 @@ async fn test_cargo_audit_formats() {
 /// Test nextest availability checking
 #[tokio::test]
 async fn test_nextest_availability() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -410,7 +413,7 @@ async fn test_invalid_working_directory() {
 /// Test async notifications flag
 #[tokio::test]
 async fn test_async_notifications_flag() {
-    let temp_project = create_test_cargo_project()
+    let temp_project = create_basic_project()
         .await
         .expect("Failed to create test project");
     let project_path = temp_project.path().to_str().unwrap();
@@ -645,93 +648,10 @@ async fn test_build_command_with_async(project_path: &str) -> Result<String> {
 }
 
 /// Create a test project with a warning to test cargo fix
-async fn create_test_cargo_project_with_warning() -> Result<TempDir> {
-    let uuid = uuid::Uuid::new_v4();
-    let temp_dir = tempfile::Builder::new()
-        .prefix(&format!("cargo_mcp_fix_test_{uuid}_"))
-        .tempdir()?;
-    let project_path = temp_dir.path();
-
-    // Create Cargo.toml
-    let cargo_toml_content = r#"[package]
-name = "test_project_with_warning"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#;
-
-    fs::write(project_path.join("Cargo.toml"), cargo_toml_content)?;
-
-    // Create src directory
-    fs::create_dir(project_path.join("src"))?;
-
-    // Create main.rs with code that generates warnings
-    let main_rs_content = r#"fn main() {
-    let unused_variable = 42; // This will generate a warning
-    println!("Hello, test world!");
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
-"#;
-
-    fs::write(project_path.join("src").join("main.rs"), main_rs_content)?;
-
-    println!("Created test project with warnings at: {project_path:?}");
-
-    Ok(temp_dir)
-}
+// moved to tests/common/test_project.rs
 
 /// Create a basic test project (reused from cargo_tools_tests.rs)
-async fn create_test_cargo_project() -> Result<TempDir> {
-    let uuid = uuid::Uuid::new_v4();
-    let temp_dir = tempfile::Builder::new()
-        .prefix(&format!("cargo_mcp_test_{uuid}_"))
-        .tempdir()?;
-    let project_path = temp_dir.path();
-
-    // Create Cargo.toml
-    let cargo_toml_content = r#"[package]
-name = "test_project"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#;
-
-    fs::write(project_path.join("Cargo.toml"), cargo_toml_content)?;
-
-    // Create src directory
-    fs::create_dir(project_path.join("src"))?;
-
-    // Create main.rs with a simple hello world
-    let main_rs_content = r#"fn main() {
-    println!("Hello, test world!");
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
-"#;
-
-    fs::write(project_path.join("src").join("main.rs"), main_rs_content)?;
-
-    println!("Created test project at: {project_path:?}");
-
-    Ok(temp_dir)
-}
+// moved to tests/common/test_project.rs
 
 async fn test_audit_command(project_path: &str) -> Result<String> {
     let original_dir = env::current_dir()?;
@@ -994,48 +914,4 @@ async fn test_metadata_command(project_path: &str) -> Result<String> {
     Ok(format!("{result:?}"))
 }
 
-/// Create a test project with formatting issues for testing cargo fmt
-async fn create_test_cargo_project_with_formatting_issues() -> Result<TempDir> {
-    let uuid = uuid::Uuid::new_v4();
-    let temp_dir = tempfile::Builder::new()
-        .prefix(&format!("cargo_mcp_fmt_test_{uuid}_"))
-        .tempdir()?;
-    let project_path = temp_dir.path();
-
-    // Create Cargo.toml
-    let cargo_toml_content = r#"[package]
-name = "test_project_with_formatting"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#;
-
-    fs::write(project_path.join("Cargo.toml"), cargo_toml_content)?;
-
-    // Create src directory
-    fs::create_dir(project_path.join("src"))?;
-
-    // Create main.rs with poor formatting
-    let main_rs_content = r#"fn main(){
-let x=42;
-    let y =   43  ;
-        println!("Hello, world! {} {}",x,y);
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-fn it_works(  ) {
-        let result = 2+ 2;
-            assert_eq!( result,4 );
-    }
-}
-"#;
-
-    fs::write(project_path.join("src").join("main.rs"), main_rs_content)?;
-
-    println!("Created test project with formatting issues at: {project_path:?}");
-
-    Ok(temp_dir)
-}
+// moved to tests/common/test_project.rs

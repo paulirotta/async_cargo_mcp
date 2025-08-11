@@ -5,21 +5,21 @@
 //! the full captured output from cargo build.
 
 use anyhow::Result;
+mod common;
 use async_cargo_mcp::tool_hints;
+use common::test_project::create_basic_project;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
-use std::fs;
-use tempfile::TempDir;
 use tokio::process::Command;
 
 #[tokio::test]
 async fn test_async_build_then_wait_returns_full_output() -> Result<()> {
     // Create a minimal cargo project in a temp dir
-    let temp = create_test_project().await?;
+    let temp = create_basic_project().await?;
     let project_path = temp.path().to_str().unwrap().to_string();
 
     // Start the MCP server via cargo run so the binary used is current
@@ -105,29 +105,4 @@ fn extract_operation_id(s: &str) -> Option<String> {
     None
 }
 
-async fn create_test_project() -> Result<TempDir> {
-    let dir = tempfile::Builder::new()
-        .prefix("cargo_mcp_async_build_")
-        .tempdir()?;
-    let path = dir.path();
-
-    fs::write(
-        path.join("Cargo.toml"),
-        r#"[package]
-name = "test_project"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#,
-    )?;
-
-    fs::create_dir(path.join("src"))?;
-    fs::write(
-        path.join("src/main.rs"),
-        r#"fn main() { println!("hello"); }
-"#,
-    )?;
-
-    Ok(dir)
-}
+// moved to tests/common/test_project.rs

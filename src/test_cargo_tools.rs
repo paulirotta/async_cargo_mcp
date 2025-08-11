@@ -213,3 +213,32 @@ pub async fn test_doc_command(project_path: &str) -> Result<String> {
 
     Ok(format!("{result:?}"))
 }
+
+/// Test the doc command with content extraction in a specific directory
+pub async fn test_doc_command_with_content(project_path: &str) -> Result<String> {
+    let original_dir = env::current_dir()?;
+
+    let client = ()
+        .serve(TokioChildProcess::new(Command::new("cargo").configure(
+            |cmd| {
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .current_dir(&original_dir);
+            },
+        ))?)
+        .await?;
+
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "doc".into(),
+            arguments: Some(object!({
+                "working_directory": project_path
+            })),
+        })
+        .await?;
+
+    client.cancel().await?;
+
+    Ok(format!("{result:?}"))
+}

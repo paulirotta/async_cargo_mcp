@@ -4,20 +4,21 @@
 
 use anyhow::Result;
 use async_cargo_mcp::tool_hints;
+mod common;
+use common::test_project::create_basic_project;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
-use std::fs;
-use tempfile::TempDir;
 use tokio::process::Command;
+// imports adjusted after moving project creation to common helpers
 
 #[tokio::test]
 async fn test_async_nextest_then_wait_returns_full_output() -> Result<()> {
     // Create a minimal cargo project with a single test
-    let temp = create_test_project_with_test().await?;
+    let temp = create_basic_project().await?;
     let project_path = temp.path().to_str().unwrap().to_string();
 
     // Start the MCP server via cargo run so the binary used is current
@@ -96,35 +97,4 @@ fn extract_operation_id(s: &str) -> Option<String> {
     None
 }
 
-async fn create_test_project_with_test() -> Result<TempDir> {
-    let dir = tempfile::Builder::new()
-        .prefix("cargo_mcp_async_nextest_")
-        .tempdir()?;
-    let path = dir.path();
-
-    fs::write(
-        path.join("Cargo.toml"),
-        r#"[package]
-name = "test_project_nextest"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#,
-    )?;
-
-    fs::create_dir(path.join("src"))?;
-    fs::write(
-        path.join("src/main.rs"),
-        r#"fn main() { println!("hello"); }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() { assert_eq!(2+2, 4); }
-}
-"#,
-    )?;
-
-    Ok(dir)
-}
+// moved to tests/common/test_project.rs

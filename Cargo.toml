@@ -25,7 +25,7 @@ anyhow = "1.0.98"
 async-trait = "0.1.88" # Remove this once Stable Rust supports Box<dyn TraitWithAsyncMethods>
 axum = "0.8.4"
 chrono = "0.4.41"
-clap = { version = "4.5.42", features = ["derive"] }
+clap = { version = "4.5.43", features = ["derive"] }
 rmcp = { version = "0.5.0", features = ["server", "client", "macros", "transport-io", "transport-child-process"] }
 schemars = "1.0.4"
 serde = { version = "1.0", features = ["derive"] }
@@ -40,4 +40,5 @@ tracing-subscriber = { version = "0.3.19", features = [
     "std",
     "fmt",
 ] }
-uuid = { version = "1.17.0", features = ["v4", "serde"] }
+uuid = { version = "1.18.0", features = ["v4", "serde"] }
+ 

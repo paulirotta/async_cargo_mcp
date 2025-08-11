@@ -656,7 +656,7 @@ async fn create_test_cargo_project_with_warning() -> Result<TempDir> {
     let cargo_toml_content = r#"[package]
 name = "test_project_with_warning"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 "#;
@@ -701,7 +701,7 @@ async fn create_test_cargo_project() -> Result<TempDir> {
     let cargo_toml_content = r#"[package]
 name = "test_project"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 "#;
@@ -1006,7 +1006,7 @@ async fn create_test_cargo_project_with_formatting_issues() -> Result<TempDir> {
     let cargo_toml_content = r#"[package]
 name = "test_project_with_formatting"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 "#;

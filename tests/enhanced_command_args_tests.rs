@@ -23,7 +23,7 @@ async fn create_test_project_with_binary_args() -> Result<TempDir> {
 [package]
 name = "test_project"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [[bin]]
 name = "test_binary"
@@ -70,7 +70,7 @@ async fn create_test_project_with_integration_tests() -> Result<TempDir> {
 [package]
 name = "test_project"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 "#;
 
     let main_rs = r#"

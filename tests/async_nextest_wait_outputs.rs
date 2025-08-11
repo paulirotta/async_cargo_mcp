@@ -107,7 +107,7 @@ async fn create_test_project_with_test() -> Result<TempDir> {
         r#"[package]
 name = "test_project_nextest"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 "#,

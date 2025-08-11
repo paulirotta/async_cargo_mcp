@@ -533,7 +533,7 @@ async fn create_minimal_project() -> Result<TempDir> {
     let cargo_toml_content = r#"[package]
 name = "minimal_test"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 "#;
 
     fs::write(project_path.join("Cargo.toml"), cargo_toml_content)?;

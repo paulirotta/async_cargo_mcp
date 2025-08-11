@@ -7,14 +7,15 @@
 //! this test is designed to be more robust and provide comprehensive protocol validation.
 
 use anyhow::Result;
+mod common;
+use common::test_project::create_basic_project;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use serde_json::json;
-use std::fs;
-use tempfile::TempDir;
+// imports adjusted after moving project creation to common helpers
 use tokio::process::Command;
 use tokio::time::{Duration, sleep};
 
@@ -22,7 +23,7 @@ use tokio::time::{Duration, sleep};
 #[tokio::test]
 async fn test_mcp_protocol_comprehensive() -> Result<()> {
     // Create a temporary project for testing add/remove operations
-    let temp_project = create_test_cargo_project().await?;
+    let temp_project = create_basic_project().await?;
     let temp_project_path = temp_project.path().to_str().unwrap();
 
     // Create client connection to our MCP server
@@ -266,7 +267,7 @@ async fn test_mcp_protocol_flow() -> Result<()> {
 
     // Test a simple tool call to verify the protocol works end-to-end
     // Create a temporary project for this test
-    let temp_project = create_test_cargo_project().await?;
+    let temp_project = create_basic_project().await?;
     let temp_project_path = temp_project.path().to_str().unwrap();
 
     let result = client
@@ -291,46 +292,4 @@ async fn test_mcp_protocol_flow() -> Result<()> {
     Ok(())
 }
 
-/// Helper function to create a temporary Cargo project for testing
-/// This ensures tests operate on temporary directories, not the actual project
-async fn create_test_cargo_project() -> Result<TempDir> {
-    let temp_dir = tempfile::Builder::new()
-        .prefix("cargo_mcp_test")
-        .tempdir()?;
-    let project_path = temp_dir.path();
-
-    // Create Cargo.toml
-    let cargo_toml_content = r#"[package]
-name = "test_project"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-"#;
-
-    fs::write(project_path.join("Cargo.toml"), cargo_toml_content)?;
-
-    // Create src directory
-    fs::create_dir(project_path.join("src"))?;
-
-    // Create main.rs with a simple hello world
-    let main_rs_content = r#"fn main() {
-    println!("Hello, test world!");
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
-"#;
-
-    fs::write(project_path.join("src").join("main.rs"), main_rs_content)?;
-
-    println!("Created test project at: {project_path:?}");
-
-    Ok(temp_dir)
-}
+// moved to tests/common/test_project.rs

@@ -235,8 +235,6 @@ This helps prevent LLMs from making premature assumptions about operation comple
 ### Upcoming Features
 - Enhanced documentation and usage examples
 - Integration and testing with popular IDEs and LLM tools (collaborateion and PRs welcome, open an issue)
-- RAG documentation to give current API and upstream library API support to the LLM
-- Monitor filesystem for LLM changes and preemptively update so future commands return faster
 
 ## Installation
 

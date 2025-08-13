@@ -1,6 +1,6 @@
 [package]
 name = "async_cargo_mcp"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 description = "The package provides a BLAS source of choice."
 authors = ["Paul Houghton <paul.irotta@example.com>"]

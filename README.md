@@ -302,16 +302,6 @@ The result is stored in to `mcp.json` as:
 
 Restart VSCode to activate the MCP server
 
-## Architecture
-
-### Operation States
-
-Each task is assigned an id used to report state changes back to the LLM:
-
-```
-Pending → Running → Completed | Failed | Cancelled | TimedOut
-```
-
 ## Testing
 
 Integration tests on CI include both direct Json and a bundled rust MCP test client

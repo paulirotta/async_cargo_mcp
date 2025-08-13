@@ -189,28 +189,51 @@ This project is licensed under the [Apache Licence](APACHE_LICENSE.txt) or [MIT 
 - **Operation Tracking**: Query status and wait for specific operations or all pending operations
 - **Background Processing**: LLMs can multitask while cargo operations run in background
 
-#### Wait Command Usage
+## Advanced Setup for VSCode Development of async_cargo_mcp
 
-The `wait` command helps LLMs handle long-running asynchronous operations properly:
+You can have the `async_cargo_mcp` server update as you change the source code.
 
-```javascript
-// Wait for a specific operation
-mcp_async_cargo_m_wait({
-    "operation_id": "op_123456789",
-    "timeout_secs": 300  // Optional, defaults to 300 seconds
-})
-
-// Wait for multiple specific operations
-mcp_async_cargo_m_wait({
-    "operation_ids": ["op_build", "op_test", "op_clippy"],
-    "timeout_secs": 600  // Optional
-})
-
-// Wait for all pending operations
-mcp_async_cargo_m_wait({
-    "timeout_secs": 600  // Optional
-})
+```bash
+cargo install cargo-watch --force
 ```
+
+In VSCode settings:
+```json
+"chat.mcp.enabled": true
+```
+
+Then in this repo create `.vscode/mcp.json`
+
+```json
+{
+    "servers": {
+        "async_cargo_mcp": {
+            "type": "stdio",
+            // Edit this to specify the directory of this repo
+            "cwd": "/YOUR_PATH_TO_REPO_HERE/async_cargo_mcp",
+            "command": "cargo",
+            "args": [
+                "run",
+                "--release",
+                "--bin",
+                "async_cargo_mcp"
+            ],
+            "dev": {
+                "command": "cargo",
+                "args": [
+                    "watch",
+                    "-x",
+                    "run --release --bin async_cargo_mcp"
+                ],
+                "watch": [
+                    "src/**/*.rs",
+                    "Cargo.*"
+                ]
+            }
+        }
+    },
+    "inputs": []
+}```
 
 #### Tool Hints for LLMs
 

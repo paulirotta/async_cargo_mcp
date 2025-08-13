@@ -827,7 +827,9 @@ impl AsyncCargo {
                     },
                 };
 
-                let _ = callback.send_progress(completion_update).await;
+                if let Err(e) = callback.send_progress(completion_update).await {
+                    tracing::error!("Failed to send build completion progress update: {e:?}");
+                }
             });
 
             // Return immediate response to LLM - this is the "first stage"

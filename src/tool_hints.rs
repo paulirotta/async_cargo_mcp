@@ -3,6 +3,7 @@
 /// Public helper to preview the standardized tool hint content.
 /// This is a pure function (no async runtime needed) so tests can call it in #[test] contexts.
 pub fn preview(operation_id: &str, operation_type: &str) -> String {
+    // Updated to encourage planning and batching before waiting
     format!(
         "\n\n### ASYNC CARGO OPERATION: {operation_type} (ID: {operation_id})\n\
 1. **STATUS**: Operation is running in background - DO NOT assume it's complete\n\
@@ -10,10 +11,15 @@ pub fn preview(operation_id: &str, operation_type: &str) -> String {
  - Continue your work (planning, coding, testing) while this runs\n\
  - When you need results, call: `mcp_async_cargo_m_wait` with operation_id='{operation_id}'\n\
  - For all pending operations: call `mcp_async_cargo_m_wait` without parameters\n\
-\n+Next step: When you are ready to consume results, call `mcp_async_cargo_m_wait` with operation_id='{operation_id}'.\n\n
-
+ - **Before you wait**: briefly decide what you'll do next and tell the user.\n\
+ - **Consider outcomes**: if you expect success or failure, set expectations and outline follow-ups.\n\
+ - **Batch actions**: send any other needed tool calls first, then wait.\n\
+\n\
+**Only call `wait` after you've queued your needed tools and shared your immediate plan.**\n\
+\n\
++Next step: When you are ready to consume results, call `mcp_async_cargo_m_wait` with operation_id='{operation_id}'.\n\n\
 3. **IMPORTANT**:\n\
-- Always use async_cargo_mcp MCP tools for ALL cargo operations\n\
+ - Always use async_cargo_mcp MCP tools for ALL cargo operations\n\
  - Never run cargo directly in terminal\n\
  - Only wait for results when you're ready to use them\n\
  - You'll receive a notification with results when complete\n\n\

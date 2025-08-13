@@ -3,10 +3,11 @@
 debug
 target
 
+# Local VS Code settings
+.vscode/
+
 # AI planning files
-agent-plan.md 
-agent-plan-next.md
-agent-plan-previous.md
+agent-plan.md
 
 # VSCode instruction files
 .github/*-instructions.md

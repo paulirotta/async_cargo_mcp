@@ -197,8 +197,6 @@ pub struct CheckRequest {
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct UpdateRequest {
     pub working_directory: String,
-    /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -283,8 +281,6 @@ pub struct UpgradeRequest {
     pub exclude: Option<Vec<String>>,
     /// Additional arguments to pass to upgrade
     pub args: Option<Vec<String>>,
-    /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -330,16 +326,12 @@ pub struct TreeRequest {
     pub format: Option<String>,
     /// Additional arguments to pass to tree
     pub args: Option<Vec<String>>,
-    /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct VersionRequest {
     /// Enable verbose output showing more version details
     pub verbose: Option<bool>,
-    /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -385,8 +377,6 @@ pub struct MetadataRequest {
     pub no_default_features: Option<bool>,
     /// Additional arguments to pass to metadata
     pub args: Option<Vec<String>>,
-    /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -1736,86 +1726,16 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO UPDATE: Safer than terminal cargo. Use enable_async_notifications=true for large projects to multitask. Shows version changes. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO UPDATE: Safer than terminal cargo. Synchronous operation for dependency updates. Updates dependencies to latest compatible versions. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn update(
         &self,
         Parameters(req): Parameters<UpdateRequest>,
-        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let update_id = self.generate_operation_id();
-
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
-            // TRUE 2-STAGE ASYNC PATTERN:
-            // 1. Send immediate response that operation has started
-            // 2. Spawn background task to do actual work and send notifications
-
-            let peer = context.peer.clone();
-            let req_clone = req.clone();
-            let update_id_clone = update_id.clone();
-            let monitor = self.monitor.clone();
-
-            // Register operation before spawn
-            self.register_async_operation(
-                &update_id,
-                "cargo update",
-                "Updating dependencies in background",
-                Some(req.working_directory.clone()),
-            )
-            .await;
-
-            // Spawn background task for actual update work
-            tokio::spawn(async move {
-                // Create MCP callback sender to notify the LLM client
-                let callback = mcp_callback(peer, update_id_clone.clone());
-
-                // Send started notification immediately
-                let _ = callback
-                    .send_progress(ProgressUpdate::Started {
-                        operation_id: update_id_clone.clone(),
-                        command: "cargo update".to_string(),
-                        description: "Updating dependencies in background".to_string(),
-                    })
-                    .await;
-
-                // Do the actual update work
-                let started_at = Instant::now();
-                let result = Self::update_implementation(&req_clone).await;
-                // Store for wait
-                let _ = monitor
-                    .complete_operation(&update_id_clone, result.clone())
-                    .await;
-
-                // Send completion notification
-                let duration_ms = started_at.elapsed().as_millis() as u64;
-                let completion_update = match result {
-                    Ok(msg) => ProgressUpdate::Completed {
-                        operation_id: update_id_clone,
-                        message: msg,
-                        duration_ms,
-                    },
-                    Err(err) => ProgressUpdate::Failed {
-                        operation_id: update_id_clone,
-                        error: err,
-                        duration_ms,
-                    },
-                };
-
-                let _ = callback.send_progress(completion_update).await;
-            });
-
-            // Return immediate response to LLM - this is the "first stage"
-            let tool_hint = self.generate_tool_hint(&update_id, "update");
-            Ok(CallToolResult::success(vec![Content::text(format!(
-                "Update operation {update_id} started in background.{tool_hint}"
-            ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::update_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
+        // Always use synchronous execution for dependency updates
+        match Self::update_implementation(&req).await {
+            Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+            Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
         }
     }
 
@@ -2874,7 +2794,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO UPGRADE: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Updates dependencies to latest versions using cargo-edit. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO UPGRADE: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Updates dependencies to latest versions using cargo-edit. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn upgrade(
         &self,
@@ -3293,86 +3213,17 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO TREE: Safer than terminal cargo. Display dependency tree. Use enable_async_notifications=true for large projects to multitask while dependency tree is being generated. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO TREE: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Display dependency tree. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn tree(
         &self,
         Parameters(req): Parameters<TreeRequest>,
-        context: RequestContext<RoleServer>,
+        _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let tree_id = self.generate_operation_id();
-
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
-            // TRUE 2-STAGE ASYNC PATTERN:
-            // 1. Send immediate response that operation has started
-            // 2. Spawn background task to do actual work and send notifications
-
-            let peer = context.peer.clone();
-            let req_clone = req.clone();
-            let tree_id_clone = tree_id.clone();
-            let monitor = self.monitor.clone();
-
-            // Register operation before spawn
-            self.register_async_operation(
-                &tree_id,
-                "cargo tree",
-                "Generating dependency tree in background",
-                Some(req.working_directory.clone()),
-            )
-            .await;
-
-            // Spawn background task for actual tree work
-            tokio::spawn(async move {
-                // Create MCP callback sender to notify the LLM client
-                let callback = mcp_callback(peer, tree_id_clone.clone());
-
-                // Send started notification immediately
-                let _ = callback
-                    .send_progress(ProgressUpdate::Started {
-                        operation_id: tree_id_clone.clone(),
-                        command: "cargo tree".to_string(),
-                        description: "Generating dependency tree in background".to_string(),
-                    })
-                    .await;
-
-                // Do the actual tree work
-                let started_at = Instant::now();
-                let result = Self::tree_implementation(&req_clone).await;
-                // Store for wait
-                let _ = monitor
-                    .complete_operation(&tree_id_clone, result.clone())
-                    .await;
-
-                // Send completion notification
-                let duration_ms = started_at.elapsed().as_millis() as u64;
-                let completion_update = match result {
-                    Ok(msg) => ProgressUpdate::Completed {
-                        operation_id: tree_id_clone,
-                        message: msg,
-                        duration_ms,
-                    },
-                    Err(err) => ProgressUpdate::Failed {
-                        operation_id: tree_id_clone,
-                        error: err,
-                        duration_ms,
-                    },
-                };
-
-                let _ = callback.send_progress(completion_update).await;
-            });
-
-            // Return immediate response to LLM - this is the "first stage"
-            let tool_hint = self.generate_tool_hint(&tree_id, "tree");
-            Ok(CallToolResult::success(vec![Content::text(format!(
-                "Tree operation {tree_id} started in background.{tool_hint}"
-            ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::tree_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
+        // Synchronous operation only
+        match Self::tree_implementation(&req).await {
+            Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+            Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
         }
     }
 
@@ -3441,7 +3292,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO VERSION: Safer than terminal cargo. Show cargo version information. Fast operation that helps LLMs understand the available cargo capabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO VERSION: Safer than terminal cargo. Synchronous operation. Show cargo version information. Fast operation that helps LLMs understand the available cargo capabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn version(
         &self,
@@ -3751,7 +3602,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO METADATA: Safer than terminal cargo. Output JSON metadata about the project. Fast operation that provides LLMs with comprehensive project structure information. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO METADATA: Safer than terminal cargo. Synchronous operation. Output JSON metadata about the project. Fast operation that provides LLMs with comprehensive project structure information. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn metadata(
         &self,

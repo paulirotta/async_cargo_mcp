@@ -84,7 +84,7 @@ Some AI models take better advantage of this than others. We continue to iterate
 - **`bench`** - Run benchmarks
 
 ### Control Commands
-- **`wait`** - Wait for async operations to complete
+- **`wait`** - Wait for async operations to complete (synchronous)
 
 ## Features
 

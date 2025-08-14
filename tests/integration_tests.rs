@@ -13,7 +13,6 @@
 //! This is a pragmatic architectural decision following rust-instructions.md
 //! guidance to prefer simple solutions over complex fixes for external library issues.
 
-#[ignore = "Some integration tests are currently ignored due to undiagnosed issues with TokioChildProcess transport in the test environment"]
 #[tokio::test]
 async fn test_mcp_server_integration() {
     // This test is currently disabled due to transport issues

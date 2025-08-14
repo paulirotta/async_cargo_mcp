@@ -572,17 +572,13 @@ impl AsyncCargo {
     fn generate_operation_id(&self) -> String {
         use chrono::Local;
         use std::sync::atomic::{AtomicU64, Ordering};
-        
+
         static COUNTER: AtomicU64 = AtomicU64::new(0);
-        
+
         let now = Local::now();
         let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
-        
-        format!(
-            "op_{}_{}",
-            now.timestamp_millis(),
-            counter
-        )
+
+        format!("op_{}_{}", now.timestamp_millis(), counter)
     }
 
     /// Generate a tool hint message for LLMs when async operations are running

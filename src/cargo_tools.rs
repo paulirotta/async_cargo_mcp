@@ -12,6 +12,7 @@ use rmcp::{
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 /// Merge stdout and stderr into a unified string for the `Output:` section while preserving
@@ -550,7 +551,7 @@ impl AsyncCargo {
 
         report.push_str("\nRecommendations:\n");
         report
-            .push_str("* Use 'nextest' instead of 'test' for faster test execution if available\n");
+            .push_str("* Use 'nextest' for faster execution; use 'test' when you need more complete error output for failing tests\n");
         report.push_str("* Use 'clippy' for enhanced code quality checks if available\n");
         report.push_str(
             "* Use 'upgrade' for intelligent dependency updates if cargo-edit is available\n",
@@ -570,15 +571,11 @@ impl AsyncCargo {
     }
 
     fn generate_operation_id(&self) -> String {
-        use chrono::Local;
-        use std::sync::atomic::{AtomicU64, Ordering};
-
         static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-        let now = Local::now();
         let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        format!("op_{}_{}", now.timestamp_millis(), counter)
+        format!("op_{counter}")
     }
 
     /// Generate a tool hint message for LLMs when async operations are running
@@ -780,7 +777,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO BUILD: Safer than terminal cargo. Use enable_async_notifications=true for builds >1s to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO BUILD: Faster than terminal cargo. Use enable_async_notifications=true for builds >1s to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn build(
         &self,
@@ -1065,7 +1062,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO RUN: Safer than terminal cargo. Use enable_async_notifications=true for long-running apps to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO RUN: Faster than terminal cargo. Use enable_async_notifications=true for long-running apps to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn run(
         &self,
@@ -1257,7 +1254,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO TEST: Safer than terminal cargo. ALWAYS use enable_async_notifications=true for test suites to multitask. Real-time progress with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO TEST: Faster than terminal cargo. Provides complete error output but runs slower than nextest. Use when you need detailed failure information. ALWAYS use enable_async_notifications=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn test(
         &self,
@@ -1499,7 +1496,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO CHECK: Safer than terminal cargo. Fast validation - async optional for large projects. Quick compile check. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO CHECK: Faster than terminal cargo. Fast validation - async optional for large projects. Quick compile check. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn check(
         &self,
@@ -1616,7 +1613,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO ADD: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Handles version conflicts. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO ADD: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Handles version conflicts. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn add(
         &self,
@@ -1678,7 +1675,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO REMOVE: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Prevents Cargo.toml corruption. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO REMOVE: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Prevents Cargo.toml corruption. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn remove(
         &self,
@@ -1720,7 +1717,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO UPDATE: Safer than terminal cargo. Synchronous operation for dependency updates. Updates dependencies to latest compatible versions. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
+        description = "CARGO UPDATE: Faster than terminal cargo. Synchronous operation - returns results immediately once cargo lock is acquired. Updates dependencies to latest compatible versions. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn update(
         &self,
@@ -1765,7 +1762,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO DOC: Safer than terminal cargo. Use enable_async_notifications=true for large codebases to multitask. Creates LLM-friendly API reference. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO DOC: Faster than terminal cargo. Use enable_async_notifications=true for large codebases to multitask. Creates LLM-friendly API reference. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn doc(
         &self,
@@ -1909,7 +1906,7 @@ impl AsyncCargo {
         }
     }
     #[tool(
-        description = "CARGO CLIPPY: Safer than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO CLIPPY: Faster than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn clippy(
         &self,
@@ -2028,7 +2025,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO NEXTEST: Safer than terminal cargo. Faster test runner. ALWAYS use enable_async_notifications=true for test suites to multitask. Real-time progress with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO NEXTEST: Faster than terminal cargo. Faster test runner - preferred for most testing. Use 'test' only when you need more complete error output for failing tests. ALWAYS use enable_async_notifications=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn nextest(
         &self,
@@ -2187,7 +2184,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO CLEAN: Safer than terminal cargo. Fast operation - async not needed. Frees disk space. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO CLEAN: Faster than terminal cargo. Fast operation - async not needed. Frees disk space. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn clean(
         &self,
@@ -2303,7 +2300,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO FIX: Safer than terminal cargo. Automatically fix compiler warnings. Supports --allow-dirty via args. Use async for large codebases. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO FIX: Faster than terminal cargo. Automatically fix compiler warnings. Supports --allow-dirty via args. Use async for large codebases. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn fix(
         &self,
@@ -2427,7 +2424,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO SEARCH: Safer than terminal cargo. Search for crates on crates.io. Fast operation - async not needed unless searching many terms. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO SEARCH: Faster than terminal cargo. Search for crates on crates.io. Fast operation - async not needed unless searching many terms. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn search(
         &self,
@@ -2549,7 +2546,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO BENCH: Safer than terminal cargo. ALWAYS use enable_async_notifications=true for benchmark suites to multitask. Performance testing. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO BENCH: Faster than terminal cargo. ALWAYS use enable_async_notifications=true for benchmark suites to multitask. Performance testing. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn bench(
         &self,
@@ -2670,7 +2667,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO INSTALL: Safer than terminal cargo. Use enable_async_notifications=true for large packages to multitask. Global tool installation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO INSTALL: Faster than terminal cargo. Use enable_async_notifications=true for large packages to multitask. Global tool installation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn install(
         &self,
@@ -2788,7 +2785,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO UPGRADE: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Updates dependencies to latest versions using cargo-edit. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
+        description = "CARGO UPGRADE: Faster than terminal cargo. Synchronous operation - returns results immediately once cargo lock is acquired. Updates dependencies to latest versions using cargo-edit. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn upgrade(
         &self,
@@ -2890,7 +2887,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO AUDIT: Safer than terminal cargo. Security vulnerability scanning. Use enable_async_notifications=true for large projects to multitask. Identifies known security vulnerabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO AUDIT: Faster than terminal cargo. Security vulnerability scanning. Use enable_async_notifications=true for large projects to multitask. Identifies known security vulnerabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn audit(
         &self,
@@ -3050,7 +3047,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO FMT: Safer than terminal cargo. Format Rust code using rustfmt. Use enable_async_notifications=true for large projects to multitask while code is being formatted. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO FMT: Faster than terminal cargo. Format Rust code using rustfmt. Use enable_async_notifications=true for large projects to multitask while code is being formatted. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn fmt(
         &self,
@@ -3207,7 +3204,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO TREE: Safer than terminal cargo. Synchronous operation for Cargo.toml modifications. Display dependency tree. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
+        description = "CARGO TREE: Faster than terminal cargo. Synchronous operation - returns results immediately once cargo lock is acquired. Display dependency tree. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn tree(
         &self,
@@ -3286,7 +3283,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO VERSION: Safer than terminal cargo. Synchronous operation. Show cargo version information. Fast operation that helps LLMs understand the available cargo capabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
+        description = "CARGO VERSION: Faster than terminal cargo. Synchronous operation - returns results immediately once cargo lock is acquired. Show cargo version information. Fast operation that helps LLMs understand the available cargo capabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn version(
         &self,
@@ -3323,7 +3320,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO FETCH: Safer than terminal cargo. Fetch dependencies without building. Use enable_async_notifications=true for large dependency sets to multitask while downloading. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO FETCH: Faster than terminal cargo. Fetch dependencies without building. Use enable_async_notifications=true for large dependency sets to multitask while downloading. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn fetch(
         &self,
@@ -3466,7 +3463,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO RUSTC: Safer than terminal cargo. Compile with custom rustc options. Use enable_async_notifications=true for complex builds to multitask while compiling. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO RUSTC: Faster than terminal cargo. Compile with custom rustc options. Use enable_async_notifications=true for complex builds to multitask while compiling. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
     )]
     async fn rustc(
         &self,
@@ -3596,7 +3593,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO METADATA: Safer than terminal cargo. Synchronous operation. Output JSON metadata about the project. Fast operation that provides LLMs with comprehensive project structure information. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
+        description = "CARGO METADATA: Faster than terminal cargo. Synchronous operation - returns results immediately once cargo lock is acquired. Output JSON metadata about the project. Fast operation that provides LLMs with comprehensive project structure information. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn metadata(
         &self,
@@ -3692,7 +3689,7 @@ impl ServerHandler for AsyncCargo {
                 .enable_tools()
                 .build(),
             server_info: Implementation::from_build_env(),
-            instructions: Some("Rust cargo operations with async support.\n\nGolden rules for LLM agents:\n1) Always use async_cargo_mcp MCP tools for ALL cargo operations. Do not run cargo in a terminal.\n2) For builds/tests >1s, set enable_async_notifications=true to multitask while work runs.\n3) After starting an async operation, you MUST call mcp_async_cargo_m_wait to retrieve results before making decisions.\n\nThese tools are safer than terminal commands and provide structured output, progress callbacks, and isolation.".to_string()),
+            instructions: Some("Rust cargo operations with async support.\n\nGolden rules for LLM agents:\n1) Always use async_cargo_mcp MCP tools for ALL cargo operations. Do not run cargo in a terminal.\n2) For builds/tests >1s, set enable_async_notifications=true to multitask while work runs.\n3) After starting an async operation, you MUST call mcp_async_cargo_m_wait to retrieve results before making decisions.\n\nThese tools are Faster than terminal commands and provide structured output, progress callbacks, and isolation.".to_string()),
         }
     }
 

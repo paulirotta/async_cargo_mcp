@@ -8,8 +8,8 @@ pub fn preview(operation_id: &str, operation_type: &str) -> String {
         "\n\n### ASYNC CARGO OPERATION: {operation_type} (ID: {operation_id})\n\
 1. **STATUS**: Operation is running in background - DO NOT assume it's complete\n\
 2. **NEXT STEPS**:\n\
- - Continue your work (planning, coding, testing) while this runs\n\
- - When you need results, call: `mcp_async_cargo_m_wait` with operation_id='{operation_id}'\n\
+ - Continue thinking about your next steps (planning, coding, testing, summarizing context if that is needed soon) while this tool runs\n\
+ - Only when you have finished thinking and you need the results from this `{operation_type}`, call: `mcp_async_cargo_m_wait` with operation_id='{operation_id}'\n\
  - For all pending operations: call `mcp_async_cargo_m_wait` without parameters\n\
  - **Before you wait**: briefly decide what you'll do next and tell the user.\n\
  - **Consider outcomes**: if you expect success or failure, set expectations and outline follow-ups.\n\

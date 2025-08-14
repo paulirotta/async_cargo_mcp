@@ -184,7 +184,7 @@ async fn test_cargo_test_name_filtering() {
 /// Test cargo build with additional features
 /// This test should FAIL initially because these options are not supported yet
 #[tokio::test]
-#[ignore] // Will be enabled after implementing the feature
+// Enabled now that build feature handling is implemented
 async fn test_cargo_build_with_features() {
     let temp_project = create_project_with_binary_args()
         .await
@@ -218,7 +218,7 @@ async fn test_cargo_build_with_features() {
 /// Test cargo build with workspace options
 /// This test should FAIL initially because these options are not supported yet
 #[tokio::test]
-#[ignore] // Will be enabled after implementing the feature
+// Enabled now that workspace/job handling is implemented
 async fn test_cargo_build_workspace_options() {
     let temp_project = create_project_with_binary_args()
         .await

@@ -685,7 +685,23 @@ impl AsyncCargo {
                         let status = match &op_info.state {
                             crate::operation_monitor::OperationState::Completed => {
                                 if let Some(Ok(output)) = &op_info.result {
-                                    // Return full successful output for LLM consumption
+                                    // Provide placeholder if an implementation returned an empty Output: section
+                                    let mut normalized = output.clone();
+                                    // Detect trailing 'Output:' with nothing meaningful after it
+                                    if normalized.trim_end().ends_with("Output:")
+                                        || normalized.matches("Output:").last().map(|_| {
+                                            // crude check: last occurrence followed only by whitespace
+                                            if let Some(pos) = normalized.rfind("Output:") {
+                                                normalized[pos + 7..].trim().is_empty()
+                                            } else { false }
+                                        }).unwrap_or(false)
+                                    {
+                                        // Replace only the final empty Output: occurrence
+                                        if let Some(pos) = normalized.rfind("Output:") {
+                                            let (head, _) = normalized.split_at(pos + 7);
+                                            normalized = format!("{head} (no command stdout captured – command produced no stdout)");
+                                        }
+                                    }
                                     format!(
                                         "OPERATION COMPLETED: '{}'\n\
                                         Command: {}\n\
@@ -698,7 +714,7 @@ impl AsyncCargo {
                                         op_info.command,
                                         op_info.description,
                                         op_info.working_directory.as_deref().unwrap_or("Unknown"),
-                                        output
+                                        normalized
                                     )
                                 } else {
                                     format!("Operation '{}' completed successfully (no detailed output available)", op_info.id)
@@ -901,7 +917,15 @@ impl AsyncCargo {
         if let Some(features) = &req.features
             && !features.is_empty()
         {
-            cmd.arg("--features").arg(features.join(","));
+            // Filter out literal "default" which causes error if not declared explicitly
+            let filtered: Vec<String> = features
+                .iter()
+                .filter(|f| f.as_str() != "default")
+                .cloned()
+                .collect();
+            if !filtered.is_empty() {
+                cmd.arg("--features").arg(filtered.join(","));
+            }
         }
 
         if req.all_features.unwrap_or(false) {
@@ -925,8 +949,29 @@ impl AsyncCargo {
             cmd.arg("--jobs").arg(jobs.to_string());
         }
 
+        // Validate target if provided (avoid failing build for cross targets not installed)
+        let mut target_note: Option<String> = None;
         if let Some(target) = &req.target {
-            cmd.arg("--target").arg(target);
+            let target_installed = {
+                use std::process::Command as StdCommand;
+                // Use rustup to list targets; fallback to assuming installed if rustup not available
+                if let Ok(output) = StdCommand::new("rustup")
+                    .args(["target", "list", "--installed"])
+                    .output()
+                {
+                    let list = String::from_utf8_lossy(&output.stdout);
+                    list.lines().any(|l| l.trim() == target)
+                } else {
+                    true
+                }
+            };
+            if target_installed {
+                cmd.arg("--target").arg(target);
+            } else {
+                target_note = Some(format!(
+                    "[info] Requested target '{target}' not installed; building with host target instead."
+                ));
+            }
         }
 
         if let Some(target_dir) = &req.target_dir {
@@ -966,13 +1011,23 @@ impl AsyncCargo {
             String::new()
         };
 
+        let stdout_display = if stdout.trim().is_empty() && stderr.trim().is_empty() {
+            "(no compiler output – build likely up to date)".to_string()
+        } else {
+            stdout.to_string()
+        };
         if output.status.success() {
-            Ok(format!(
-                "+ Build completed successfully{working_dir_msg}{bin_msg}.\nOutput: {stdout}"
-            ))
+            let mut msg = format!(
+                "+ Build completed successfully{working_dir_msg}{bin_msg}.\nOutput: {stdout_display}"
+            );
+            if let Some(note) = target_note {
+                msg.push_str("\n");
+                msg.push_str(&note);
+            }
+            Ok(msg)
         } else {
             Err(format!(
-                "- Build failed{working_dir_msg}{bin_msg}.\nError: {stderr}\nOutput: {stdout}"
+                "- Build failed{working_dir_msg}{bin_msg}.\nError: {stderr}\nOutput: {stdout_display}"
             ))
         }
     }

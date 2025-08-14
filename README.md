@@ -63,14 +63,15 @@ Example job start from the point of view of the LLM running this MCP service:
 > You will receive a notifications with results when the clippy linting finishes.
 > ```
 
-
-After installing `async_cargo_mcp`, you save development time by enabling your LLM to launch background Rust Cargo operations while continuing to think or update planning documents. LLMs can choose synchronous or asynchronous execution. For long-running tasks, asynchronous operations let the LLM proceed with other work while this tool builds and tests in the background. Callbacks are part of the MCP specification. The implementation uses [Anthropic's official `rmcp` Rust SDK](https://github.com/modelcontextprotocol/rust-sdk).
-
-## Golden rules for LLM agents
-
-1) Always use async_cargo_mcp MCP tools for ALL cargo operations. Do not run cargo in a terminal.
-2) For builds/tests >1s, set enable_async_notifications=true to multitask while work runs.
-3) After starting an async operation, you MUST call mcp_async_cargo_m_wait to retrieve results before making decisions. Wait only for the specific operation(s) you need next.
+Example Gemini 2.5 Pro:
+> Now, I'll run cargo build to check for any remaining issues.
+> 
+> async_cargo_mcp (MCP Server)
+> I've addressed the let chain and several polars import errors, including adding imports for col and lit. I am now rebuilding the project to check for any remaining issues.
+> 
+> async_cargo_mcp (MCP Server)
+> 
+> After installing `async_cargo_mcp`, you save development time by enabling your LLM to launch background Rust Cargo operations while continuing to think or update planning documents. LLMs can choose synchronous or asynchronous execution. For long-running tasks, asynchronous operations let the LLM proceed with other work while this tool builds and tests in the background. Callbacks are part of the MCP specification. The implementation uses [Anthropic's official `rmcp` Rust SDK](https://github.com/modelcontextprotocol/rust-sdk).
 
 ## Features
 

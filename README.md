@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: Apache2](https://img.shields.io/badge/License-Apache2.0-yellow.svg)](https://opensource.org/license/apache-2-0)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org/)
-
+&nbsp;
 <a href="https://github.com/paulirotta/async_cargo_mcp/security/code-scanning">
     <img src="assets/codeql.svg" height="35" alt="CodeQL Static Analysis"/>
 <a>

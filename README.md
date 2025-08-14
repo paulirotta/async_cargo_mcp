@@ -14,42 +14,38 @@ This MCP server allows AI assistants to run cargo commands in the background whi
 
 ## Asynchronous Workflow
 
-This tool enables AI assistants to run cargo commands in the background while continuing other tasks. When async notifications are enabled, operations return immediately with an operation ID, allowing the AI to proceed with other work.
+This tool enables AI assistants to run cargo commands in the background while continuing other tasks. Operations return immediately with an ID, allowing the AI to proceed with other work and come back later to accept the results when they are availble.
 
-Example workflow:
-1. AI starts a test suite with `enable_async_notifications: true`
-2. Operation returns immediately with operation ID
-3. AI continues with documentation or code updates
-4. AI calls `wait` when ready to review test results
+Some AI models take better advantage of this than others. We continue to iterate the tool hints the models see to improve the experience.
 
-Example job start from the point of view of the LLM running this MCP service:
-> **Input**
-> ```json
-> {
->   "working_directory": "/Users/paul/github/nb_lifeline3/rust/ml_tools",
->   "args": [
->     "--fix",
->     "--allow-dirty"
->   ],
->   "enable_async_notifications": true
-> }
+### Example: `Claude Sonnet 4`
+
+> **Now let me run the full test suite to verify that all tests pass with my fixes:**
+>
+> ---
+>
+> **async_cargo_mcp (MCP Server):**
+> > **Perfect! The test is running in the background. While it's running, let me update the `agent-plan.md` to mark this task as substantially complete and document the final findings:**
+>
 > ```
-> **Output**
+> agent-plan.md+3-3
 > ```
-> Clippy operation op_43831394 started in background.
+
+### Example: `GPT-5`
+
 > 
-> *** CRITICAL Tool Hint for LLMs ***: Operation op_43831394 is running in the background.
-> *** DO NOT PROCEED assuming the operation is complete based on this message alone! ***
-> *** You must wait for completion to get actual results (success/failure/output)! ***
-> Next step: When you are ready to consume results, call `mcp_async_cargo_m_wait` with operation_id='op_43831394'.
-> To wait for all pending operations, call `mcp_async_cargo_m_wait` with no operation_id.
-> 
-> **Always use async_cargo_mcp MCP tools** for ALL cargo operations. **Do not run cargo in a terminal.**
-> While tools run, keep planning/writing code/tests. When you’re ready to use results, wait for the specific operation(s) you need next.
-> You will receive a notifications with results when the clippy linting finishes.
+> **I'll run clippy fix, build, nextest, and fmt across the workspace to ensure the changes compile and pass checks.**
+>
 > ```
+> async_cargo_mcp (MCP Server)
+> async_cargo_mcp (MCP Server)
+> async_cargo_mcp (MCP Server)
+> async_cargo_mcp (MCP Server)
+> async_cargo_mcp (MCP Server)  
+> ⬇️ agent-plan.md <span style="color:green;">+4</span> <span style="color:red;">-5</span>
 
-Example Gemini 2.5 Pro:
+### Example Gemini 2.5 Pro:
+
 > Now, I'll run cargo build to check for any remaining issues.
 > 
 > async_cargo_mcp (MCP Server)
@@ -58,7 +54,6 @@ Example Gemini 2.5 Pro:
 > async_cargo_mcp (MCP Server)
 > 
 > After installing `async_cargo_mcp`, you save development time by enabling your LLM to launch background Rust Cargo operations while continuing to think or update planning documents. LLMs can choose synchronous or asynchronous execution. For long-running tasks, asynchronous operations let the LLM proceed with other work while this tool builds and tests in the background. Callbacks are part of the MCP specification. The implementation uses [Anthropic's official `rmcp` Rust SDK](https://github.com/modelcontextprotocol/rust-sdk).
-
 
 ## Supported Commands
 
@@ -69,23 +64,23 @@ Example Gemini 2.5 Pro:
 - **`check`** - Check for compile errors without building
 - **`clean`** - Remove build artifacts
 - **`doc`** - Build documentation
-- **`add`** - Add dependencies to Cargo.toml
-- **`remove`** - Remove dependencies from Cargo.toml
-- **`update`** - Update dependencies to latest compatible versions
+- **`add`** - Add dependencies to Cargo.toml (updates `Cargo.toml` so synchronous)
+- **`remove`** - Remove dependencies from Cargo.toml (synchronous)
+- **`update`** - Update dependencies to latest compatible versions (synchronous)
 - **`fetch`** - Download dependencies without building
 - **`install`** - Install a Rust binary
 - **`search`** - Search for packages on crates.io
-- **`tree`** - Display dependency tree
-- **`version`** - Show cargo version information
+- **`tree`** - Display dependency tree (synchronous)
+- **`version`** - Show cargo version information (synchronous)
 - **`rustc`** - Compile with custom rustc options
-- **`metadata`** - Output package metadata as JSON
+- **`metadata`** - Output package metadata as JSON (synchronous)
 
 ### Extension Commands (if installed)
 - **`clippy`** - Enhanced linting and code quality checks
 - **`nextest`** - Faster test execution
 - **`fmt`** - Code formatting with rustfmt
 - **`audit`** - Security vulnerability scanning
-- **`upgrade`** - Upgrade dependencies to latest versions
+- **`upgrade`** - Upgrade dependencies to latest versions (synchronous)
 - **`bench`** - Run benchmarks
 
 ### Control Commands

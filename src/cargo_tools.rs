@@ -570,20 +570,18 @@ impl AsyncCargo {
     }
 
     fn generate_operation_id(&self) -> String {
-        use chrono::{Local, Timelike};
+        use chrono::Local;
+        use std::sync::atomic::{AtomicU64, Ordering};
+        
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        
         let now = Local::now();
-        let midnight = now
-            .with_hour(0)
-            .unwrap()
-            .with_minute(0)
-            .unwrap()
-            .with_second(0)
-            .unwrap()
-            .with_nanosecond(0)
-            .unwrap();
+        let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
+        
         format!(
-            "op_{}",
-            (now.timestamp_millis() - midnight.timestamp_millis()) as u64
+            "op_{}_{}",
+            now.timestamp_millis(),
+            counter
         )
     }
 

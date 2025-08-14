@@ -1068,7 +1068,7 @@ impl AsyncCargo {
                 "+ Build completed successfully{working_dir_msg}{bin_msg}.\nOutput: {stdout_display}"
             );
             if let Some(note) = target_note {
-                msg.push_str("\n");
+                msg.push('\n');
                 msg.push_str(&note);
             }
             Ok(msg)

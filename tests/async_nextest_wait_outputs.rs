@@ -75,6 +75,16 @@ async fn test_async_nextest_then_wait_returns_full_output() -> Result<()> {
         "Wait output should contain full output marker: {wait_text}"
     );
 
+    // New stricter assertions: nextest should show real test output, not just placeholder
+    assert!(
+        !wait_text.contains("(no command stdout captured") || wait_text.contains("test result"),
+        "Nextest wait output appears empty / placeholder instead of real test output: {wait_text}"
+    );
+    assert!(
+        wait_text.contains("test") || wait_text.contains("running"),
+        "Expected some nextest test run indicators in output: {wait_text}"
+    );
+
     let _ = client.cancel().await;
     Ok(())
 }

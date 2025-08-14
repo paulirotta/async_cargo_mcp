@@ -2190,12 +2190,36 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
+            // Many nextest summaries are emitted to stderr (progress + final report). If stdout is empty but stderr has content, treat stderr as primary.
+            let combined = if stdout.trim().is_empty() && !stderr.trim().is_empty() {
+                stderr.to_string()
+            } else if !stdout.trim().is_empty() && !stderr.trim().is_empty() {
+                format!("{stdout}\n{stderr}")
+            } else {
+                stdout.to_string()
+            };
+            let final_output = if combined.trim().is_empty() {
+                "(no nextest output captured – test runner produced no stdout/stderr)".to_string()
+            } else {
+                combined
+            };
             Ok(format!(
-                "Nextest operation #{nextest_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Nextest operation #{nextest_id} completed successfully{working_dir_msg}.\nOutput: {final_output}"
             ))
         } else {
+            // Failure: include full stderr + stdout (stderr first for clarity)
+            let mut err_block = String::new();
+            if !stderr.trim().is_empty() {
+                err_block.push_str(&stderr);
+            }
+            if !stdout.trim().is_empty() {
+                if !err_block.is_empty() {
+                    err_block.push_str("\n--- stdout ---\n");
+                }
+                err_block.push_str(&stdout);
+            }
             Err(format!(
-                "- Nextest operation #{nextest_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Nextest operation #{nextest_id} failed{working_dir_msg}.\nErrors: {err_block}"
             ))
         }
     }

@@ -151,7 +151,7 @@ async fn test_cargo_test_integration_test_selection() {
 /// Test cargo test with test name filtering
 /// This test should FAIL initially because args are not supported in TestRequest  
 #[tokio::test]
-#[ignore] // Will be enabled after implementing the feature
+// Enabled now that test_name filtering is supported
 async fn test_cargo_test_name_filtering() {
     let temp_project = create_project_with_integration_tests()
         .await

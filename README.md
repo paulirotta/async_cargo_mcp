@@ -2,6 +2,10 @@
 
 <img src="./assets/async-cargo-mcp-logo.png" height="65" align="right" alt="Async Cargo MCP Logo"/>
 
+<a href="https://github.com/paulirotta/async_cargo_mcp/security/code-scanning">
+    <img src="assets/codeql.svg" height="35" alt="CodeQL Static Analysis"/>
+<a>
+
 [![CI](https://github.com/paulirotta/async_cargo_mcp/actions/workflows/rust.yml/badge.svg)](https://github.com/paulirotta/async_cargo_mcp/actions/workflows/rust.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: Apache2](https://img.shields.io/badge/License-Apache2.0-yellow.svg)](https://opensource.org/license/apache-2-0)

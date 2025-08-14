@@ -14,6 +14,27 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
+/// Merge stdout and stderr into a unified string for the `Output:` section while preserving
+/// an `Error:` section for failures. Rules:
+/// - If both empty -> placeholder message (provided by caller if desired)
+/// - If stdout empty and stderr non-empty -> return stderr
+/// - If stderr empty and stdout non-empty -> return stdout
+/// - If both non-empty -> concatenate with a separating blank line
+fn merge_outputs(stdout: &str, stderr: &str, empty_placeholder: &str) -> String {
+    let s = stdout.trim();
+    let e = stderr.trim();
+    if s.is_empty() && e.is_empty() {
+        return empty_placeholder.to_string();
+    }
+    if s.is_empty() {
+        return e.to_string();
+    }
+    if e.is_empty() {
+        return s.to_string();
+    }
+    format!("{s}\n\n{e}")
+}
+
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct DependencyRequest {
     pub name: String,
@@ -1011,10 +1032,36 @@ impl AsyncCargo {
             String::new()
         };
 
-        let stdout_display = if stdout.trim().is_empty() && stderr.trim().is_empty() {
-            "(no compiler output – build likely up to date)".to_string()
+        // For successful builds, treat only cargo lock-wait noise as empty so placeholder still appears.
+        let lock_wait_prefix = "Blocking waiting for file lock";
+        let stdout_trim = stdout.trim();
+        let stderr_lines: Vec<&str> = stderr.lines().collect();
+        let meaningful_stderr: Vec<&str> = stderr_lines
+            .iter()
+            .copied()
+            .filter(|l| {
+                let t = l.trim();
+                !(t.is_empty() || t.starts_with(lock_wait_prefix))
+            })
+            .collect();
+        let stdout_display = if output.status.success() {
+            if stdout_trim.is_empty() && meaningful_stderr.is_empty() {
+                "(no compiler output – build likely up to date)".to_string()
+            } else if stdout_trim.is_empty() {
+                // only stderr (with meaningful content) -> use full stderr (retain original lines including lock lines for context)
+                stderr.to_string()
+            } else if meaningful_stderr.is_empty() {
+                stdout.to_string()
+            } else {
+                format!("{stdout}\n\n{stderr}")
+            }
         } else {
-            stdout.to_string()
+            // Failure path handled later, but we still need a merged string for Output section
+            merge_outputs(
+                &stdout,
+                &stderr,
+                "(no compiler output – build likely up to date)",
+            )
         };
         if output.status.success() {
             let mut msg = format!(
@@ -1026,6 +1073,7 @@ impl AsyncCargo {
             }
             Ok(msg)
         } else {
+            // Keep Error: section (tests rely on it) but also include merged content in Output
             Err(format!(
                 "- Build failed{working_dir_msg}{bin_msg}.\nError: {stderr}\nOutput: {stdout_display}"
             ))

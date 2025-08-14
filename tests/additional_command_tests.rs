@@ -647,10 +647,9 @@ async fn test_build_command_with_async(project_path: &str) -> Result<String> {
     Ok(format!("{result:?}"))
 }
 
-/// Create a test project with a warning to test cargo fix
+// Create a test project with a warning to test cargo fix
 // moved to tests/common/test_project.rs
-
-/// Create a basic test project (reused from cargo_tools_tests.rs)
+// Create a basic test project (reused from cargo_tools_tests.rs)
 // moved to tests/common/test_project.rs
 
 async fn test_audit_command(project_path: &str) -> Result<String> {

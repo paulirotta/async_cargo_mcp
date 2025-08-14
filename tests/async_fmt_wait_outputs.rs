@@ -56,7 +56,7 @@ async fn test_async_fmt_wait_combines_outputs() -> Result<()> {
     let wait_text = format!("{:?}", wait.content);
     assert!(wait_text.contains("=== FULL"));
     assert!(
-        wait_text.contains("Errors:") == false,
+        !wait_text.contains("Errors:"),
         "Expected merged output without separate Errors section: {wait_text}"
     );
     let _ = client.cancel().await;

@@ -16,5 +16,5 @@ async fn test_async_audit_wait_combines_outputs() -> Result<()> {
 
     let wait = client.call_tool(CallToolRequestParam { name: "wait".into(), arguments: Some(object!({"operation_id": op_id, "timeout_secs": 300}))}).await?; let wait_text = format!("{:?}", wait.content);
     assert!(wait_text.contains("=== FULL"));
-    assert!(wait_text.contains("Errors:") == false, "Expected merged output without separate Errors section: {wait_text}");
+    assert!(!wait_text.contains("Errors:"), "Expected merged output without separate Errors section: {wait_text}");
     let _ = client.cancel().await; Ok(()) }

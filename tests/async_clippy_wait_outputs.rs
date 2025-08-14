@@ -59,7 +59,7 @@ async fn test_async_clippy_wait_combines_outputs() -> Result<()> {
     );
     // TDD failing assertion: we expect stderr merged into Output line (not separate 'Errors:' section)
     assert!(
-        wait_text.contains("Errors:") == false,
+        !wait_text.contains("Errors:"),
         "Expected merged output without separate Errors section: {wait_text}"
     );
     let _ = client.cancel().await;

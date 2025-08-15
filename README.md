@@ -49,7 +49,7 @@ Some AI models take better advantage of this than others. We continue to iterate
 > async_cargo_mcp (MCP Server)  
 > ⬇️ agent-plan.md <span style="color:green;">+4</span> <span style="color:red;">-5</span>
 
-### Example Gemini 2.5 Pro:
+### Example: `Gemini 2.5 Pro`
 
 > Now, I'll run cargo build to check for any remaining issues.
 > 
@@ -57,8 +57,8 @@ Some AI models take better advantage of this than others. We continue to iterate
 > I've addressed the let chain and several polars import errors, including adding imports for col and lit. I am now rebuilding the project to check for any remaining issues.
 > 
 > async_cargo_mcp (MCP Server)
-> 
-> After installing `async_cargo_mcp`, you save development time by enabling your LLM to launch background Rust Cargo operations while continuing to think or update planning documents. LLMs can choose synchronous or asynchronous execution. For long-running tasks, asynchronous operations let the LLM proceed with other work while this tool builds and tests in the background. Callbacks are part of the MCP specification. The implementation uses [Anthropic's official `rmcp` Rust SDK](https://github.com/modelcontextprotocol/rust-sdk).
+
+After installing `async_cargo_mcp`, you save development time by enabling your LLM to launch background Rust Cargo operations while continuing to think or update planning documents. LLMs can choose synchronous or asynchronous execution. For long-running tasks, asynchronous operations let the LLM proceed with other work while this tool builds and tests in the background. Callbacks are part of the MCP specification. The implementation uses [Anthropic's official `rmcp` Rust SDK](https://github.com/modelcontextprotocol/rust-sdk).
 
 ## Supported Commands
 

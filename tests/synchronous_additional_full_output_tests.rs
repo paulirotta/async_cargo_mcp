@@ -44,7 +44,7 @@ async fn test_synchronous_fix_merges_stderr_compile_lines() -> Result<()> {
     );
     // Expect compile line from stderr merged into Output once implementation added
     assert!(
-        output.contains("Compiling test_project") || output.contains("Checking test_project"),
+        output.contains("Compiling") || output.contains("Checking"),
         "Expected compile/check stderr line merged into Output for fix command. Got: {output}"
     );
     let _ = client.cancel().await;

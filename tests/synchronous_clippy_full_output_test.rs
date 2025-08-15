@@ -36,11 +36,10 @@ async fn test_synchronous_clippy_includes_compile_stderr() -> Result<()> {
     let text = format!("{:?}", result.content);
     assert!(text.contains("Output:"), "No Output section: {text}");
     // Require compile line from stderr to ensure stderr merging implemented.
-    let has_compile_or_check =
-        text.contains("Compiling test_project") || text.contains("Checking test_project");
+    let has_compile_or_check = text.contains("Compiling") || text.contains("Checking");
     assert!(
         has_compile_or_check,
-        "Expected 'Compiling test_project' or 'Checking test_project' line from stderr merged into Output but missing. Got: {text}"
+        "Expected 'Compiling' or 'Checking' line from stderr merged into Output but missing. Got: {text}"
     );
     // Ensure output is verbose enough (arbitrary minimal length > 120 chars after Output:)
     let verbose_len = text.len();

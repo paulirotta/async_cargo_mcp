@@ -1705,14 +1705,15 @@ impl AsyncCargo {
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
+        let merged = merge_outputs(&stdout, &stderr, "(no remove output captured)");
         let result_msg = if output.status.success() {
             format!(
-                "➖ Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
+                "➖ Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {merged}",
                 req.name
             )
         } else {
             format!(
-                "- Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
+                "- Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nErrors: {stderr}\nOutput: {merged}",
                 req.name
             )
         };
@@ -1753,14 +1754,15 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(&stdout, &stderr, "(no update output captured)");
 
         if output.status.success() {
             Ok(format!(
-                "Update operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Update operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
             Err(format!(
-                "- Update operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Update operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
         }
     }
@@ -2295,12 +2297,14 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
+            let merged = merge_outputs(&stdout, &stderr, "(no clean output captured)");
             Ok(format!(
-                "Clean operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Clean operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
+            let merged = merge_outputs(&stdout, &stderr, "(no clean output captured)");
             Err(format!(
-                "- Clean operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Clean operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
         }
     }
@@ -2400,8 +2404,8 @@ impl AsyncCargo {
         if let Some(args) = &req.args {
             cmd.args(args);
         } else {
-            // Default to --allow-dirty to avoid issues with uncommitted changes
-            cmd.arg("--allow-dirty");
+            // Provide safe defaults to allow running in temp test project without VCS
+            cmd.arg("--allow-dirty").arg("--allow-no-vcs");
         }
 
         cmd.current_dir(&req.working_directory);
@@ -2419,12 +2423,14 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
+            let merged = merge_outputs(&stdout, &stderr, "(no fix output captured)");
             Ok(format!(
-                "Fix operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Fix operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
+            let merged = merge_outputs(&stdout, &stderr, "(no fix output captured)");
             Err(format!(
-                "- Fix operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Fix operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
         }
     }
@@ -2537,15 +2543,16 @@ impl AsyncCargo {
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let merged = merge_outputs(&stdout, &stderr, "(no search output captured)");
 
         if output.status.success() {
             Ok(format!(
-                "Search operation completed successfully.\nQuery: {}\nResults:\n{stdout}",
+                "Search operation completed successfully.\nQuery: {}\nResults:\n{merged}",
                 req.query
             ))
         } else {
             Err(format!(
-                "- Search operation failed.\nQuery: {}\nErrors: {stderr}\nOutput: {stdout}",
+                "- Search operation failed.\nQuery: {}\nErrors: {stderr}\nOutput: {merged}",
                 req.query
             ))
         }
@@ -2662,12 +2669,14 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
+            let merged = merge_outputs(&stdout, &stderr, "(no bench output captured)");
             Ok(format!(
-                "🏃‍♂️ Benchmark operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "🏃‍♂️ Benchmark operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
+            let merged = merge_outputs(&stdout, &stderr, "(no bench output captured)");
             Err(format!(
-                "- Benchmark operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Benchmark operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
         }
     }
@@ -2776,15 +2785,16 @@ impl AsyncCargo {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(&stdout, &stderr, "(no install output captured)");
 
         if output.status.success() {
             Ok(format!(
-                "Install operation completed successfully{working_dir_msg}.\nInstalled package: {}\nOutput: {stdout}",
+                "Install operation completed successfully{working_dir_msg}.\nInstalled package: {}\nOutput: {merged}",
                 req.package
             ))
         } else {
             Err(format!(
-                "- Install operation failed{working_dir_msg}.\nPackage: {}\nErrors: {stderr}\nOutput: {stdout}",
+                "- Install operation failed{working_dir_msg}.\nPackage: {}\nErrors: {stderr}\nOutput: {merged}",
                 req.package
             ))
         }
@@ -2875,6 +2885,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(&stdout, &stderr, "(no upgrade output captured)");
 
         if output.status.success() {
             let dry_run_msg = if req.dry_run.unwrap_or(false) {
@@ -2883,11 +2894,11 @@ impl AsyncCargo {
                 ""
             };
             Ok(format!(
-                "⬆️ Upgrade operation #{upgrade_id} completed successfully{working_dir_msg}{dry_run_msg}.\nOutput: {stdout}"
+                "⬆️ Upgrade operation #{upgrade_id} completed successfully{working_dir_msg}{dry_run_msg}.\nOutput: {merged}"
             ))
         } else {
             Err(format!(
-                "- Upgrade operation #{upgrade_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Upgrade operation #{upgrade_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
         }
     }
@@ -3031,10 +3042,11 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(&stdout, &stderr, "(no audit output captured)");
 
         if output.status.success() {
             Ok(format!(
-                "Audit operation #{audit_id} completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {stdout}"
+                "Audit operation #{audit_id} completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {merged}"
             ))
         } else {
             // Check if it's a vulnerability warning (exit code 1) vs actual error
@@ -3042,11 +3054,11 @@ impl AsyncCargo {
 
             if vulnerability_detected {
                 Err(format!(
-                    "Audit operation #{audit_id} found security vulnerabilities{working_dir_msg}.\nVulnerabilities detected:\n{stdout}\nErrors: {stderr}"
+                    "Audit operation #{audit_id} found security vulnerabilities{working_dir_msg}.\nVulnerabilities detected:\n{stdout}\nErrors: {stderr}\nOutput: {merged}"
                 ))
             } else {
                 Err(format!(
-                    "- Audit operation #{audit_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                    "- Audit operation #{audit_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
                 ))
             }
         }
@@ -3183,6 +3195,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(&stdout, &stderr, "(no format output captured)");
 
         if output.status.success() {
             let check_msg = if req.check.unwrap_or(false) {
@@ -3191,19 +3204,20 @@ impl AsyncCargo {
                 ""
             };
             Ok(format!(
-                "Format operation completed successfully{working_dir_msg}{check_msg}.\nOutput: {stdout}"
+                "Format operation completed successfully{working_dir_msg}{check_msg}.\nOutput: {merged}"
             ))
         } else {
             // Check if it's a formatting issue (exit code 1) vs actual error
             let formatting_issues = output.status.code() == Some(1) && req.check.unwrap_or(false);
 
             if formatting_issues {
+                let merged_files = merge_outputs(&stdout, &stderr, "(no format output captured)");
                 Ok(format!(
-                    "Format operation found formatting issues{working_dir_msg}.\nFiles need formatting:\n{stdout}\nErrors: {stderr}"
+                    "Format operation found formatting issues{working_dir_msg}.\nFiles need formatting:\n{merged_files}"
                 ))
             } else {
                 Err(format!(
-                    "- Format operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                    "- Format operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
                 ))
             }
         }
@@ -3276,14 +3290,15 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(&stdout, &stderr, "(no tree output captured)");
 
         if output.status.success() {
             Ok(format!(
-                "Tree operation completed successfully{working_dir_msg}.\nDependency tree:\n{stdout}"
+                "Tree operation completed successfully{working_dir_msg}.\nDependency tree:\n{merged}"
             ))
         } else {
             Err(format!(
-                "- Tree operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Tree operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
         }
     }
@@ -3313,13 +3328,14 @@ impl AsyncCargo {
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let merged = merge_outputs(&stdout, &stderr, "(no version output captured)");
 
         let result_msg = if output.status.success() {
             format!(
-                "📋 Version operation #{version_id} completed successfully.\nCargo version information:\n{stdout}"
+                "📋 Version operation #{version_id} completed successfully.\nCargo version information:\n{merged}"
             )
         } else {
-            format!("- Version operation #{version_id} failed.\nErrors: {stderr}\nOutput: {stdout}")
+            format!("- Version operation #{version_id} failed.\nErrors: {stderr}\nOutput: {merged}")
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
@@ -3456,14 +3472,15 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(&stdout, &stderr, "(no fetch output captured)");
 
         if output.status.success() {
             Ok(format!(
-                "📦 Fetch operation completed successfully{working_dir_msg}.\nDependencies fetched:\n{stdout}"
+                "📦 Fetch operation completed successfully{working_dir_msg}.\nDependencies fetched:\n{merged}"
             ))
         } else {
             Err(format!(
-                "- Fetch operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Fetch operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
         }
     }
@@ -3586,14 +3603,15 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(&stdout, &stderr, "(no rustc output captured)");
 
         if output.status.success() {
             Ok(format!(
-                "Rustc operation #{rustc_id} completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "Rustc operation #{rustc_id} completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
             Err(format!(
-                "- Rustc operation #{rustc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Rustc operation #{rustc_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
         }
     }
@@ -3659,6 +3677,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(&stdout, &stderr, "(no metadata output captured)");
 
         let result_msg = if output.status.success() {
             // For JSON output, we might want to validate it's valid JSON
@@ -3672,11 +3691,11 @@ impl AsyncCargo {
             };
 
             format!(
-                "📊 Metadata operation #{metadata_id} completed successfully{working_dir_msg}{json_validation}.\nProject metadata:\n{stdout}"
+                "📊 Metadata operation #{metadata_id} completed successfully{working_dir_msg}{json_validation}.\nProject metadata:\n{merged}"
             )
         } else {
             format!(
-                "- Metadata operation #{metadata_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}"
+                "- Metadata operation #{metadata_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             )
         };
 

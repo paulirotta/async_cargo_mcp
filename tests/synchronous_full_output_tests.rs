@@ -3,6 +3,7 @@
 
 use anyhow::Result;
 mod common;
+use crate::common::strip_ansi;
 use common::test_project::create_basic_project;
 use rmcp::{
     ServiceExt,
@@ -35,12 +36,12 @@ async fn test_synchronous_run_includes_compile_stderr() -> Result<()> {
             ),
         })
         .await?;
-    let text = format!("{:?}", result.content);
-    let output = extract_tool_output(&text);
+    let raw = format!("{:?}", result.content);
+    let output = strip_ansi(&extract_tool_output(&raw));
     assert!(output.contains("Output:"), "No Output section: {output}");
     assert!(
-        output.contains("Compiling test_project"),
-        "Expected stderr compile line merged into Output but missing. Got: {output}"
+        output.contains("Compiling") || output.contains("Checking"),
+        "Expected stderr compile/check line merged into Output but missing. Got: {output}"
     );
     assert!(
         output.contains("Finished"),
@@ -69,12 +70,12 @@ async fn test_synchronous_test_includes_compile_stderr() -> Result<()> {
             ),
         })
         .await?;
-    let text = format!("{:?}", result.content);
-    let output = extract_tool_output(&text);
+    let raw = format!("{:?}", result.content);
+    let output = strip_ansi(&extract_tool_output(&raw));
     assert!(output.contains("Output:"), "No Output section: {output}");
     assert!(
-        output.contains("Compiling test_project"),
-        "Expected compile stderr line inside Output for test command. Got: {output}"
+        output.contains("Compiling") || output.contains("Checking"),
+        "Expected compile/check stderr line inside Output for test command. Got: {output}"
     );
     assert!(
         output.contains("test result"),

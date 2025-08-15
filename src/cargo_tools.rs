@@ -583,6 +583,12 @@ impl AsyncCargo {
         crate::tool_hints::preview(operation_id, operation_type)
     }
 
+    /// Standardized placeholder for when a command produced no combined stdout/stderr.
+    /// Use for success-path Output sections when both streams are empty.
+    fn no_output_placeholder(command: &str) -> String {
+        format!("(no {command} output captured)")
+    }
+
     /// Public helper to preview the standardized tool hint content.
     pub fn tool_hint_preview(operation_id: &str, operation_type: &str) -> String {
         crate::tool_hints::preview(operation_id, operation_type)
@@ -1027,9 +1033,8 @@ impl AsyncCargo {
             .collect();
         let stdout_display = if output.status.success() {
             if stdout_trim.is_empty() && meaningful_stderr.is_empty() {
-                "(no compiler output – build likely up to date)".to_string()
+                Self::no_output_placeholder("build")
             } else if stdout_trim.is_empty() {
-                // only stderr (with meaningful content) -> use full stderr (retain original lines including lock lines for context)
                 stderr.to_string()
             } else if meaningful_stderr.is_empty() {
                 stdout.to_string()
@@ -1037,12 +1042,7 @@ impl AsyncCargo {
                 format!("{stdout}\n\n{stderr}")
             }
         } else {
-            // Failure path handled later, but we still need a merged string for Output section
-            merge_outputs(
-                &stdout,
-                &stderr,
-                "(no compiler output – build likely up to date)",
-            )
+            merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("build"))
         };
         if output.status.success() {
             let mut msg = format!(
@@ -1244,7 +1244,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             // Merge stdout+stderr so compile lines (on stderr) always appear in Output section.
-            let merged = merge_outputs(&stdout, &stderr, "(no runtime output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("run"));
             Ok(format!(
                 "+ Run operation completed successfully{working_dir_msg}{bin_msg}{args_msg}.\nOutput: {merged}"
             ))
@@ -1487,7 +1487,7 @@ impl AsyncCargo {
         };
 
         if output.status.success() {
-            let merged = merge_outputs(&stdout, &stderr, "(no test output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("test"));
             Ok(format!(
                 "Test operation #{test_id} completed successfully{working_dir_msg}{test_filter_msg}.\nOutput: {merged}"
             ))
@@ -1605,7 +1605,7 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
-            let merged = merge_outputs(&stdout, &stderr, "(no check output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("check"));
             Ok(format!(
                 "+ Check operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
@@ -1900,7 +1900,7 @@ impl AsyncCargo {
                 &req.working_directory, crate_name
             );
 
-            let merged = merge_outputs(&stdout, &stderr, "(no doc output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("doc"));
             Ok(format!(
                 "📚 Documentation generation completed successfully{working_dir_msg}.\nDocumentation generated at: {doc_path}\nThe generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.\n💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.\n\nOutput: {merged}"
             ))
@@ -2019,13 +2019,13 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
-            let merged = merge_outputs(&stdout, &stderr, "(no clippy output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("clippy"));
             Ok(format!(
                 "Clippy operation passed with no warnings{working_dir_msg}.\nOutput: {merged}",
             ))
         } else {
             // Even on failure, ensure stderr also visible in Output (besides Errors) for parity with other commands
-            let merged = merge_outputs(&stdout, &stderr, "(no clippy output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("clippy"));
             Err(format!(
                 "- Clippy operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}",
             ))
@@ -2166,7 +2166,7 @@ impl AsyncCargo {
                 stdout.to_string()
             };
             let final_output = if combined.trim().is_empty() {
-                "(no nextest output captured – test runner produced no stdout/stderr)".to_string()
+                Self::no_output_placeholder("nextest")
             } else {
                 combined
             };
@@ -2297,12 +2297,12 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
-            let merged = merge_outputs(&stdout, &stderr, "(no clean output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("clean"));
             Ok(format!(
                 "Clean operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
-            let merged = merge_outputs(&stdout, &stderr, "(no clean output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("clean"));
             Err(format!(
                 "- Clean operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
@@ -2423,12 +2423,12 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
-            let merged = merge_outputs(&stdout, &stderr, "(no fix output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("fix"));
             Ok(format!(
                 "Fix operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
-            let merged = merge_outputs(&stdout, &stderr, "(no fix output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("fix"));
             Err(format!(
                 "- Fix operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
@@ -2543,7 +2543,7 @@ impl AsyncCargo {
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let merged = merge_outputs(&stdout, &stderr, "(no search output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("search"));
 
         if output.status.success() {
             Ok(format!(
@@ -2669,12 +2669,12 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
-            let merged = merge_outputs(&stdout, &stderr, "(no bench output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("bench"));
             Ok(format!(
                 "🏃‍♂️ Benchmark operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
-            let merged = merge_outputs(&stdout, &stderr, "(no bench output captured)");
+            let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("bench"));
             Err(format!(
                 "- Benchmark operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
@@ -2785,7 +2785,7 @@ impl AsyncCargo {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         let working_dir_msg = format!(" in {}", &req.working_directory);
-        let merged = merge_outputs(&stdout, &stderr, "(no install output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("install"));
 
         if output.status.success() {
             Ok(format!(
@@ -2885,7 +2885,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
-        let merged = merge_outputs(&stdout, &stderr, "(no upgrade output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("upgrade"));
 
         if output.status.success() {
             let dry_run_msg = if req.dry_run.unwrap_or(false) {
@@ -3042,7 +3042,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
-        let merged = merge_outputs(&stdout, &stderr, "(no audit output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("audit"));
 
         if output.status.success() {
             Ok(format!(
@@ -3195,7 +3195,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
-        let merged = merge_outputs(&stdout, &stderr, "(no format output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("format"));
 
         if output.status.success() {
             let check_msg = if req.check.unwrap_or(false) {
@@ -3211,7 +3211,8 @@ impl AsyncCargo {
             let formatting_issues = output.status.code() == Some(1) && req.check.unwrap_or(false);
 
             if formatting_issues {
-                let merged_files = merge_outputs(&stdout, &stderr, "(no format output captured)");
+                let merged_files =
+                    merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("format"));
                 Ok(format!(
                     "Format operation found formatting issues{working_dir_msg}.\nFiles need formatting:\n{merged_files}"
                 ))
@@ -3290,7 +3291,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
-        let merged = merge_outputs(&stdout, &stderr, "(no tree output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("tree"));
 
         if output.status.success() {
             Ok(format!(
@@ -3328,7 +3329,7 @@ impl AsyncCargo {
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let merged = merge_outputs(&stdout, &stderr, "(no version output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("version"));
 
         let result_msg = if output.status.success() {
             format!(
@@ -3472,7 +3473,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
-        let merged = merge_outputs(&stdout, &stderr, "(no fetch output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("fetch"));
 
         if output.status.success() {
             Ok(format!(
@@ -3603,7 +3604,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
-        let merged = merge_outputs(&stdout, &stderr, "(no rustc output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("rustc"));
 
         if output.status.success() {
             Ok(format!(
@@ -3677,7 +3678,7 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
-        let merged = merge_outputs(&stdout, &stderr, "(no metadata output captured)");
+        let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("metadata"));
 
         let result_msg = if output.status.success() {
             // For JSON output, we might want to validate it's valid JSON

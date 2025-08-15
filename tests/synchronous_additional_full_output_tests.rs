@@ -124,7 +124,7 @@ async fn test_synchronous_clean_has_placeholder_when_no_output() -> Result<()> {
         if let Some(pos) = text.find("Output:") {
             let after = &text[pos + "Output:".len()..];
             assert!(
-                after.trim().len() > 0,
+                !after.trim().is_empty(),
                 "Expected placeholder or some output after Output:. Got: {text}"
             );
         } else {

@@ -1243,8 +1243,10 @@ impl AsyncCargo {
         };
 
         if output.status.success() {
+            // Merge stdout+stderr so compile lines (on stderr) always appear in Output section.
+            let merged = merge_outputs(&stdout, &stderr, "(no runtime output captured)");
             Ok(format!(
-                "+ Run operation completed successfully{working_dir_msg}{bin_msg}{args_msg}.\nOutput: {stdout}"
+                "+ Run operation completed successfully{working_dir_msg}{bin_msg}{args_msg}.\nOutput: {merged}"
             ))
         } else {
             Err(format!(
@@ -1485,8 +1487,9 @@ impl AsyncCargo {
         };
 
         if output.status.success() {
+            let merged = merge_outputs(&stdout, &stderr, "(no test output captured)");
             Ok(format!(
-                "Test operation #{test_id} completed successfully{working_dir_msg}{test_filter_msg}.\nOutput: {stdout}"
+                "Test operation #{test_id} completed successfully{working_dir_msg}{test_filter_msg}.\nOutput: {merged}"
             ))
         } else {
             Err(format!(
@@ -1602,8 +1605,9 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
+            let merged = merge_outputs(&stdout, &stderr, "(no check output captured)");
             Ok(format!(
-                "+ Check operation completed successfully{working_dir_msg}.\nOutput: {stdout}"
+                "+ Check operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
             Err(format!(
@@ -1869,12 +1873,10 @@ impl AsyncCargo {
         if output.status.success() {
             // Try to determine the crate name for the documentation path
             let crate_name = {
-                // If working directory is specified, try to read Cargo.toml there
                 let cargo_toml_path = format!("{}/Cargo.toml", &req.working_directory);
                 std::fs::read_to_string(&cargo_toml_path)
                     .ok()
                     .and_then(|content| {
-                        // Simple parsing to extract package name
                         content
                             .lines()
                             .find(|line| line.trim().starts_with("name"))
@@ -1896,8 +1898,9 @@ impl AsyncCargo {
                 &req.working_directory, crate_name
             );
 
+            let merged = merge_outputs(&stdout, &stderr, "(no doc output captured)");
             Ok(format!(
-                "📚 Documentation generation completed successfully{working_dir_msg}.\nDocumentation generated at: {doc_path}\nThe generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.\n💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.\n\nOutput: {stdout}"
+                "📚 Documentation generation completed successfully{working_dir_msg}.\nDocumentation generated at: {doc_path}\nThe generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.\n💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.\n\nOutput: {merged}"
             ))
         } else {
             Err(format!(

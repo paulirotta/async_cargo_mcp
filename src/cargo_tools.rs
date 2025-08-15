@@ -2017,12 +2017,15 @@ impl AsyncCargo {
         let working_dir_msg = format!(" in {}", &req.working_directory);
 
         if output.status.success() {
+            let merged = merge_outputs(&stdout, &stderr, "(no clippy output captured)");
             Ok(format!(
-                "Clippy operation passed with no warnings{working_dir_msg}.\nOutput: {stdout}",
+                "Clippy operation passed with no warnings{working_dir_msg}.\nOutput: {merged}",
             ))
         } else {
+            // Even on failure, ensure stderr also visible in Output (besides Errors) for parity with other commands
+            let merged = merge_outputs(&stdout, &stderr, "(no clippy output captured)");
             Err(format!(
-                "- Clippy operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {stdout}",
+                "- Clippy operation failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}",
             ))
         }
     }

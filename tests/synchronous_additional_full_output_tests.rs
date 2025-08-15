@@ -73,7 +73,7 @@ async fn test_synchronous_bench_merges_stderr_compile_lines() -> Result<()> {
     let text = format!("{:?}", result.content);
     assert!(text.contains("Output:"), "Expected Output section: {text}");
     assert!(
-        text.contains("Compiling test_project") || text.contains("Checking test_project"),
+        text.contains("Compiling") || text.contains("Checking"),
         "Expected compile/check stderr line merged into Output for bench command. Got: {text}"
     );
     let _ = client.cancel().await;

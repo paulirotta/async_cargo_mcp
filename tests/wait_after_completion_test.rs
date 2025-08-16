@@ -110,9 +110,6 @@ async fn test_wait_after_completion_returns_cached_results() -> Result<()> {
 #[tokio::test]
 async fn test_wait_for_nonexistent_operation_provides_helpful_message() -> Result<()> {
     // Create a minimal cargo project in a temp dir
-    let temp = create_basic_project().await?;
-    let project_path = temp.path().to_str().unwrap().to_string();
-
     // Start the MCP server
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(

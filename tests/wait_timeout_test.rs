@@ -45,31 +45,28 @@ async fn test_wait_timeout_for_long_running_operation() -> Result<()> {
         ))?)
         .await?;
 
-    // Start multiple long-running async operations to increase the chances of timeout
-    let build_result1 = client
+    // Use deterministic sleep operations for timing sensitivity
+    let sleep1 = client
         .call_tool(CallToolRequestParam {
-            name: "test".into(), // Use test instead of build - typically longer
+            name: "sleep".into(),
             arguments: Some(object!({
-                "working_directory": working_dir.clone(),
-                "enable_async_notifications": true
+                "duration_ms": 1500,
+                "operation_id": "op_sleep_long_1"
+            })),
+        })
+        .await?;
+    let sleep2 = client
+        .call_tool(CallToolRequestParam {
+            name: "sleep".into(),
+            arguments: Some(object!({
+                "duration_ms": 1600,
+                "operation_id": "op_sleep_long_2"
             })),
         })
         .await?;
 
-    let build_result2 = client
-        .call_tool(CallToolRequestParam {
-            name: "test".into(), // Second test operation
-            arguments: Some(object!({
-                "working_directory": working_dir,
-                "enable_async_notifications": true
-            })),
-        })
-        .await?;
-
-    let build_text1 = format!("{:?}", build_result1.content);
-    let build_text2 = format!("{:?}", build_result2.content);
-    let operation_id1 = extract_operation_id(&build_text1).expect("Should have operation ID 1");
-    let operation_id2 = extract_operation_id(&build_text2).expect("Should have operation ID 2");
+    let operation_id1 = "op_sleep_long_1".to_string();
+    let operation_id2 = "op_sleep_long_2".to_string();
 
     // Wait for both operations with a very short timeout (should timeout before tests complete)
     let start_time = Instant::now();
@@ -88,8 +85,8 @@ async fn test_wait_timeout_for_long_running_operation() -> Result<()> {
 
     // Should timeout after ~1 second
     assert!(
-        elapsed.as_secs() >= 1 && elapsed.as_secs() < 3,
-        "Wait should have timed out after ~1 second, but took {:?}",
+        elapsed.as_millis() >= 950 && elapsed.as_millis() < 1600,
+        "Wait should have timed out near 1s, elapsed {:?}",
         elapsed
     );
 

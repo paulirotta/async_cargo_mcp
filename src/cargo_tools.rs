@@ -444,17 +444,24 @@ impl AsyncCargo {
     /// Start a deterministic async sleep operation that just waits for a specified duration.
     /// Useful for testing timeout behavior without relying on cargo command durations.
     /// Always runs asynchronously and returns an operation ID immediately.
-    pub async fn sleep(&self, request: SleepRequest) -> Result<CallToolResult, ErrorData> {
-        let operation_id = request
+    #[tool(
+        description = "Start a deterministic async sleep (no cargo invoked). Returns an operation ID immediately; use wait with operation_ids to retrieve completion. Useful for timeout & batching tests."
+    )]
+    async fn sleep(
+        &self,
+        Parameters(req): Parameters<SleepRequest>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let operation_id = req
             .operation_id
             .unwrap_or_else(|| format!("op_sleep_{}", uuid::Uuid::new_v4().simple()));
-        let duration_ms = request.duration_ms.unwrap_or(1500);
+        let duration_ms = req.duration_ms.unwrap_or(1500);
         let description = format!("sleep {}ms", duration_ms);
         self.register_async_operation(
             &operation_id,
             "sleep",
             &description,
-            request.working_directory.clone(),
+            req.working_directory.clone(),
         )
         .await;
 

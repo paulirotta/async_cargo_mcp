@@ -2,7 +2,6 @@
 
 use anyhow::Result;
 mod common;
-use common::test_project::create_basic_project;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
@@ -13,9 +12,6 @@ use tokio::process::Command;
 
 #[tokio::test]
 async fn test_wait_with_empty_operation_ids_fails() -> Result<()> {
-    // Create a minimal cargo project in a temp dir
-    let temp = create_basic_project().await?;
-
     // Start the MCP server
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(

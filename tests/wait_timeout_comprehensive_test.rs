@@ -9,8 +9,8 @@ use rmcp::{
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
-use tokio::process::Command;
 use std::time::Instant;
+use tokio::process::Command;
 
 #[tokio::test]
 async fn test_wait_timeout_for_nonexistent_operation() -> Result<()> {
@@ -23,7 +23,7 @@ async fn test_wait_timeout_for_nonexistent_operation() -> Result<()> {
         .await?;
 
     let start = Instant::now();
-    
+
     // Try to wait for a nonexistent operation with 2 second timeout
     let wait_result = client
         .call_tool(CallToolRequestParam {
@@ -67,7 +67,7 @@ async fn test_wait_timeout_for_empty_operation_list() -> Result<()> {
         .await?;
 
     let start = Instant::now();
-    
+
     // Try to wait for empty operation list - should fail immediately
     let wait_result = client
         .call_tool(CallToolRequestParam {
@@ -99,7 +99,7 @@ async fn test_wait_timeout_for_empty_operation_list() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test] 
+#[tokio::test]
 async fn test_wait_default_timeout_is_reasonable() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
@@ -110,7 +110,7 @@ async fn test_wait_default_timeout_is_reasonable() -> Result<()> {
         .await?;
 
     let start = Instant::now();
-    
+
     // Try to wait for a nonexistent operation WITHOUT specifying timeout
     // This should use the default timeout
     let wait_result = client
@@ -120,7 +120,12 @@ async fn test_wait_default_timeout_is_reasonable() -> Result<()> {
                 "operation_ids": ["op_nonexistent_default_timeout_test"]
             })),
         })
-        .await?;
+        .await;
+
+    assert!(
+        wait_result.is_ok(),
+        "Wait should succeed even for nonexistent operation with default timeout"
+    );
 
     let elapsed = start.elapsed();
 

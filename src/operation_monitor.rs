@@ -137,6 +137,25 @@ impl Default for MonitorConfig {
     }
 }
 
+impl MonitorConfig {
+    /// Create a MonitorConfig with a custom timeout
+    pub fn with_timeout(timeout: Duration) -> Self {
+        Self {
+            default_timeout: timeout,
+            ..Default::default()
+        }
+    }
+
+    /// Create a MonitorConfig with an optional custom timeout
+    /// If None is provided, uses the default timeout
+    pub fn with_timeout_option(timeout: Option<Duration>) -> Self {
+        match timeout {
+            Some(t) => Self::with_timeout(t),
+            None => Self::default(),
+        }
+    }
+}
+
 /// Operation monitor that tracks and manages cargo operations
 #[derive(Debug)]
 pub struct OperationMonitor {
@@ -286,6 +305,11 @@ impl OperationMonitor {
         } else {
             Err(format!("Operation not found: {operation_id}"))
         }
+    }
+
+    /// Get the default timeout configuration
+    pub async fn get_default_timeout(&self) -> Duration {
+        self.config.default_timeout
     }
 
     /// Get information about an operation

@@ -650,15 +650,19 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Uses a fixed timeout of 300 seconds (5 minutes). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the --timeout CLI parameter (default: 300 seconds). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn wait(
         &self,
         Parameters(req): Parameters<WaitRequest>,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        use std::time::Duration;
-        let timeout_duration = Duration::from_secs(300); // Fixed 5-minute timeout
+        // Get the timeout from the monitor's configuration instead of hardcoding it
+        let timeout_duration = {
+            // Access the monitor's config to get the default timeout
+            // We need to add a method to get the timeout from the monitor
+            self.get_monitor_timeout().await
+        };
 
         // Validate that we have operation IDs to wait for
         if req.operation_ids.is_empty() {
@@ -722,7 +726,13 @@ impl AsyncCargo {
             merged
         })
     .await
-    .map_err(|_| ErrorData::internal_error("Wait timed out for specified operations (300 second timeout). Operations may still be running in the background.", None))?;
+    .map_err(|_| {
+        let timeout_seconds = timeout_duration.as_secs();
+        ErrorData::internal_error(
+            format!("Wait timed out for specified operations ({timeout_seconds} second timeout). Operations may still be running in the background."),
+            None
+        )
+    })?;
 
         let results = wait_result;
 
@@ -3888,6 +3898,14 @@ impl ServerHandler for AsyncCargo {
 
 /// Async cargo operations with callback support
 impl AsyncCargo {
+    /// Get the timeout duration from the monitor's configuration
+    pub async fn get_monitor_timeout(&self) -> std::time::Duration {
+        // We need to access the monitor's configuration
+        // Since MonitorConfig doesn't have a public getter, we'll need to add one
+        // For now, let's implement a simple approach by adding a method to OperationMonitor
+        self.monitor.get_default_timeout().await
+    }
+
     // Small wrappers to reuse existing callback-based implementations while returning a Result<String,String>
     pub async fn build_add_result(
         &self,

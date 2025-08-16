@@ -8,6 +8,7 @@ use async_cargo_mcp::{
 use clap::Parser;
 use rmcp::{ServiceExt, transport::stdio};
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::info;
 use tracing_subscriber::{self, EnvFilter};
 
@@ -23,14 +24,19 @@ use tracing_subscriber::{self, EnvFilter};
                   For more information, visit: https://github.com/paulirotta/async_cargo_mcp"
 )]
 struct Args {
-    // No direct arguments currently, but the struct is ready for future expansion
+    /// Override default timeout in seconds (default: 300)
+    #[arg(
+        long,
+        value_name = "SECONDS",
+        help = "Set default timeout in seconds for cargo operations (default: 300)"
+    )]
+    timeout: Option<u64>,
 }
 
-/// npx @modelcontextprotocol/inspector cargo run -p async_cargo_mcp
 #[tokio::main]
 async fn main() -> Result<()> {
     // Parse command line arguments
-    let _args = Args::parse();
+    let args = Args::parse();
 
     // Initialize the tracing subscriber with file and stdout logging
     tracing_subscriber::fmt()
@@ -41,8 +47,17 @@ async fn main() -> Result<()> {
 
     info!("Starting MCP server");
 
-    // Create and run the operation monitor
-    let monitor_config = MonitorConfig::default();
+    // Create and run the operation monitor with custom timeout if provided
+    let monitor_config = match args.timeout {
+        Some(timeout_secs) => {
+            info!("Using custom timeout: {} seconds", timeout_secs);
+            MonitorConfig::with_timeout(Duration::from_secs(timeout_secs))
+        }
+        None => {
+            info!("Using default timeout: 300 seconds");
+            MonitorConfig::default()
+        }
+    };
     let monitor = Arc::new(OperationMonitor::new(monitor_config));
 
     // Create an instance of our cargo tool service

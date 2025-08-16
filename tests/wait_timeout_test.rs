@@ -15,8 +15,6 @@ use tokio::process::Command;
 
 #[tokio::test]
 async fn test_wait_timeout_for_long_running_operation() -> Result<()> {
-    let temp = create_basic_project().await?;
-
     // Start server
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(

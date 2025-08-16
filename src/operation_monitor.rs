@@ -643,7 +643,7 @@ impl OperationMonitor {
                     start_time: Instant::now(),
                     end_time: Some(Instant::now()),
                     timeout_duration: None,
-                    result: Some(Ok(format!(
+                    result: Some(Err(format!(
                         "No operation found with ID '{operation_id}'. This could mean:\n\
                         • The operation completed long ago and was cleaned up\n\
                         • The operation ID is incorrect or mistyped\n\
@@ -655,19 +655,6 @@ impl OperationMonitor {
                 };
                 return Ok(vec![info]);
             }
-        }
-    }
-
-    /// Wait for all active operations to complete
-    pub async fn wait_for_all_operations(&self) -> Result<Vec<OperationInfo>, String> {
-        loop {
-            let active_ops = self.get_active_operations().await;
-            if active_ops.is_empty() {
-                // Return all completed operations
-                return Ok(self.get_completed_operations().await);
-            }
-            // Wait a bit before checking again
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         }
     }
 

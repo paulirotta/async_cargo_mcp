@@ -147,9 +147,7 @@ Commands support both synchronous and asynchronous execution. For long-running o
 ```
 
 When async is enabled, use the `wait` command to collect results:
-- `wait` with no parameters - wait for all operations
-- `wait` with `operation_id` - wait for specific operation
-- `wait` with `operation_ids` - wait for multiple operations
+- `wait` with `operation_ids` - wait for specific operations by providing their IDs (required)
 
 ## License
 

@@ -42,13 +42,18 @@ async fn test_wait_returns_placeholder_for_empty_output() -> Result<()> {
         .await?;
 
     // First build to compile (produces output); second build should be mostly silent
-    let _first = client.call_tool(CallToolRequestParam { name: "build".into(), arguments: Some(object!({"working_directory": project_path.clone(), "enable_async_notifications": true})) }).await?;
-    // Wait for first to finish to ensure subsequent build has no work
-    // Use wait for all
+    let first = client.call_tool(CallToolRequestParam {
+        name: "build".into(), 
+        arguments: Some(object!({"working_directory": project_path.clone(), "enable_async_notifications": true})) 
+    }).await?;
+
+    // Extract the operation ID from first build and wait for it to complete
+    let first_text = format!("{:?}", first.content);
+    let first_op_id = extract_operation_id(&first_text).expect("first operation id");
     let _ = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: None,
+            arguments: Some(object!({"operation_ids": [first_op_id]})),
         })
         .await?;
 
@@ -68,7 +73,7 @@ async fn test_wait_returns_placeholder_for_empty_output() -> Result<()> {
     let wait = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: Some(object!({"operation_id": op_id})),
+            arguments: Some(object!({"operation_ids": [op_id]})),
         })
         .await?;
     let wait_text = format!("{:?}", wait.content);

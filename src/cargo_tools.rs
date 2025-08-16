@@ -382,12 +382,23 @@ pub struct MetadataRequest {
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct WaitRequest {
-    /// Optional operation ID to wait for. If not provided, waits for all active operations
-    pub operation_id: Option<String>,
-    /// Optional list of operation IDs to wait for concurrently. If provided, waits for all listed operations.
-    pub operation_ids: Option<Vec<String>>,
+    /// List of operation IDs to wait for concurrently. Must contain at least one operation ID.
+    pub operation_ids: Vec<String>,
     /// Timeout in seconds (default: 300)
     pub timeout_secs: Option<u64>,
+}
+
+/// Request to start a deterministic long-running async sleep operation for testing timeouts and batching.
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct SleepRequest {
+    /// Unique external operation ID to assign (if omitted, one is generated)
+    pub operation_id: Option<String>,
+    /// Duration in milliseconds to sleep (default 1500ms)
+    pub duration_ms: Option<u64>,
+    /// Optional working directory (not used, but kept for symmetry with other tools)
+    pub working_directory: Option<String>,
+    /// Whether to enable async notifications (always true; provided to keep interface consistent)
+    pub enable_async_notifications: Option<bool>,
 }
 
 #[derive(Clone, Debug)]
@@ -428,6 +439,39 @@ impl AsyncCargo {
             .await;
         // Mark as started
         let _ = self.monitor.start_operation(operation_id).await;
+    }
+
+    /// Start a deterministic async sleep operation that just waits for a specified duration.
+    /// Useful for testing timeout behavior without relying on cargo command durations.
+    /// Always runs asynchronously and returns an operation ID immediately.
+    pub async fn sleep(&self, request: SleepRequest) -> Result<CallToolResult, ErrorData> {
+        let operation_id = request
+            .operation_id
+            .unwrap_or_else(|| format!("op_sleep_{}", uuid::Uuid::new_v4().simple()));
+        let duration_ms = request.duration_ms.unwrap_or(1500);
+        let description = format!("sleep {}ms", duration_ms);
+        self.register_async_operation(
+            &operation_id,
+            "sleep",
+            &description,
+            request.working_directory.clone(),
+        )
+        .await;
+
+        let monitor = self.monitor.clone();
+        let op_clone = operation_id.clone();
+        tokio::spawn(async move {
+            use tokio::time::{Duration, sleep};
+            sleep(Duration::from_millis(duration_ms)).await;
+            let _ = monitor
+                .complete_operation(&op_clone, Ok(format!("Slept for {}ms", duration_ms)))
+                .await;
+        });
+
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Sleep operation started ({}ms) with operation ID {}. Use wait with operation_ids to retrieve the result.",
+            duration_ms, operation_id
+        ))]))
     }
     pub fn new(monitor: Arc<OperationMonitor>) -> Self {
         Self {
@@ -595,7 +639,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "Wait for async cargo operations to complete. Provide operation_id for one, operation_ids for many, or leave empty to wait for all active operations. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Default timeout is 300 seconds (5 minutes), customizable via timeout_secs parameter. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn wait(
         &self,
@@ -605,89 +649,73 @@ impl AsyncCargo {
         use std::time::Duration;
         let timeout_duration = Duration::from_secs(req.timeout_secs.unwrap_or(300)); // Default 5-minute timeout
 
-        // Determine wait mode: multiple IDs, single ID, or all
-        let wait_result = if let Some(ids) = req.operation_ids.clone() {
-            if ids.is_empty() {
-                // Treat empty list same as waiting for all
-                tokio::time::timeout(timeout_duration, self.monitor.wait_for_all_operations())
-                    .await
-                    .map_err(|_| {
-                        ErrorData::internal_error("Wait timed out for all operations", None)
-                    })?
-            } else {
-                // Wait for each ID concurrently and collect using join handles
-                let monitor = self.monitor.clone();
-                let handles: Vec<_> = ids
-                    .into_iter()
-                    .map(|id| {
-                        let monitor = monitor.clone();
-                        tokio::spawn(async move { monitor.wait_for_operation(&id).await })
-                    })
-                    .collect();
+        // Validate that we have operation IDs to wait for
+        if req.operation_ids.is_empty() {
+            return Err(ErrorData::invalid_params(
+                "operation_ids cannot be empty. Must specify at least one operation ID to wait for.",
+                None,
+            ));
+        }
 
-                let combined = tokio::time::timeout(timeout_duration, async move {
-                    let mut merged = Vec::new();
-                    for handle in handles {
-                        match handle.await {
-                            Ok(Ok(mut ops)) => merged.append(&mut ops),
-                            Ok(Err(err)) => {
-                                use crate::operation_monitor::{OperationInfo, OperationState};
-                                let info = OperationInfo {
-                                    id: "unknown".to_string(),
-                                    command: "wait".to_string(),
-                                    description: format!("Wait internal error: {err}"),
-                                    state: OperationState::Failed,
-                                    start_time: std::time::Instant::now(),
-                                    end_time: Some(std::time::Instant::now()),
-                                    timeout_duration: None,
-                                    working_directory: None,
-                                    result: Some(Err(err)),
-                                    cancellation_token: tokio_util::sync::CancellationToken::new(),
-                                };
-                                merged.push(info);
-                            }
-                            Err(join_err) => {
-                                use crate::operation_monitor::{OperationInfo, OperationState};
-                                let msg = format!("Join error waiting for operation: {join_err}");
-                                let info = OperationInfo {
-                                    id: "unknown".to_string(),
-                                    command: "wait".to_string(),
-                                    description: msg.clone(),
-                                    state: OperationState::Failed,
-                                    start_time: std::time::Instant::now(),
-                                    end_time: Some(std::time::Instant::now()),
-                                    timeout_duration: None,
-                                    working_directory: None,
-                                    result: Some(Err(msg)),
-                                    cancellation_token: tokio_util::sync::CancellationToken::new(),
-                                };
-                                merged.push(info);
-                            }
-                        }
+        // Wait for each ID concurrently and collect using join handles
+        let monitor = self.monitor.clone();
+        let handles: Vec<_> = req
+            .operation_ids
+            .into_iter()
+            .map(|id| {
+                let monitor = monitor.clone();
+                tokio::spawn(async move { monitor.wait_for_operation(&id).await })
+            })
+            .collect();
+
+        let wait_result = tokio::time::timeout(timeout_duration, async move {
+            let mut merged = Vec::new();
+            for handle in handles {
+                match handle.await {
+                    Ok(Ok(mut ops)) => merged.append(&mut ops),
+                    Ok(Err(err)) => {
+                        use crate::operation_monitor::{OperationInfo, OperationState};
+                        let info = OperationInfo {
+                            id: "unknown".to_string(),
+                            command: "wait".to_string(),
+                            description: format!("Wait internal error: {err}"),
+                            state: OperationState::Failed,
+                            start_time: std::time::Instant::now(),
+                            end_time: Some(std::time::Instant::now()),
+                            timeout_duration: None,
+                            working_directory: None,
+                            result: Some(Err(err)),
+                            cancellation_token: tokio_util::sync::CancellationToken::new(),
+                        };
+                        merged.push(info);
                     }
-                    merged
-                })
-                .await
-                .map_err(|_| {
-                    ErrorData::internal_error("Wait timed out for specified operations", None)
-                })?;
-                Ok(combined)
+                    Err(join_err) => {
+                        use crate::operation_monitor::{OperationInfo, OperationState};
+                        let msg = format!("Join error waiting for operation: {join_err}");
+                        let info = OperationInfo {
+                            id: "unknown".to_string(),
+                            command: "wait".to_string(),
+                            description: msg.clone(),
+                            state: OperationState::Failed,
+                            start_time: std::time::Instant::now(),
+                            end_time: Some(std::time::Instant::now()),
+                            timeout_duration: None,
+                            working_directory: None,
+                            result: Some(Err(msg)),
+                            cancellation_token: tokio_util::sync::CancellationToken::new(),
+                        };
+                        merged.push(info);
+                    }
+                }
             }
-        } else if let Some(op_id) = req.operation_id {
-            // Wait for a specific operation
-            tokio::time::timeout(timeout_duration, self.monitor.wait_for_operation(&op_id))
-                .await
-                .map_err(|_| ErrorData::internal_error("Wait timed out", None))?
-        } else {
-            // Wait for all active operations
-            tokio::time::timeout(timeout_duration, self.monitor.wait_for_all_operations())
-                .await
-                .map_err(|_| ErrorData::internal_error("Wait timed out for all operations", None))?
-        };
+            merged
+        })
+        .await
+        .map_err(|_| ErrorData::internal_error("Wait timed out for specified operations", None))?;
 
-        match wait_result {
-            Ok(results) => {
-                let content: Vec<Content> = results
+        let results = wait_result;
+
+        let content: Vec<Content> = results
                     .into_iter()
                     .map(|op_info| {
                         let status = match &op_info.state {
@@ -774,16 +802,11 @@ impl AsyncCargo {
                     })
                     .collect();
 
-                Ok(CallToolResult::success(content))
-            }
-            Err(err) => Ok(CallToolResult::success(vec![Content::text(format!(
-                "- Wait operation failed: {err}"
-            ))])),
-        }
+        Ok(CallToolResult::success(content))
     }
 
     #[tool(
-        description = "CARGO BUILD: Faster than terminal cargo. Use enable_async_notifications=true for builds >1s to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO BUILD: Faster than terminal cargo. Use enable_async_notifications=true for builds >1s to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn build(
         &self,
@@ -1062,7 +1085,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO RUN: Faster than terminal cargo. Use enable_async_notifications=true for long-running apps to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO RUN: Faster than terminal cargo. Use enable_async_notifications=true for long-running apps to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn run(
         &self,
@@ -1256,7 +1279,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO TEST: Faster than terminal cargo. Provides complete error output but runs slower than nextest. Use when you need detailed failure information. ALWAYS use enable_async_notifications=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO TEST: Faster than terminal cargo. Provides complete error output but runs slower than nextest. Use when you need detailed failure information. ALWAYS use enable_async_notifications=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn test(
         &self,
@@ -1499,7 +1522,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO CHECK: Faster than terminal cargo. Fast validation - async optional for large projects. Quick compile check. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO CHECK: Faster than terminal cargo. Fast validation - async optional for large projects. Quick compile check. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn check(
         &self,
@@ -1617,7 +1640,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO ADD: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Handles version conflicts. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO ADD: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Handles version conflicts. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn add(
         &self,
@@ -1679,7 +1702,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO REMOVE: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Prevents Cargo.toml corruption. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO REMOVE: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Prevents Cargo.toml corruption. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn remove(
         &self,
@@ -1768,7 +1791,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO DOC: Faster than terminal cargo. Use enable_async_notifications=true for large codebases to multitask. Creates LLM-friendly API reference. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO DOC: Faster than terminal cargo. Use enable_async_notifications=true for large codebases to multitask. Creates LLM-friendly API reference. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn doc(
         &self,
@@ -1911,7 +1934,7 @@ impl AsyncCargo {
         }
     }
     #[tool(
-        description = "CARGO CLIPPY: Faster than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO CLIPPY: Faster than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn clippy(
         &self,
@@ -2033,7 +2056,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO NEXTEST: Faster than terminal cargo. Faster test runner - preferred for most testing. Use 'test' only when you need more complete error output for failing tests. ALWAYS use enable_async_notifications=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO NEXTEST: Faster than terminal cargo. Faster test runner - preferred for most testing. Use 'test' only when you need more complete error output for failing tests. ALWAYS use enable_async_notifications=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn nextest(
         &self,
@@ -2192,7 +2215,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO CLEAN: Faster than terminal cargo. Fast operation - async not needed. Frees disk space. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO CLEAN: Faster than terminal cargo. Fast operation - async not needed. Frees disk space. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn clean(
         &self,
@@ -2310,7 +2333,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO FIX: Faster than terminal cargo. Automatically fix compiler warnings. Supports --allow-dirty via args. Use async for large codebases. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO FIX: Faster than terminal cargo. Automatically fix compiler warnings. Supports --allow-dirty via args. Use async for large codebases. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn fix(
         &self,
@@ -2436,7 +2459,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO SEARCH: Faster than terminal cargo. Search for crates on crates.io. Fast operation - async not needed unless searching many terms. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO SEARCH: Faster than terminal cargo. Search for crates on crates.io. Fast operation - async not needed unless searching many terms. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn search(
         &self,
@@ -2559,7 +2582,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO BENCH: Faster than terminal cargo. ALWAYS use enable_async_notifications=true for benchmark suites to multitask. Performance testing. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO BENCH: Faster than terminal cargo. ALWAYS use enable_async_notifications=true for benchmark suites to multitask. Performance testing. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn bench(
         &self,
@@ -2682,7 +2705,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO INSTALL: Faster than terminal cargo. Use enable_async_notifications=true for large packages to multitask. Global tool installation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO INSTALL: Faster than terminal cargo. Use enable_async_notifications=true for large packages to multitask. Global tool installation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn install(
         &self,
@@ -2904,7 +2927,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO AUDIT: Faster than terminal cargo. Security vulnerability scanning. Use enable_async_notifications=true for large projects to multitask. Identifies known security vulnerabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO AUDIT: Faster than terminal cargo. Security vulnerability scanning. Use enable_async_notifications=true for large projects to multitask. Identifies known security vulnerabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn audit(
         &self,
@@ -3065,7 +3088,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO FMT: Faster than terminal cargo. Format Rust code using rustfmt. Use enable_async_notifications=true for large projects to multitask while code is being formatted. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO FMT: Faster than terminal cargo. Format Rust code using rustfmt. Use enable_async_notifications=true for large projects to multitask while code is being formatted. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn fmt(
         &self,
@@ -3313,8 +3336,6 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         use tokio::process::Command;
 
-        let version_id = self.generate_operation_id();
-
         let mut cmd = Command::new("cargo");
         cmd.arg("version");
 
@@ -3333,17 +3354,17 @@ impl AsyncCargo {
 
         let result_msg = if output.status.success() {
             format!(
-                "📋 Version operation #{version_id} completed successfully.\nCargo version information:\n{merged}"
+                "📋 Version operation completed successfully.\nCargo version information:\n{merged}"
             )
         } else {
-            format!("- Version operation #{version_id} failed.\nErrors: {stderr}\nOutput: {merged}")
+            format!("- Version operation failed.\nErrors: {stderr}\nOutput: {merged}")
         };
 
         Ok(CallToolResult::success(vec![Content::text(result_msg)]))
     }
 
     #[tool(
-        description = "CARGO FETCH: Faster than terminal cargo. Fetch dependencies without building. Use enable_async_notifications=true for large dependency sets to multitask while downloading. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO FETCH: Faster than terminal cargo. Fetch dependencies without building. Use enable_async_notifications=true for large dependency sets to multitask while downloading. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn fetch(
         &self,
@@ -3487,7 +3508,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO RUSTC: Faster than terminal cargo. Compile with custom rustc options. Use enable_async_notifications=true for complex builds to multitask while compiling. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait to collect results."
+        description = "CARGO RUSTC: Faster than terminal cargo. Compile with custom rustc options. Use enable_async_notifications=true for complex builds to multitask while compiling. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn rustc(
         &self,

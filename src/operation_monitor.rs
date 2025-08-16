@@ -953,12 +953,17 @@ mod tests {
         assert!(op_info.description.contains("No operation found"));
         assert!(op_info.description.contains("nonexistent_id"));
 
-        // Should have a helpful result message
-        if let Some(Ok(message)) = &op_info.result {
-            assert!(message.contains("No operation found"));
-            assert!(message.contains("nonexistent_id"));
-        } else {
-            panic!("Expected helpful result message for missing operation");
+        // Should have a helpful result message (either in Ok or Err variant)
+        match &op_info.result {
+            Some(Ok(message)) => {
+                assert!(message.contains("No operation found"));
+                assert!(message.contains("nonexistent_id"));
+            }
+            Some(Err(message)) => {
+                assert!(message.contains("No operation found"));
+                assert!(message.contains("nonexistent_id"));
+            }
+            None => panic!("Expected helpful result message for missing operation"),
         }
     }
 

@@ -639,7 +639,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Default timeout is 300 seconds (5 minutes), customizable via timeout_secs parameter. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Default timeout is 300 seconds (5 minutes), customizable via timeout_secs parameter. If a wait times out but you expect operations to finish, call wait again with a larger timeout_secs. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn wait(
         &self,
@@ -710,8 +710,8 @@ impl AsyncCargo {
             }
             merged
         })
-        .await
-        .map_err(|_| ErrorData::internal_error("Wait timed out for specified operations", None))?;
+    .await
+    .map_err(|_| ErrorData::internal_error("Wait timed out for specified operations. If you expect them to finish, call wait again with a larger timeout_secs value.", None))?;
 
         let results = wait_result;
 

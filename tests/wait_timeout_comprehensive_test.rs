@@ -3,7 +3,6 @@
 
 use anyhow::Result;
 mod common;
-use common::test_project::create_basic_project;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,

@@ -24,7 +24,7 @@ async fn test_wait_timeout_for_long_running_operation() -> Result<()> {
         ))?)
         .await?;
 
-    // Use deterministic sleep operations for timing sensitivity
+    // Use deterministic sleep operations (short operations that should complete within 300s fixed timeout)
     let _sleep1 = client
         .call_tool(CallToolRequestParam {
             name: "sleep".into(),
@@ -47,14 +47,13 @@ async fn test_wait_timeout_for_long_running_operation() -> Result<()> {
     let operation_id1 = "op_sleep_long_1".to_string();
     let operation_id2 = "op_sleep_long_2".to_string();
 
-    // Wait for both operations with a very short timeout (should timeout before tests complete)
+    // Wait for both operations with the fixed 300s timeout (should succeed)
     let start_time = Instant::now();
     let wait_result = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
             arguments: Some(object!({
-                "operation_ids": [operation_id1, operation_id2],
-                "timeout_secs": 1  // 1 second timeout - should be too short for two test runs
+                "operation_ids": [operation_id1, operation_id2]
             })),
         })
         .await?;
@@ -62,17 +61,17 @@ async fn test_wait_timeout_for_long_running_operation() -> Result<()> {
 
     let wait_text = format!("{:?}", wait_result.content);
 
-    // Should timeout after ~1 second
+    // Should complete within reasonable time (operations should finish in ~1.6s)
     assert!(
-        elapsed.as_millis() >= 950 && elapsed.as_millis() < 1600,
-        "Wait should have timed out near 1s, elapsed {:?}",
+        elapsed.as_secs() < 10, // Should complete well before the 300s timeout
+        "Wait should have completed quickly, elapsed {:?}",
         elapsed
     );
 
-    // Should contain timeout error message
+    // Should contain completed operation results, not timeout error
     assert!(
-        wait_text.contains("timed out") || wait_text.contains("timeout"),
-        "Wait result should contain timeout message: {wait_text}"
+        wait_text.contains("OPERATION COMPLETED") && wait_text.contains("Slept for"),
+        "Wait result should contain completed operation results: {wait_text}"
     );
 
     let _ = client.cancel().await;
@@ -99,8 +98,7 @@ async fn test_wait_nonexistent_operation_returns_immediately() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
             arguments: Some(object!({
-                "operation_ids": ["op_never_exists_12345"],
-                "timeout_secs": 30  // Long timeout, but should return immediately
+                "operation_ids": ["op_never_exists_12345"]
             })),
         })
         .await?;

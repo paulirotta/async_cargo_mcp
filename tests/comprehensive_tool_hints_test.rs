@@ -59,7 +59,7 @@ mod comprehensive_tool_hints_tests {
         // This test documents the wait command requirements
         let wait_command_features = vec![
             "operation_id parameter (optional)",
-            "timeout_secs parameter (optional, default 300)",
+            "fixed timeout of 300 seconds (5 minutes)",
             "wait for specific operation when operation_id provided",
             "wait for all operations when no operation_id provided",
             "return actual results (success/failure/output)",

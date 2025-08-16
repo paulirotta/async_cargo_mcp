@@ -71,9 +71,7 @@ async fn test_async_multiple_builds_then_wait_returns_full_outputs() -> Result<(
     let wait = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: Some(
-                object!({"operation_ids": [id1.clone(), id2.clone()], "timeout_secs": 240 }),
-            ),
+            arguments: Some(object!({"operation_ids": [id1.clone(), id2.clone()] })),
         })
         .await?;
     let wait_text = format!("{:?}", wait.content);

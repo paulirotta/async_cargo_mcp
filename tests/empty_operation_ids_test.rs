@@ -25,7 +25,7 @@ async fn test_wait_with_empty_operation_ids_fails() -> Result<()> {
     let wait_result = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: Some(object!({ "operation_ids": [], "timeout_secs": 5 })),
+            arguments: Some(object!({ "operation_ids": [] })),
         })
         .await;
 

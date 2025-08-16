@@ -72,39 +72,32 @@ async fn test_sleep_operation_timeout() -> Result<()> {
     let text = format!("{:?}", sleep_result.content);
     assert!(text.contains("op_sleep_long"));
 
-    // Wait with 1s timeout
+    // Wait with fixed 300s timeout - for a 2s sleep this should succeed
     let start = Instant::now();
-    let wait = client
+    let wait_result = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
             arguments: Some(object!({
-                "operation_ids": ["op_sleep_long"],
-                "timeout_secs": 1
+                "operation_ids": ["op_sleep_long"]
             })),
         })
-        .await?;
+        .await;
     let elapsed = start.elapsed();
-    let wait_text = format!("{:?}", wait.content);
+
+    // The wait should now succeed since we're using fixed 300s timeout for a 2s sleep
+    assert!(
+        wait_result.is_ok(),
+        "Expected wait to succeed with fixed 300s timeout for 2s sleep, got error: {:?}",
+        wait_result.unwrap_err()
+    );
+    let wait_text = format!("{:?}", wait_result.unwrap().content);
+    assert!(wait_text.contains("Slept for 2000ms"));
 
     assert!(
-        elapsed.as_secs() >= 1 && elapsed.as_secs() < 2,
-        "elapsed {:?}",
+        elapsed.as_secs() >= 2 && elapsed.as_secs() < 4,
+        "elapsed should be around 2s for the sleep, got: {:?}",
         elapsed
     );
-    assert!(wait_text.contains("timed out") || wait_text.contains("TIMEOUT"));
-
-    // Now wait again with larger timeout and ensure completion
-    let wait2 = client
-        .call_tool(CallToolRequestParam {
-            name: "wait".into(),
-            arguments: Some(object!({
-                "operation_ids": ["op_sleep_long"],
-                "timeout_secs": 5
-            })),
-        })
-        .await?;
-    let wait2_text = format!("{:?}", wait2.content);
-    assert!(wait2_text.contains("Slept for 2000ms"));
 
     let _ = client.cancel().await;
     Ok(())

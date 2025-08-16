@@ -75,9 +75,7 @@ async fn test_async_mixed_success_failure_wait_outputs() -> Result<()> {
     let wait = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: Some(
-                object!({"operation_ids": [ok_id.clone(), fail_id.clone()], "timeout_secs": 300 }),
-            ),
+            arguments: Some(object!({"operation_ids": [ok_id.clone(), fail_id.clone()] })),
         })
         .await?;
     let wait_text = format!("{:?}", wait.content);

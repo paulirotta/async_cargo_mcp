@@ -381,11 +381,10 @@ pub struct MetadataRequest {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct WaitRequest {
     /// List of operation IDs to wait for concurrently. Must contain at least one operation ID.
     pub operation_ids: Vec<String>,
-    /// Timeout in seconds (default: 300)
-    pub timeout_secs: Option<u64>,
 }
 
 /// Request to start a deterministic long-running async sleep operation for testing timeouts and batching.
@@ -445,7 +444,7 @@ impl AsyncCargo {
     /// Useful for testing timeout behavior without relying on cargo command durations.
     /// Always runs asynchronously and returns an operation ID immediately.
     #[tool(
-        description = "Start a deterministic async sleep (no cargo invoked). Returns an operation ID immediately; use wait with operation_ids to retrieve completion. Useful for timeout & batching tests."
+        description = "Start a deterministic async sleep (no cargo invoked). Returns an operation ID immediately; use wait with operation_ids to retrieve completion. Useful for timeout & batching tests. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn sleep(
         &self,
@@ -651,7 +650,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Default timeout is 300 seconds (5 minutes), customizable via timeout_secs parameter. If a wait times out but you expect operations to finish, call wait again with a larger timeout_secs. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Uses a fixed timeout of 300 seconds (5 minutes). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn wait(
         &self,
@@ -659,7 +658,7 @@ impl AsyncCargo {
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
         use std::time::Duration;
-        let timeout_duration = Duration::from_secs(req.timeout_secs.unwrap_or(300)); // Default 5-minute timeout
+        let timeout_duration = Duration::from_secs(300); // Fixed 5-minute timeout
 
         // Validate that we have operation IDs to wait for
         if req.operation_ids.is_empty() {
@@ -723,7 +722,7 @@ impl AsyncCargo {
             merged
         })
     .await
-    .map_err(|_| ErrorData::internal_error("Wait timed out for specified operations. If you expect them to finish, call wait again with a larger timeout_secs value.", None))?;
+    .map_err(|_| ErrorData::internal_error("Wait timed out for specified operations (300 second timeout). Operations may still be running in the background.", None))?;
 
         let results = wait_result;
 

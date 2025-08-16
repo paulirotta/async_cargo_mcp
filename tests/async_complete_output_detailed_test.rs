@@ -61,7 +61,7 @@ async fn test_async_build_wait_returns_complete_output_detailed() -> Result<()> 
     let wait_result = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: Some(object!({ "operation_ids": [op_id], "timeout_secs": 60 })),
+            arguments: Some(object!({ "operation_ids": [op_id] })),
         })
         .await?;
 
@@ -147,8 +147,7 @@ async fn test_multiple_async_operations_complete_output() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
             arguments: Some(object!({
-                "operation_ids": [build_id.clone(), check_id.clone()],
-                "timeout_secs": 60
+                "operation_ids": [build_id.clone(), check_id.clone()]
             })),
         })
         .await?;

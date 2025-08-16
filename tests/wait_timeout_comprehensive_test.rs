@@ -29,8 +29,7 @@ async fn test_wait_timeout_for_nonexistent_operation() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
             arguments: Some(object!({
-                "operation_ids": ["op_nonexistent_abc123"],
-                "timeout_secs": 2
+                "operation_ids": ["op_nonexistent_abc123"]
             })),
         })
         .await?;
@@ -73,8 +72,7 @@ async fn test_wait_timeout_for_empty_operation_list() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
             arguments: Some(object!({
-                "operation_ids": [],
-                "timeout_secs": 5
+                "operation_ids": []
             })),
         })
         .await;

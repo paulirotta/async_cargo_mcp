@@ -57,7 +57,7 @@ async fn test_async_check_then_wait_returns_full_output() -> Result<()> {
     let wait_result = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: Some(object!({ "operation_ids": [op_id], "timeout_secs": 180 })),
+            arguments: Some(object!({ "operation_ids": [op_id] })),
         })
         .await?;
 

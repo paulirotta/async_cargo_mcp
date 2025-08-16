@@ -65,7 +65,7 @@ async fn test_wait_after_completion_returns_cached_results() -> Result<()> {
     let first_wait_result = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: Some(object!({ "operation_ids": [op_id.clone()], "timeout_secs": 120 })),
+            arguments: Some(object!({ "operation_ids": [op_id.clone()] })),
         })
         .await?;
 
@@ -82,7 +82,7 @@ async fn test_wait_after_completion_returns_cached_results() -> Result<()> {
     let second_wait_result = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: Some(object!({ "operation_ids": [op_id.clone()], "timeout_secs": 5 })),
+            arguments: Some(object!({ "operation_ids": [op_id.clone()] })),
         })
         .await?;
 
@@ -123,9 +123,7 @@ async fn test_wait_for_nonexistent_operation_provides_helpful_message() -> Resul
     let wait_result = client
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
-            arguments: Some(
-                object!({ "operation_ids": ["op_nonexistent_12345"], "timeout_secs": 5 }),
-            ),
+            arguments: Some(object!({ "operation_ids": ["op_nonexistent_12345"] })),
         })
         .await?;
 
@@ -176,8 +174,7 @@ async fn test_wait_for_multiple_operations_including_nonexistent() -> Result<()>
         .call_tool(CallToolRequestParam {
             name: "wait".into(),
             arguments: Some(object!({
-                "operation_ids": [real_op_id.clone(), "op_fake_999"],
-                "timeout_secs": 120
+                "operation_ids": [real_op_id.clone(), "op_fake_999"]
             })),
         })
         .await?;

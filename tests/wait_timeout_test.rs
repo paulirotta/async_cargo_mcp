@@ -13,28 +13,9 @@ use rmcp::{
 use std::time::Instant;
 use tokio::process::Command;
 
-fn extract_operation_id(s: &str) -> Option<String> {
-    if let Some(start) = s.find("op_") {
-        let rest = &s[start..];
-        let mut id = String::new();
-        for ch in rest.chars() {
-            if ch.is_alphanumeric() || ch == '_' || ch == '-' {
-                id.push(ch);
-            } else {
-                break;
-            }
-        }
-        if id.starts_with("op_") {
-            return Some(id);
-        }
-    }
-    None
-}
-
 #[tokio::test]
 async fn test_wait_timeout_for_long_running_operation() -> Result<()> {
     let temp = create_basic_project().await?;
-    let working_dir = temp.path().to_str().unwrap().to_string();
 
     // Start server
     let client = ()
@@ -46,7 +27,7 @@ async fn test_wait_timeout_for_long_running_operation() -> Result<()> {
         .await?;
 
     // Use deterministic sleep operations for timing sensitivity
-    let sleep1 = client
+    let _sleep1 = client
         .call_tool(CallToolRequestParam {
             name: "sleep".into(),
             arguments: Some(object!({
@@ -55,7 +36,7 @@ async fn test_wait_timeout_for_long_running_operation() -> Result<()> {
             })),
         })
         .await?;
-    let sleep2 = client
+    let _sleep2 = client
         .call_tool(CallToolRequestParam {
             name: "sleep".into(),
             arguments: Some(object!({

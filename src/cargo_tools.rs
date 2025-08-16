@@ -454,7 +454,7 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let operation_id = req
             .operation_id
-            .unwrap_or_else(|| format!("op_sleep_{}", uuid::Uuid::new_v4().simple()));
+            .unwrap_or_else(|| self.generate_operation_id_for("sleep"));
         let duration_ms = req.duration_ms.unwrap_or(1500);
         let description = format!("sleep {}ms", duration_ms);
         self.register_async_operation(
@@ -621,12 +621,17 @@ impl AsyncCargo {
         RawResource::new(uri, name.to_string()).no_annotation()
     }
 
-    fn generate_operation_id(&self) -> String {
+    /// Generate a descriptive operation id including the command category.
+    /// Examples: op_build_12, op_test_13, op_clippy_14
+    fn generate_operation_id_for(&self, kind: &str) -> String {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
-
         let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
-
-        format!("op_{counter}")
+        let sanitized: String = kind
+            .to_ascii_lowercase()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect();
+        format!("op_{}_{}", sanitized, counter)
     }
 
     /// Generate a tool hint message for LLMs when async operations are running
@@ -820,7 +825,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<BuildRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let build_id = self.generate_operation_id();
+        let build_id = self.generate_operation_id_for("build");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -1099,7 +1104,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<RunRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let run_id = self.generate_operation_id();
+        let run_id = self.generate_operation_id_for("run");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -1293,7 +1298,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<TestRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let test_id = self.generate_operation_id();
+        let test_id = self.generate_operation_id_for("test");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -1536,7 +1541,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<CheckRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let check_id = self.generate_operation_id();
+        let check_id = self.generate_operation_id_for("check");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -1653,7 +1658,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<DependencyRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let add_id = self.generate_operation_id();
+        let add_id = self.generate_operation_id_for("add");
 
         // Always use synchronous execution for Cargo.toml modifications
         use tokio::process::Command;
@@ -1715,7 +1720,7 @@ impl AsyncCargo {
         &self,
         Parameters(req): Parameters<RemoveDependencyRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let remove_id = self.generate_operation_id();
+        let remove_id = self.generate_operation_id_for("remove");
 
         // Always use synchronous execution for Cargo.toml modifications
         use tokio::process::Command;
@@ -1805,7 +1810,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<DocRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let doc_id = self.generate_operation_id();
+        let doc_id = self.generate_operation_id_for("doc");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -1948,7 +1953,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<ClippyRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let clippy_id = self.generate_operation_id();
+        let clippy_id = self.generate_operation_id_for("clippy");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -2070,7 +2075,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<NextestRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let nextest_id = self.generate_operation_id();
+        let nextest_id = self.generate_operation_id_for("nextest");
 
         // First check if nextest is available
         let nextest_check = tokio::process::Command::new("cargo")
@@ -2229,7 +2234,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<CleanRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let clean_id = self.generate_operation_id();
+        let clean_id = self.generate_operation_id_for("clean");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -2347,7 +2352,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<FixRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let fix_id = self.generate_operation_id();
+        let fix_id = self.generate_operation_id_for("fix");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -2473,7 +2478,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<SearchRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let search_id = self.generate_operation_id();
+        let search_id = self.generate_operation_id_for("search");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -2596,7 +2601,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<BenchRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let bench_id = self.generate_operation_id();
+        let bench_id = self.generate_operation_id_for("bench");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -2719,7 +2724,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<InstallRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let install_id = self.generate_operation_id();
+        let install_id = self.generate_operation_id_for("install");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -2838,7 +2843,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<UpgradeRequest>,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let upgrade_id = self.generate_operation_id();
+        let upgrade_id = self.generate_operation_id_for("upgrade");
 
         // First check if cargo-edit (upgrade command) is available
         let upgrade_check = tokio::process::Command::new("cargo")
@@ -2941,7 +2946,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<AuditRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let audit_id = self.generate_operation_id();
+        let audit_id = self.generate_operation_id_for("audit");
 
         // First check if cargo-audit is available
         let audit_check = tokio::process::Command::new("cargo")
@@ -3102,7 +3107,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<FmtRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let fmt_id = self.generate_operation_id();
+        let fmt_id = self.generate_operation_id_for("fmt");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -3378,7 +3383,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<FetchRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let fetch_id = self.generate_operation_id();
+        let fetch_id = self.generate_operation_id_for("fetch");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -3522,7 +3527,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<RustcRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        let rustc_id = self.generate_operation_id();
+        let rustc_id = self.generate_operation_id_for("rustc");
 
         // Check if async notifications are enabled
         if req.enable_async_notifications.unwrap_or(false) {
@@ -3654,7 +3659,7 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         use tokio::process::Command;
 
-        let metadata_id = self.generate_operation_id();
+        let metadata_id = self.generate_operation_id_for("metadata");
 
         let mut cmd = Command::new("cargo");
         cmd.arg("metadata");
@@ -3908,7 +3913,7 @@ impl AsyncCargo {
     ) -> Result<String, String> {
         use tokio::process::Command;
 
-        let operation_id = self.generate_operation_id().to_string();
+        let operation_id = self.generate_operation_id_for("add");
         let start_time = Instant::now();
 
         let callback = callback.unwrap_or_else(|| no_callback());
@@ -4004,7 +4009,7 @@ impl AsyncCargo {
     ) -> Result<String, String> {
         use tokio::process::Command;
 
-        let operation_id = self.generate_operation_id().to_string();
+        let operation_id = self.generate_operation_id_for("remove");
         let start_time = Instant::now();
 
         let callback = callback.unwrap_or_else(|| no_callback());
@@ -4079,7 +4084,7 @@ impl AsyncCargo {
         callback: Option<Box<dyn CallbackSender>>,
     ) -> Result<String, String> {
         use tokio::process::Command;
-        let operation_id = self.generate_operation_id().to_string();
+        let operation_id = self.generate_operation_id_for("build");
         let start_time = Instant::now();
 
         let callback = callback.unwrap_or_else(|| no_callback());
@@ -4152,7 +4157,7 @@ impl AsyncCargo {
     ) -> Result<String, String> {
         use tokio::process::Command;
 
-        let operation_id = self.generate_operation_id().to_string();
+        let operation_id = self.generate_operation_id_for("audit");
         let start_time = Instant::now();
 
         let callback = callback.unwrap_or_else(|| no_callback());

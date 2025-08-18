@@ -102,7 +102,7 @@ jobs:
 
       - name: Cargo Nextest
         run: |
-          cargo nextest run --locked --features polars,burn,ndarray
+          cargo nextest run --locked
 
       - name: Show sccache stats
         run: sccache --show-stats
@@ -159,7 +159,7 @@ jobs:
 
       - name: Cargo Build
         run: |
-          cargo build --locked --features polars,burn,ndarray
+          cargo build --locked
 
       - name: Cargo Fmt (check)
         run: |

@@ -54,7 +54,7 @@ async fn test_monitor_config_with_custom_timeout() {
     // Verify other defaults remain unchanged
     assert_eq!(config.cleanup_interval, Duration::from_secs(21600));
     assert_eq!(config.max_history_size, 1000);
-    assert_eq!(config.auto_cleanup, true);
+    assert!(config.auto_cleanup);
 }
 
 #[tokio::test]

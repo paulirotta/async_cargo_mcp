@@ -160,13 +160,13 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
 
         // Verify the tool returned some content (even if it's an error message)
         assert!(
-            result.content.is_some() && !result.content.as_ref().unwrap().is_empty(),
+            !result.content.is_empty(),
             "{tool_name} tool should return some content"
         );
 
         // Verify the result has the expected structure
         assert!(
-            result.content.as_ref().is_some_and(|c| !c.is_empty()),
+            !result.content.is_empty(),
             "{tool_name} tool should return at least one content item"
         );
 
@@ -214,7 +214,7 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
 
     // Verify doc command returns meaningful content
     assert!(
-        doc_result.content.is_some() && !doc_result.content.as_ref().unwrap().is_empty(),
+        !doc_result.content.is_empty(),
         "doc command should return content"
     );
 
@@ -282,10 +282,7 @@ async fn test_mcp_protocol_flow() -> Result<()> {
         })
         .await?;
 
-    assert!(
-        result.content.is_some() && !result.content.as_ref().unwrap().is_empty(),
-        "Tool should return content"
-    );
+    assert!(!result.content.is_empty(), "Tool should return content");
     println!("Protocol communication working");
 
     let _ = client.cancel().await;

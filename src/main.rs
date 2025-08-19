@@ -55,6 +55,13 @@ struct Args {
         help = "Disable shell pools and use direct tokio::process::Command spawning"
     )]
     disable_shell_pools: bool,
+
+    /// Force synchronous operation mode (disables async callbacks for all operations)
+    #[arg(
+        long,
+        help = "Force synchronous execution of all operations, disabling async callbacks and notifications"
+    )]
+    synchronous: bool,
 }
 
 #[tokio::main]
@@ -112,18 +119,26 @@ async fn main() -> Result<()> {
         );
     }
 
+    let synchronous_mode = args.synchronous;
+    if synchronous_mode {
+        info!("Synchronous mode enabled - async callbacks disabled for all operations");
+    } else {
+        info!("Async mode enabled - operations can use async callbacks and notifications");
+    }
+
     let shell_pool_manager = Arc::new(ShellPoolManager::new(shell_pool_config));
 
     // Start background health monitoring and cleanup tasks
     shell_pool_manager.clone().start_background_tasks();
 
     // Create an instance of our cargo tool service
-    let service = AsyncCargo::new(monitor.clone(), shell_pool_manager)
-        .serve(stdio())
-        .await
-        .inspect_err(|e| {
-            tracing::error!("serving error: {:?}", e);
-        })?;
+    let service =
+        AsyncCargo::new_with_config(monitor.clone(), shell_pool_manager, synchronous_mode)
+            .serve(stdio())
+            .await
+            .inspect_err(|e| {
+                tracing::error!("serving error: {:?}", e);
+            })?;
 
     // Wait for the service to finish
     service.waiting().await?;

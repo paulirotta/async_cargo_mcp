@@ -45,7 +45,7 @@ async fn test_async_audit_wait_combines_outputs() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "audit".into(),
             arguments: Some(
-                object!({"working_directory": project_path, "enable_async_notifications": true}),
+                object!({"working_directory": project_path, "enable_async_notification": true}),
             ),
         })
         .await?;

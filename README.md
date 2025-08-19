@@ -159,8 +159,11 @@ cargo run --release -- --max-shells 50
 # Disable shell pools entirely (fallback to direct command spawning)
 cargo run --release -- --disable-shell-pools
 
+# Force synchronous execution mode (disables async callbacks for all operations)
+cargo run --release -- --synchronous
+
 # Combine options as needed
-cargo run --release -- --shell-pool-size 3 --max-shells 30
+cargo run --release -- --shell-pool-size 3 --max-shells 30 --synchronous
 ```
 
 ### Shell Pool Benefits
@@ -186,13 +189,18 @@ Commands support both synchronous and asynchronous execution. For long-running o
 ```json
 {
   "working_directory": "/path/to/project",
-  "enable_async_notifications": true
+  "enable_async_notification": true
 }
 ```
 
 When async is enabled, use the `wait` command to collect results:
 
 - `wait` with `operation_ids` - wait for specific operations by providing their IDs (required)
+
+### Execution Modes
+
+- **Async Mode (default)**: Operations can run in the background with notifications when `enable_async_notification: true`
+- **Synchronous Mode**: Use `--synchronous` CLI flag to force all operations to run synchronously, ignoring `enable_async_notification` parameter
 
 ## License
 

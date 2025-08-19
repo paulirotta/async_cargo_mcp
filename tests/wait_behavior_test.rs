@@ -111,7 +111,7 @@ async fn test_wait_after_completion() -> Result<()> {
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;
@@ -269,7 +269,7 @@ async fn test_wait_mixed_real_and_fake_operations() -> Result<()> {
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;

@@ -29,13 +29,13 @@ async fn test_async_doc_then_wait_returns_full_output_and_path() -> Result<()> {
         ))?)
         .await?;
 
-    // Kick off async doc with enable_async_notifications=true
+    // Kick off async doc with enable_async_notification=true
     let start = client
         .call_tool(CallToolRequestParam {
             name: "doc".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;

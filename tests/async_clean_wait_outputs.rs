@@ -34,7 +34,7 @@ async fn test_async_clean_then_wait_returns_status() -> Result<()> {
             name: "clean".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;

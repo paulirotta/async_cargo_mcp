@@ -51,13 +51,13 @@ async fn test_async_multiple_builds_then_wait_returns_full_outputs() -> Result<(
     let r1 = client
         .call_tool(CallToolRequestParam {
             name: "build".into(),
-            arguments: Some(object!({"working_directory": p1, "enable_async_notifications": true})),
+            arguments: Some(object!({"working_directory": p1, "enable_async_notification": true})),
         })
         .await?;
     let r2 = client
         .call_tool(CallToolRequestParam {
             name: "build".into(),
-            arguments: Some(object!({"working_directory": p2, "enable_async_notifications": true})),
+            arguments: Some(object!({"working_directory": p2, "enable_async_notification": true})),
         })
         .await?;
 

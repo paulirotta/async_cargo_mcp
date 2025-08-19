@@ -1,6 +1,6 @@
 //! Verify async build returns full build output via wait and progress notifications
 //!
-//! This test ensures that when enable_async_notifications=true is used, the initial
+//! This test ensures that when enable_async_notification=true is used, the initial
 //! build response is a tool hint with an operation_id, and calling `wait` returns
 //! the full captured output from cargo build.
 
@@ -31,13 +31,13 @@ async fn test_async_build_then_wait_returns_full_output() -> Result<()> {
         ))?)
         .await?;
 
-    // Kick off async build with enable_async_notifications=true
+    // Kick off async build with enable_async_notification=true
     let build_result = client
         .call_tool(CallToolRequestParam {
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;

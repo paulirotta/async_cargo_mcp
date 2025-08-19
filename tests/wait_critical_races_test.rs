@@ -56,7 +56,7 @@ async fn test_critical_vanishing_operation_race_300s_timeout() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": 25, // Very short operations
                     "operation_id": format!("op_vanish_{}", i),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;
@@ -203,7 +203,7 @@ async fn test_timeout_boundary_race_conditions() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": duration_ms,
                     "operation_id": op_id.clone(),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;
@@ -288,7 +288,7 @@ async fn test_cleanup_during_wait_polling_race() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": 150,  // Medium duration
                     "operation_id": format!("op_cleanup_poll_{}", i),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;
@@ -392,7 +392,7 @@ async fn test_extreme_concurrency_wait_stress() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": 300,
                     "operation_id": format!("op_stress_{}", i),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;

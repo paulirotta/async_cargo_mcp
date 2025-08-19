@@ -59,7 +59,7 @@ async fn test_edge_immediate_cleanup_race() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": 50, // Very short
                     "operation_id": format!("op_cleanup_race_{}", i),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;
@@ -151,7 +151,7 @@ async fn test_edge_simultaneous_completion_concurrent_waits() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": duration_ms,
                     "operation_id": format!("op_simultaneous_{}", i),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;
@@ -273,7 +273,7 @@ async fn test_edge_overlapping_timeout_scenarios() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": duration_ms,
                     "operation_id": op_id,
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;
@@ -344,7 +344,7 @@ async fn test_edge_rapid_sequential_waits() -> Result<()> {
             arguments: Some(object!({
                 "duration_ms": 300,
                 "operation_id": "op_rapid_waits",
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;
@@ -447,7 +447,7 @@ async fn test_edge_high_load_wait_behavior() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": 400, // Moderate duration
                     "operation_id": format!("op_load_{}", i),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;

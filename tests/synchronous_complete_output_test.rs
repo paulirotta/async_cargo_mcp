@@ -25,13 +25,13 @@ async fn test_synchronous_build_returns_complete_output() -> Result<()> {
         ))?)
         .await?;
 
-    // Run synchronous build (enable_async_notifications=false or not set)
+    // Run synchronous build (enable_async_notification=false or not set)
     let result = client
         .call_tool(CallToolRequestParam {
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": false
+                "enable_async_notification": false
             })),
         })
         .await?;
@@ -89,7 +89,7 @@ async fn test_synchronous_check_returns_complete_output() -> Result<()> {
             name: "check".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": false
+                "enable_async_notification": false
             })),
         })
         .await?;

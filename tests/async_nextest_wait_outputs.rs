@@ -30,13 +30,13 @@ async fn test_async_nextest_then_wait_returns_full_output() -> Result<()> {
         ))?)
         .await?;
 
-    // Kick off async nextest with enable_async_notifications=true
+    // Kick off async nextest with enable_async_notification=true
     let nextest_result = client
         .call_tool(CallToolRequestParam {
             name: "nextest".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true,
+                "enable_async_notification": true,
                 // keep runs short/reliable
                 "args": ["--no-fail-fast"]
             })),

@@ -53,7 +53,7 @@ async fn test_wait_after_completion_returns_cached_results() -> Result<()> {
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;
@@ -161,7 +161,7 @@ async fn test_wait_for_multiple_operations_including_nonexistent() -> Result<()>
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;

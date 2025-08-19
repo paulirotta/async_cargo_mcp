@@ -26,13 +26,13 @@ async fn test_synchronous_operations_no_operation_id() -> Result<()> {
         ))?)
         .await?;
 
-    // Test synchronous fmt (enable_async_notifications = false or not set)
+    // Test synchronous fmt (enable_async_notification = false or not set)
     let fmt_result = client
         .call_tool(CallToolRequestParam {
             name: "fmt".into(),
             arguments: Some(object!({
                 "working_directory": working_dir.clone(),
-                "enable_async_notifications": false  // Explicit synchronous
+                "enable_async_notification": false  // Explicit synchronous
             })),
         })
         .await?;
@@ -87,13 +87,13 @@ async fn test_async_operations_do_return_operation_id() -> Result<()> {
         ))?)
         .await?;
 
-    // Test asynchronous fmt (enable_async_notifications = true)
+    // Test asynchronous fmt (enable_async_notification = true)
     let fmt_result = client
         .call_tool(CallToolRequestParam {
             name: "fmt".into(),
             arguments: Some(object!({
                 "working_directory": working_dir.clone(),
-                "enable_async_notifications": true  // Explicit asynchronous
+                "enable_async_notification": true  // Explicit asynchronous
             })),
         })
         .await?;
@@ -106,7 +106,7 @@ async fn test_async_operations_do_return_operation_id() -> Result<()> {
         "Asynchronous fmt should return operation ID: {fmt_text}"
     );
 
-    // Should contain "started in background" or similar message
+    // Should contain "started in the background" or similar message
     assert!(
         fmt_text.contains("background") || fmt_text.contains("started"),
         "Asynchronous fmt should indicate background operation: {fmt_text}"

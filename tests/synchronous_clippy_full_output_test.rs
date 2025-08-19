@@ -28,7 +28,7 @@ async fn test_synchronous_clippy_includes_compile_stderr() -> Result<()> {
             arguments: Some(object!({
                 "working_directory": project_path,
                 "args": ["--fix", "--tests", "--allow-dirty", "--allow-no-vcs"],
-                "enable_async_notifications": false
+                "enable_async_notification": false
             })),
         })
         .await?;

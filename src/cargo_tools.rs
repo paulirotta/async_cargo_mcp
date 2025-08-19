@@ -46,7 +46,7 @@ pub struct DependencyRequest {
     pub optional: Option<bool>,
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -54,7 +54,7 @@ pub struct RemoveDependencyRequest {
     pub name: String,
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -101,7 +101,7 @@ pub struct BuildRequest {
     /// Additional arguments to pass to build
     pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -130,7 +130,7 @@ pub struct RunRequest {
     /// Additional cargo arguments
     pub cargo_args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -187,14 +187,14 @@ pub struct TestRequest {
     /// Path to Cargo.toml
     pub manifest_path: Option<String>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct CheckRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -206,7 +206,7 @@ pub struct UpdateRequest {
 pub struct DocRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct ClippyRequest {
@@ -214,7 +214,7 @@ pub struct ClippyRequest {
     /// Additional arguments to pass to clippy (e.g., ["--fix", "--allow-dirty"])
     pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -223,14 +223,14 @@ pub struct NextestRequest {
     /// Additional arguments to pass to nextest (e.g., ["--all-features"])
     pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct CleanRequest {
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -239,7 +239,7 @@ pub struct FixRequest {
     /// Additional arguments to pass to fix (e.g., ["--allow-dirty"])
     pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -248,7 +248,7 @@ pub struct SearchRequest {
     /// Limit the number of results
     pub limit: Option<u32>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -257,7 +257,7 @@ pub struct BenchRequest {
     /// Additional arguments to pass to bench
     pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -266,7 +266,7 @@ pub struct InstallRequest {
     pub version: Option<String>,
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -298,7 +298,7 @@ pub struct AuditRequest {
     /// Additional arguments to pass to audit
     pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -311,7 +311,7 @@ pub struct FmtRequest {
     /// Additional arguments to pass to fmt
     pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -351,7 +351,7 @@ pub struct FetchRequest {
     /// Additional arguments to pass to fetch
     pub args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -362,7 +362,7 @@ pub struct RustcRequest {
     /// Additional arguments to pass to cargo rustc
     pub cargo_args: Option<Vec<String>>,
     /// Enable async callback notifications for operation progress
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -399,7 +399,7 @@ pub struct SleepRequest {
     /// Optional working directory (not used, but kept for symmetry with other tools)
     pub working_directory: Option<String>,
     /// Whether to enable async notifications (always true; provided to keep interface consistent)
-    pub enable_async_notifications: Option<bool>,
+    pub enable_async_notification: Option<bool>,
 }
 
 #[derive(Clone, Debug)]
@@ -407,6 +407,7 @@ pub struct AsyncCargo {
     tool_router: ToolRouter<AsyncCargo>,
     monitor: Arc<OperationMonitor>,
     shell_pool_manager: Arc<ShellPoolManager>,
+    synchronous_mode: bool,
 }
 
 impl Default for AsyncCargo {
@@ -449,7 +450,7 @@ impl AsyncCargo {
     /// Useful for testing timeout behavior without relying on cargo command durations.
     /// Always runs asynchronously and returns an operation ID immediately.
     #[tool(
-        description = "Start a deterministic async sleep (no cargo invoked). Returns an operation ID immediately; use wait with operation_ids to retrieve completion. Useful for timeout & batching tests. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "Start a deterministic async sleep (no cargo invoked). Returns an operation ID immediately; use wait with operation_ids to retrieve completion. Useful for timeout & batching tests. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn sleep(
         &self,
@@ -489,6 +490,20 @@ impl AsyncCargo {
             tool_router: Self::tool_router(),
             monitor,
             shell_pool_manager,
+            synchronous_mode: false, // Default to async mode
+        }
+    }
+
+    pub fn new_with_config(
+        monitor: Arc<OperationMonitor>,
+        shell_pool_manager: Arc<ShellPoolManager>,
+        synchronous_mode: bool,
+    ) -> Self {
+        Self {
+            tool_router: Self::tool_router(),
+            monitor,
+            shell_pool_manager,
+            synchronous_mode,
         }
     }
 
@@ -715,7 +730,7 @@ impl AsyncCargo {
             "* Use 'audit' for security vulnerability scanning if cargo-audit is available\n",
         );
         report.push_str(
-            "* Enable async notifications (enable_async_notifications=true) for long operations\n",
+            "* Enable async notifications (enable_async_notification=true) for long operations\n",
         );
 
         report
@@ -754,8 +769,13 @@ impl AsyncCargo {
         crate::tool_hints::preview(operation_id, operation_type)
     }
 
+    /// Determine if an operation should run synchronously based on CLI flag and request parameter
+    pub fn should_run_synchronously(&self, enable_async_notification: Option<bool>) -> bool {
+        self.synchronous_mode || !enable_async_notification.unwrap_or(false)
+    }
+
     #[tool(
-        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the --timeout CLI parameter (default: 300 seconds). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the --timeout CLI parameter (default: 300 seconds). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn wait(
         &self,
@@ -955,7 +975,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO BUILD: Faster than terminal cargo. Use enable_async_notifications=true for builds >1s to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO BUILD: Faster than terminal cargo. Use enable_async_notification=true for builds >1s to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn build(
         &self,
@@ -964,8 +984,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let build_id = self.generate_operation_id_for("build");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and not in synchronous mode
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled or synchronous mode is enabled
+            match self.build_implementation(&req, "sync_build").await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -980,7 +1006,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &build_id,
                 "cargo build",
-                "Building project in background",
+                "Building project in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -995,7 +1021,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: build_id_clone.clone(),
                         command: "cargo build".to_string(),
-                        description: "Building project in background".to_string(),
+                        description: "Building project in the background".to_string(),
                     })
                     .await;
 
@@ -1038,14 +1064,8 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&build_id, "build");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Build operation {build_id} started at {timestamp} in background.{tool_hint}"
+                "Build operation {build_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match self.build_implementation(&req, "sync_build").await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -1539,7 +1559,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO RUN: Faster than terminal cargo. Use enable_async_notifications=true for long-running apps to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO RUN: Faster than terminal cargo. Use enable_async_notification=true for long-running apps to multitask. Structured output with isolation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn run(
         &self,
@@ -1548,8 +1568,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let run_id = self.generate_operation_id_for("run");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -1563,7 +1583,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &run_id,
                 "cargo run",
-                "Running application in background",
+                "Running application in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -1578,7 +1598,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: run_id_clone.clone(),
                         command: "cargo run".to_string(),
-                        description: "Running application in background".to_string(),
+                        description: "Running application in the background".to_string(),
                     })
                     .await;
 
@@ -1613,7 +1633,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&run_id, "run");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Run operation {run_id} started at {timestamp} in background.{tool_hint}"
+                "Run operation {run_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1734,7 +1754,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO TEST: Faster than terminal cargo. Provides complete error output but runs slower than nextest. Use when you need detailed failure information. ALWAYS use enable_async_notifications=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO TEST: Faster than terminal cargo. Provides complete error output but runs slower than nextest. Use when you need detailed failure information. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn test(
         &self,
@@ -1743,8 +1763,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let test_id = self.generate_operation_id_for("test");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and not in synchronous mode
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation
+            match Self::test_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -1758,7 +1784,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &test_id,
                 "cargo test",
-                "Running test suite in background",
+                "Running test suite in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -1773,7 +1799,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: test_id_clone.clone(),
                         command: "cargo test".to_string(),
-                        description: "Running test suite in background".to_string(),
+                        description: "Running test suite in the background".to_string(),
                     })
                     .await;
 
@@ -1807,14 +1833,8 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&test_id, "test");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Test operation {test_id} started at {timestamp} in background.{tool_hint}"
+                "Test operation {test_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::test_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -1978,7 +1998,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO CHECK: Faster than terminal cargo. Fast validation - async optional for large projects. Quick compile check. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO CHECK: Faster than terminal cargo. Fast validation - async optional for large projects. Quick compile check. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn check(
         &self,
@@ -1987,8 +2007,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let check_id = self.generate_operation_id_for("check");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2002,7 +2022,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &check_id,
                 "cargo check",
-                "Checking project in background",
+                "Checking project in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -2017,7 +2037,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: check_id_clone.clone(),
                         command: "cargo check".to_string(),
-                        description: "Checking project in background".to_string(),
+                        description: "Checking project in the background".to_string(),
                     })
                     .await;
 
@@ -2051,7 +2071,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&check_id, "check");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "+ Check operation {check_id} started at {timestamp} in background.{tool_hint}"
+                "+ Check operation {check_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2097,7 +2117,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO ADD: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Handles version conflicts. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO ADD: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Handles version conflicts. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn add(
         &self,
@@ -2159,7 +2179,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO REMOVE: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Prevents Cargo.toml corruption. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO REMOVE: Faster than terminal cargo. Synchronous operation for Cargo.toml modifications. Prevents Cargo.toml corruption. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn remove(
         &self,
@@ -2248,7 +2268,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO DOC: Faster than terminal cargo. Use enable_async_notifications=true for large codebases to multitask. Creates LLM-friendly API reference. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO DOC: Faster than terminal cargo. Use enable_async_notification=true for large codebases to multitask. Creates LLM-friendly API reference. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn doc(
         &self,
@@ -2257,8 +2277,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let doc_id = self.generate_operation_id_for("doc");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2272,7 +2292,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &doc_id,
                 "cargo doc",
-                "Generating documentation in background",
+                "Generating documentation in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -2287,7 +2307,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: doc_id_clone.clone(),
                         command: "cargo doc".to_string(),
-                        description: "Generating documentation in background".to_string(),
+                        description: "Generating documentation in the background".to_string(),
                     })
                     .await;
 
@@ -2321,7 +2341,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&doc_id, "documentation generation");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "📚 Documentation generation {doc_id} started at {timestamp} in background.{tool_hint}"
+                "📚 Documentation generation {doc_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2392,7 +2412,7 @@ impl AsyncCargo {
         }
     }
     #[tool(
-        description = "CARGO CLIPPY: Faster than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO CLIPPY: Faster than terminal cargo. Supports --fix via args=['--fix','--allow-dirty']. Fast operation - async optional. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn clippy(
         &self,
@@ -2401,8 +2421,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let clippy_id = self.generate_operation_id_for("clippy");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2416,7 +2436,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &clippy_id,
                 "cargo clippy",
-                "Running linter in background",
+                "Running linter in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -2431,7 +2451,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: clippy_id_clone.clone(),
                         command: "cargo clippy".to_string(),
-                        description: "Running linter in background".to_string(),
+                        description: "Running linter in the background".to_string(),
                     })
                     .await;
 
@@ -2465,7 +2485,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&clippy_id, "clippy linting");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Clippy operation {clippy_id} started at {timestamp} in background.{tool_hint}"
+                "Clippy operation {clippy_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2515,7 +2535,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO NEXTEST: Faster than terminal cargo. Faster test runner - preferred for most testing. Use 'test' only when you need more complete error output for failing tests. ALWAYS use enable_async_notifications=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO NEXTEST: Faster than terminal cargo. Faster test runner - preferred for most testing. Use 'test' only when you need more complete error output for failing tests. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn nextest(
         &self,
@@ -2532,14 +2552,14 @@ impl AsyncCargo {
 
         if nextest_check.is_err() || !nextest_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
-                "- Nextest operation #{nextest_id} failed: cargo-nextest is not installed. 
+                r#"- Nextest operation #{nextest_id} failed: cargo-nextest is not installed. 
 📦 Install with: cargo install cargo-nextest
-🔄 Falling back to regular cargo test is recommended."
+🔄 Falling back to regular cargo test is recommended."#
             ))]));
         }
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2553,7 +2573,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &nextest_id,
                 "cargo nextest run",
-                "Running fast test suite in background",
+                "Running fast test suite in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -2568,7 +2588,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: nextest_id_clone.clone(),
                         command: "cargo nextest run".to_string(),
-                        description: "Running fast test suite in background".to_string(),
+                        description: "Running fast test suite in the background".to_string(),
                     })
                     .await;
 
@@ -2602,7 +2622,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&nextest_id, "nextest");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Nextest operation {nextest_id} started at {timestamp} in background.{tool_hint}"
+                "Nextest operation {nextest_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2675,7 +2695,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO CLEAN: Faster than terminal cargo. Fast operation - async not needed. Frees disk space. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO CLEAN: Faster than terminal cargo. Fast operation - async not needed. Frees disk space. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn clean(
         &self,
@@ -2684,8 +2704,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let clean_id = self.generate_operation_id_for("clean");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2699,7 +2719,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &clean_id,
                 "cargo clean",
-                "Cleaning build artifacts in background",
+                "Cleaning build artifacts in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -2714,7 +2734,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: clean_id_clone.clone(),
                         command: "cargo clean".to_string(),
-                        description: "Cleaning build artifacts in background".to_string(),
+                        description: "Cleaning build artifacts in the background".to_string(),
                     })
                     .await;
 
@@ -2748,7 +2768,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&clean_id, "clean");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Clean operation {clean_id} started at {timestamp} in background.{tool_hint}"
+                "Clean operation {clean_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2794,7 +2814,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO FIX: Faster than terminal cargo. Automatically fix compiler warnings. Supports --allow-dirty via args. Use async for large codebases. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO FIX: Faster than terminal cargo. Automatically fix compiler warnings. Supports --allow-dirty via args. Use async for large codebases. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn fix(
         &self,
@@ -2803,8 +2823,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let fix_id = self.generate_operation_id_for("fix");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2818,7 +2838,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &fix_id,
                 "cargo fix",
-                "Fixing compiler warnings in background",
+                "Fixing compiler warnings in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -2833,7 +2853,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: fix_id_clone.clone(),
                         command: "cargo fix".to_string(),
-                        description: "Fixing compiler warnings in background".to_string(),
+                        description: "Fixing compiler warnings in the background".to_string(),
                     })
                     .await;
 
@@ -2867,7 +2887,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&fix_id, "fix");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Fix operation {fix_id} started at {timestamp} in background.{tool_hint}"
+                "Fix operation {fix_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2921,7 +2941,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO SEARCH: Faster than terminal cargo. Search for crates on crates.io. Fast operation - async not needed unless searching many terms. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO SEARCH: Faster than terminal cargo. Search for crates on crates.io. Fast operation - async not needed unless searching many terms. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn search(
         &self,
@@ -2930,8 +2950,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let search_id = self.generate_operation_id_for("search");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2945,7 +2965,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &search_id,
                 "cargo search",
-                &format!("Searching crates.io for '{}' in background", req.query),
+                &format!("Searching crates.io for '{}' in the background", req.query),
                 None,
             )
             .await;
@@ -2961,7 +2981,7 @@ impl AsyncCargo {
                         operation_id: search_id_clone.clone(),
                         command: "cargo search".to_string(),
                         description: format!(
-                            "Searching crates.io for '{}' in background",
+                            "Searching crates.io for '{}' in the background",
                             req_clone.query
                         ),
                     })
@@ -2997,7 +3017,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&search_id, "search");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Search operation {} started at {} in background. Searching crates.io for '{}'.{}",
+                "Search operation {} started at {} in the background. Searching crates.io for '{}'.{}",
                 search_id, timestamp, req.query, tool_hint
             ))]))
         } else {
@@ -3045,7 +3065,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO BENCH: Faster than terminal cargo. ALWAYS use enable_async_notifications=true for benchmark suites to multitask. Performance testing. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO BENCH: Faster than terminal cargo. ALWAYS use enable_async_notification=true for benchmark suites to multitask. Performance testing. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn bench(
         &self,
@@ -3054,8 +3074,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let bench_id = self.generate_operation_id_for("bench");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -3069,7 +3089,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &bench_id,
                 "cargo bench",
-                "Running benchmarks in background",
+                "Running benchmarks in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -3084,7 +3104,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: bench_id_clone.clone(),
                         command: "cargo bench".to_string(),
-                        description: "Running benchmarks in background".to_string(),
+                        description: "Running benchmarks in the background".to_string(),
                     })
                     .await;
 
@@ -3118,7 +3138,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&bench_id, "benchmark");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Benchmark operation {bench_id} started at {timestamp} in background.{tool_hint}"
+                "Benchmark operation {bench_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -3169,7 +3189,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO INSTALL: Faster than terminal cargo. Use enable_async_notifications=true for large packages to multitask. Global tool installation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO INSTALL: Faster than terminal cargo. Use enable_async_notification=true for large packages to multitask. Global tool installation. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn install(
         &self,
@@ -3178,8 +3198,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let install_id = self.generate_operation_id_for("install");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let install_id_clone = install_id.clone();
@@ -3189,7 +3209,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &install_id,
                 "cargo install",
-                &format!("Installing package '{}' in background", req.package),
+                &format!("Installing package '{}' in the background", req.package),
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -3203,7 +3223,7 @@ impl AsyncCargo {
                         operation_id: install_id_clone.clone(),
                         command: "cargo install".to_string(),
                         description: format!(
-                            "Installing package '{}' in background",
+                            "Installing package '{}' in the background",
                             req_clone.package
                         ),
                     })
@@ -3236,7 +3256,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&install_id, "install");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Install operation {} started at {} in background. Installing package '{}'.{}",
+                "Install operation {} started at {} in the background. Installing package '{}'.{}",
                 install_id, timestamp, req.package, tool_hint
             ))]))
         } else {
@@ -3392,7 +3412,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO AUDIT: Faster than terminal cargo. Security vulnerability scanning. Use enable_async_notifications=true for large projects to multitask. Identifies known security vulnerabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO AUDIT: Faster than terminal cargo. Security vulnerability scanning. Use enable_async_notification=true for large projects to multitask. Identifies known security vulnerabilities. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn audit(
         &self,
@@ -3415,8 +3435,8 @@ impl AsyncCargo {
             ))]));
         }
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -3430,7 +3450,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &audit_id,
                 "cargo audit",
-                "Scanning for security vulnerabilities in background",
+                "Scanning for security vulnerabilities in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -3445,7 +3465,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: audit_id_clone.clone(),
                         command: "cargo audit".to_string(),
-                        description: "Scanning for security vulnerabilities in background"
+                        description: "Scanning for security vulnerabilities in the background"
                             .to_string(),
                     })
                     .await;
@@ -3480,7 +3500,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&audit_id, "audit");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Audit operation {audit_id} started at {timestamp} in background.{tool_hint}"
+                "Audit operation {audit_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -3554,7 +3574,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO FMT: Faster than terminal cargo. Format Rust code using rustfmt. Use enable_async_notifications=true for large projects to multitask while code is being formatted. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO FMT: Faster than terminal cargo. Format Rust code using rustfmt. Use enable_async_notification=true for large projects to multitask while code is being formatted. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn fmt(
         &self,
@@ -3563,8 +3583,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let fmt_id = self.generate_operation_id_for("fmt");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if async notifications are enabled and we're not in synchronous mode
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -3578,7 +3598,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &fmt_id,
                 "cargo fmt",
-                "Formatting code in background",
+                "Formatting code in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -3593,7 +3613,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: fmt_id_clone.clone(),
                         command: "cargo fmt".to_string(),
-                        description: "Formatting code in background".to_string(),
+                        description: "Formatting code in the background".to_string(),
                     })
                     .await;
 
@@ -3627,7 +3647,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&fmt_id, "format");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Format operation {fmt_id} started at {timestamp} in background.{tool_hint}"
+                "Format operation {fmt_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -3831,7 +3851,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO FETCH: Faster than terminal cargo. Fetch dependencies without building. Use enable_async_notifications=true for large dependency sets to multitask while downloading. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO FETCH: Faster than terminal cargo. Fetch dependencies without building. Use enable_async_notification=true for large dependency sets to multitask while downloading. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn fetch(
         &self,
@@ -3840,8 +3860,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let fetch_id = self.generate_operation_id_for("fetch");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if should run asynchronously
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -3855,7 +3875,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &fetch_id,
                 "cargo fetch",
-                "Fetching dependencies in background",
+                "Fetching dependencies in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -3870,7 +3890,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: fetch_id_clone.clone(),
                         command: "cargo fetch".to_string(),
-                        description: "Fetching dependencies in background".to_string(),
+                        description: "Fetching dependencies in the background".to_string(),
                     })
                     .await;
 
@@ -3904,7 +3924,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&fetch_id, "fetch");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Fetch operation {fetch_id} started at {timestamp} in background.{tool_hint}"
+                "Fetch operation {fetch_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -3976,7 +3996,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO RUSTC: Faster than terminal cargo. Compile with custom rustc options. Use enable_async_notifications=true for complex builds to multitask while compiling. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notifications=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO RUSTC: Faster than terminal cargo. Compile with custom rustc options. Use enable_async_notification=true for complex builds to multitask while compiling. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn rustc(
         &self,
@@ -3985,8 +4005,8 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let rustc_id = self.generate_operation_id_for("rustc");
 
-        // Check if async notifications are enabled
-        if req.enable_async_notifications.unwrap_or(false) {
+        // Check if should run asynchronously
+        if !self.should_run_synchronously(req.enable_async_notification) {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -4000,7 +4020,7 @@ impl AsyncCargo {
             self.register_async_operation(
                 &rustc_id,
                 "cargo rustc",
-                "Compiling with custom rustc options in background",
+                "Compiling with custom rustc options in the background",
                 Some(req.working_directory.clone()),
             )
             .await;
@@ -4015,7 +4035,7 @@ impl AsyncCargo {
                     .send_progress(ProgressUpdate::Started {
                         operation_id: rustc_id_clone.clone(),
                         command: "cargo rustc".to_string(),
-                        description: "Compiling with custom rustc options in background"
+                        description: "Compiling with custom rustc options in the background"
                             .to_string(),
                     })
                     .await;
@@ -4050,7 +4070,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&rustc_id, "rustc compilation");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Rustc operation {rustc_id} started at {timestamp} in background.{tool_hint}"
+                "Rustc operation {rustc_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -4205,7 +4225,7 @@ impl ServerHandler for AsyncCargo {
                 .enable_tools()
                 .build(),
             server_info: Implementation::from_build_env(),
-            instructions: Some("Rust cargo operations with async support.\n\nGolden rules for LLM agents:\n1) Always use async_cargo_mcp MCP tools for ALL cargo operations. Do not run cargo in a terminal.\n2) For builds/tests >1s, set enable_async_notifications=true to multitask while work runs.\n3) After starting an async operation, you MUST call mcp_async_cargo_m_wait to retrieve results before making decisions.\n\nThese tools are Faster than terminal commands and provide structured output, progress callbacks, and isolation.".to_string()),
+            instructions: Some("Rust cargo operations with async support.\n\nGolden rules for LLM agents:\n1) Always use async_cargo_mcp MCP tools for ALL cargo operations. Do not run cargo in a terminal.\n2) For builds/tests >1s, set enable_async_notification=true to multitask while work runs.\n3) After starting an async operation, you MUST call mcp_async_cargo_m_wait to retrieve results before making decisions.\n\nThese tools are Faster than terminal commands and provide structured output, progress callbacks, and isolation.".to_string()),
         }
     }
 
@@ -4643,9 +4663,9 @@ impl AsyncCargo {
             .await;
 
         if audit_check.is_err() || !audit_check.unwrap().status.success() {
-            let error_msg = "- Audit operation failed: cargo-audit is not installed. 
+            let error_msg = r#"- Audit operation failed: cargo-audit is not installed. 
 📦 Install with: cargo install cargo-audit
-🔒 This tool scans for known security vulnerabilities in dependencies."
+🔒 This tool scans for known security vulnerabilities in dependencies."#
                 .to_string();
 
             let _ = callback

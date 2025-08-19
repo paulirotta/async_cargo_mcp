@@ -54,7 +54,7 @@ async fn test_async_mixed_success_failure_wait_outputs() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "build".into(),
             arguments: Some(
-                object!({"working_directory": ok_path, "enable_async_notifications": true}),
+                object!({"working_directory": ok_path, "enable_async_notification": true}),
             ),
         })
         .await?;
@@ -62,7 +62,7 @@ async fn test_async_mixed_success_failure_wait_outputs() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "build".into(),
             arguments: Some(
-                object!({"working_directory": fail_path, "enable_async_notifications": true}),
+                object!({"working_directory": fail_path, "enable_async_notification": true}),
             ),
         })
         .await?;

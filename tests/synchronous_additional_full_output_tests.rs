@@ -32,7 +32,7 @@ async fn test_synchronous_fix_merges_stderr_compile_lines() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "fix".into(),
             arguments: Some(
-                object!({"working_directory": project_path, "enable_async_notifications": false}),
+                object!({"working_directory": project_path, "enable_async_notification": false}),
             ),
         })
         .await?;
@@ -66,7 +66,7 @@ async fn test_synchronous_bench_merges_stderr_compile_lines() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "bench".into(),
             arguments: Some(
-                object!({"working_directory": project_path, "enable_async_notifications": false}),
+                object!({"working_directory": project_path, "enable_async_notification": false}),
             ),
         })
         .await?;
@@ -94,7 +94,7 @@ async fn test_synchronous_clean_has_placeholder_when_no_output() -> Result<()> {
             ))?)
             .await?;
         let _ = client
-            .call_tool(CallToolRequestParam { name: "build".into(), arguments: Some(object!({"working_directory": project_path, "enable_async_notifications": false})) })
+            .call_tool(CallToolRequestParam { name: "build".into(), arguments: Some(object!({"working_directory": project_path, "enable_async_notification": false})) })
             .await?;
         let _ = client.cancel().await;
     }
@@ -109,7 +109,7 @@ async fn test_synchronous_clean_has_placeholder_when_no_output() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "clean".into(),
             arguments: Some(
-                object!({"working_directory": project_path, "enable_async_notifications": false}),
+                object!({"working_directory": project_path, "enable_async_notification": false}),
             ),
         })
         .await?;

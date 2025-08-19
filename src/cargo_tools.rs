@@ -1,6 +1,7 @@
 use crate::callback_system::{CallbackSender, ProgressUpdate, no_callback};
 use crate::mcp_callback::mcp_callback;
 use crate::operation_monitor::OperationMonitor;
+use crate::shell_pool::{ShellPoolManager, ShellPoolConfig, ShellCommand};
 use crate::timestamp;
 use rmcp::{
     ErrorData, RoleServer, ServerHandler,
@@ -405,6 +406,7 @@ pub struct SleepRequest {
 pub struct AsyncCargo {
     tool_router: ToolRouter<AsyncCargo>,
     monitor: Arc<OperationMonitor>,
+    shell_pool_manager: Arc<ShellPoolManager>,
 }
 
 impl Default for AsyncCargo {
@@ -412,7 +414,9 @@ impl Default for AsyncCargo {
         use crate::operation_monitor::MonitorConfig;
         let monitor_config = MonitorConfig::default();
         let monitor = Arc::new(OperationMonitor::new(monitor_config));
-        Self::new(monitor)
+        let shell_pool_config = ShellPoolConfig::default();
+        let shell_pool_manager = Arc::new(ShellPoolManager::new(shell_pool_config));
+        Self::new(monitor, shell_pool_manager)
     }
 }
 
@@ -480,11 +484,109 @@ impl AsyncCargo {
             duration_ms, operation_id
         ))]))
     }
-    pub fn new(monitor: Arc<OperationMonitor>) -> Self {
+    pub fn new(monitor: Arc<OperationMonitor>, shell_pool_manager: Arc<ShellPoolManager>) -> Self {
         Self {
             tool_router: Self::tool_router(),
             monitor,
+            shell_pool_manager,
         }
+    }
+
+    /// Execute a cargo command using a pre-warmed shell from the pool, with graceful fallback to direct spawn
+    async fn execute_cargo_command(
+        &self,
+        command: String,
+        working_directory: Option<String>,
+        operation_id: &str,
+    ) -> Result<std::process::Output, Box<dyn std::error::Error + Send + Sync>> {
+        use tokio::process::Command;
+        use std::path::PathBuf;
+
+        // Try shell pool first if we have a working directory
+        if let Some(ref working_dir) = working_directory {
+            let working_dir_path = PathBuf::from(working_dir);
+            
+            tracing::debug!(
+                operation_id = operation_id,
+                command = %command,
+                working_dir = %working_dir,
+                "Attempting to use shell pool for cargo command"
+            );
+
+            // Try to get a shell from the pool
+            if let Some(mut shell) = self.shell_pool_manager.get_shell(&working_dir_path).await {
+                // Create shell command for the pool
+                let shell_command = ShellCommand {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    command: vec!["bash".to_string(), "-c".to_string(), command.clone()],
+                    working_dir: working_dir.clone(),
+                    timeout_ms: 300_000, // 5 minute timeout
+                };
+
+                match shell.execute_command(shell_command).await {
+                    Ok(shell_response) => {
+                        tracing::debug!(
+                            operation_id = operation_id,
+                            "Shell pool execution successful, converting to process::Output"
+                        );
+                        
+                        // Convert ShellResponse to std::process::Output
+                        use std::process::Output;
+                        
+                        // Get ExitStatus by running a simple command
+                        let exit_status = if shell_response.exit_code == 0 {
+                            Command::new("true").status().await.unwrap()
+                        } else {
+                            Command::new("false").status().await.unwrap()  
+                        };
+
+                        let output = Output {
+                            status: exit_status,
+                            stdout: shell_response.stdout.into_bytes(),
+                            stderr: shell_response.stderr.into_bytes(),
+                        };
+                        
+                        return Ok(output);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            operation_id = operation_id,
+                            error = %e,
+                            "Shell pool execution failed, falling back to direct spawn"
+                        );
+                        // Fall through to direct spawn
+                    }
+                }
+            } else {
+                tracing::debug!(
+                    operation_id = operation_id,
+                    "No shell available from pool, using direct spawn"
+                );
+            }
+        }
+
+        // Fallback to direct spawn (original behavior)
+        tracing::debug!(
+            operation_id = operation_id,
+            command = %command,
+            "Using direct spawn for cargo command"
+        );
+        
+        let mut cmd = if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.args(["/C", &command]);
+            cmd
+        } else {
+            let mut cmd = Command::new("bash");
+            cmd.args(["-c", &command]);
+            cmd
+        };
+
+        if let Some(ref working_dir) = working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        cmd.output().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
     }
 
     /// Check availability of optional cargo components
@@ -870,6 +972,7 @@ impl AsyncCargo {
             let req_clone = req.clone();
             let build_id_clone = build_id.clone();
             let monitor = self.monitor.clone();
+            let shell_pool_manager = self.shell_pool_manager.clone();
 
             // Register operation BEFORE spawning so wait() can find it immediately
             self.register_async_operation(
@@ -896,7 +999,7 @@ impl AsyncCargo {
 
                 let started_at = Instant::now();
                 // Do the actual build work
-                let result = Self::build_implementation(&req_clone).await;
+                let result = Self::build_implementation_static(&req_clone, &build_id_clone, shell_pool_manager).await;
 
                 // Store the result in the operation monitor for later retrieval by wait
                 // This ensures the full output (stdout/stderr) is available to `wait`
@@ -932,62 +1035,59 @@ impl AsyncCargo {
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
-            match Self::build_implementation(&req).await {
+            match self.build_implementation(&req, "sync_build").await {
                 Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
                 Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
             }
         }
     }
 
-    /// Internal implementation of build logic
-    async fn build_implementation(req: &BuildRequest) -> Result<String, String> {
-        use tokio::process::Command;
-
-        let mut cmd = Command::new("cargo");
-        cmd.arg("build");
+    /// Internal implementation of build logic using shell pool
+    async fn build_implementation(&self, req: &BuildRequest, operation_id: &str) -> Result<String, String> {
+        let mut cmd_args = vec!["cargo".to_string(), "build".to_string()];
 
         // Add package selection
         if req.workspace.unwrap_or(false) {
-            cmd.arg("--workspace");
+            cmd_args.push("--workspace".to_string());
         }
 
         if let Some(exclude) = &req.exclude {
             for package in exclude {
-                cmd.arg("--exclude").arg(package);
+                cmd_args.extend(vec!["--exclude".to_string(), package.clone()]);
             }
         }
 
         // Add target selection
         if req.lib.unwrap_or(false) {
-            cmd.arg("--lib");
+            cmd_args.push("--lib".to_string());
         }
 
         if req.bins.unwrap_or(false) {
-            cmd.arg("--bins");
+            cmd_args.push("--bins".to_string());
         }
 
         if let Some(bin_name) = &req.bin_name {
-            cmd.arg("--bin").arg(bin_name);
+            cmd_args.extend(vec!["--bin".to_string(), bin_name.clone()]);
         }
 
         if req.examples.unwrap_or(false) {
-            cmd.arg("--examples");
+            cmd_args.push("--examples".to_string());
         }
 
         if let Some(example) = &req.example {
-            cmd.arg("--example").arg(example);
+            cmd_args.extend(vec!["--example".to_string(), example.clone()]);
         }
 
         if req.tests.unwrap_or(false) {
-            cmd.arg("--tests");
+            cmd_args.push("--tests".to_string());
         }
 
         if let Some(test) = &req.test {
-            cmd.arg("--test").arg(test);
+            cmd_args.extend(vec!["--test".to_string(), test.clone()]);
         }
 
         if req.all_targets.unwrap_or(false) {
-            cmd.arg("--all-targets");
+            cmd_args.push("--all-targets".to_string());
         }
 
         // Add feature selection
@@ -1001,29 +1101,29 @@ impl AsyncCargo {
                 .cloned()
                 .collect();
             if !filtered.is_empty() {
-                cmd.arg("--features").arg(filtered.join(","));
+                cmd_args.extend(vec!["--features".to_string(), filtered.join(",")]);
             }
         }
 
         if req.all_features.unwrap_or(false) {
-            cmd.arg("--all-features");
+            cmd_args.push("--all-features".to_string());
         }
 
         if req.no_default_features.unwrap_or(false) {
-            cmd.arg("--no-default-features");
+            cmd_args.push("--no-default-features".to_string());
         }
 
         // Add compilation options
         if req.release.unwrap_or(false) {
-            cmd.arg("--release");
+            cmd_args.push("--release".to_string());
         }
 
         if let Some(profile) = &req.profile {
-            cmd.arg("--profile").arg(profile);
+            cmd_args.extend(vec!["--profile".to_string(), profile.clone()]);
         }
 
         if let Some(jobs) = req.jobs {
-            cmd.arg("--jobs").arg(jobs.to_string());
+            cmd_args.extend(vec!["--jobs".to_string(), jobs.to_string()]);
         }
 
         // Validate target if provided (avoid failing build for cross targets not installed)
@@ -1043,7 +1143,7 @@ impl AsyncCargo {
                 }
             };
             if target_installed {
-                cmd.arg("--target").arg(target);
+                cmd_args.extend(vec!["--target".to_string(), target.clone()]);
             } else {
                 target_note = Some(format!(
                     "[info] Requested target '{target}' not installed; building with host target instead."
@@ -1052,31 +1152,30 @@ impl AsyncCargo {
         }
 
         if let Some(target_dir) = &req.target_dir {
-            cmd.arg("--target-dir").arg(target_dir);
+            cmd_args.extend(vec!["--target-dir".to_string(), target_dir.clone()]);
         }
 
         // Add manifest options
         if let Some(manifest_path) = &req.manifest_path {
-            cmd.arg("--manifest-path").arg(manifest_path);
+            cmd_args.extend(vec!["--manifest-path".to_string(), manifest_path.clone()]);
         }
 
         // Add additional arguments
         if let Some(args) = &req.args {
             for arg in args {
-                cmd.arg(arg);
+                cmd_args.push(arg.clone());
             }
         }
 
-        // Set working directory
-        cmd.current_dir(&req.working_directory);
-
-        // Execute command and collect full output
-        let output = cmd.output().await.map_err(|e| {
-            format!(
-                "- Build operation failed in {}.\nError: Failed to execute cargo build: {}",
-                &req.working_directory, e
-            )
-        })?;
+        // Build the command string and execute using shell pool
+        let command = cmd_args.join(" ");
+        let output = self.execute_cargo_command(command, Some(req.working_directory.clone()), operation_id).await
+            .map_err(|e| {
+                format!(
+                    "- Build operation failed in {}.\nError: Failed to execute cargo build: {}",
+                    &req.working_directory, e
+                )
+            })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1128,6 +1227,290 @@ impl AsyncCargo {
                 "- Build failed{working_dir_msg}{bin_msg}.\nError: {stderr}\nOutput: {stdout_display}"
             ))
         }
+    }
+
+    /// Static version of build_implementation for use in async contexts
+    async fn build_implementation_static(req: &BuildRequest, operation_id: &str, shell_pool_manager: Arc<ShellPoolManager>) -> Result<String, String> {
+        let mut cmd_args = vec!["cargo".to_string(), "build".to_string()];
+
+        // Add package selection
+        if req.workspace.unwrap_or(false) {
+            cmd_args.push("--workspace".to_string());
+        }
+
+        if let Some(exclude) = &req.exclude {
+            for package in exclude {
+                cmd_args.extend(vec!["--exclude".to_string(), package.clone()]);
+            }
+        }
+
+        // Add target selection
+        if req.lib.unwrap_or(false) {
+            cmd_args.push("--lib".to_string());
+        }
+
+        if req.bins.unwrap_or(false) {
+            cmd_args.push("--bins".to_string());
+        }
+
+        if let Some(bin_name) = &req.bin_name {
+            cmd_args.extend(vec!["--bin".to_string(), bin_name.clone()]);
+        }
+
+        if req.examples.unwrap_or(false) {
+            cmd_args.push("--examples".to_string());
+        }
+
+        if let Some(example) = &req.example {
+            cmd_args.extend(vec!["--example".to_string(), example.clone()]);
+        }
+
+        if req.tests.unwrap_or(false) {
+            cmd_args.push("--tests".to_string());
+        }
+
+        if let Some(test) = &req.test {
+            cmd_args.extend(vec!["--test".to_string(), test.clone()]);
+        }
+
+        if req.all_targets.unwrap_or(false) {
+            cmd_args.push("--all-targets".to_string());
+        }
+
+        // Add feature selection
+        if let Some(features) = &req.features
+            && !features.is_empty()
+        {
+            // Filter out literal "default" which causes error if not declared explicitly
+            let filtered: Vec<String> = features
+                .iter()
+                .filter(|f| f.as_str() != "default")
+                .cloned()
+                .collect();
+            if !filtered.is_empty() {
+                cmd_args.extend(vec!["--features".to_string(), filtered.join(",")]);
+            }
+        }
+
+        if req.all_features.unwrap_or(false) {
+            cmd_args.push("--all-features".to_string());
+        }
+
+        if req.no_default_features.unwrap_or(false) {
+            cmd_args.push("--no-default-features".to_string());
+        }
+
+        // Add compilation options
+        if req.release.unwrap_or(false) {
+            cmd_args.push("--release".to_string());
+        }
+
+        if let Some(profile) = &req.profile {
+            cmd_args.extend(vec!["--profile".to_string(), profile.clone()]);
+        }
+
+        if let Some(jobs) = req.jobs {
+            cmd_args.extend(vec!["--jobs".to_string(), jobs.to_string()]);
+        }
+
+        // Validate target if provided (avoid failing build for cross targets not installed)
+        let mut target_note: Option<String> = None;
+        if let Some(target) = &req.target {
+            let target_installed = {
+                use std::process::Command as StdCommand;
+                // Use rustup to list targets; fallback to assuming installed if rustup not available
+                if let Ok(output) = StdCommand::new("rustup")
+                    .args(["target", "list", "--installed"])
+                    .output()
+                {
+                    let list = String::from_utf8_lossy(&output.stdout);
+                    list.lines().any(|l| l.trim() == target)
+                } else {
+                    true
+                }
+            };
+            if target_installed {
+                cmd_args.extend(vec!["--target".to_string(), target.clone()]);
+            } else {
+                target_note = Some(format!(
+                    "[info] Requested target '{target}' not installed; building with host target instead."
+                ));
+            }
+        }
+
+        if let Some(target_dir) = &req.target_dir {
+            cmd_args.extend(vec!["--target-dir".to_string(), target_dir.clone()]);
+        }
+
+        // Add manifest options
+        if let Some(manifest_path) = &req.manifest_path {
+            cmd_args.extend(vec!["--manifest-path".to_string(), manifest_path.clone()]);
+        }
+
+        // Add additional arguments
+        if let Some(args) = &req.args {
+            for arg in args {
+                cmd_args.push(arg.clone());
+            }
+        }
+
+        // Build the command string and execute using shell pool
+        let command = cmd_args.join(" ");
+        let output = Self::execute_cargo_command_static(command, Some(req.working_directory.clone()), operation_id, shell_pool_manager).await
+            .map_err(|e| {
+                format!(
+                    "- Build operation failed in {}.\nError: Failed to execute cargo build: {}",
+                    &req.working_directory, e
+                )
+            })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+        let bin_msg = if let Some(bin_name) = &req.bin_name {
+            format!(" (binary: {bin_name})")
+        } else {
+            String::new()
+        };
+
+        // For successful builds, treat only cargo lock-wait noise as empty so placeholder still appears.
+        let lock_wait_prefix = "Blocking waiting for file lock";
+        let stdout_trim = stdout.trim();
+        let stderr_lines: Vec<&str> = stderr.lines().collect();
+        let meaningful_stderr: Vec<&str> = stderr_lines
+            .iter()
+            .copied()
+            .filter(|l| {
+                let t = l.trim();
+                !(t.is_empty() || t.starts_with(lock_wait_prefix))
+            })
+            .collect();
+        let stdout_display = if output.status.success() {
+            if stdout_trim.is_empty() && meaningful_stderr.is_empty() {
+                Self::no_output_placeholder("build")
+            } else if stdout_trim.is_empty() {
+                stderr.to_string()
+            } else if meaningful_stderr.is_empty() {
+                stdout.to_string()
+            } else {
+                format!("{stdout}\n\n{stderr}")
+            }
+        } else {
+            merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("build"))
+        };
+        if output.status.success() {
+            let mut msg = format!(
+                "+ Build completed successfully{working_dir_msg}{bin_msg}.\nOutput: {stdout_display}"
+            );
+            if let Some(note) = target_note {
+                msg.push('\n');
+                msg.push_str(&note);
+            }
+            Ok(msg)
+        } else {
+            // Keep Error: section (tests rely on it) but also include merged content in Output
+            Err(format!(
+                "- Build failed{working_dir_msg}{bin_msg}.\nError: {stderr}\nOutput: {stdout_display}"
+            ))
+        }
+    }
+
+    /// Static version of execute_cargo_command for use in async contexts
+    async fn execute_cargo_command_static(
+        command: String,
+        working_directory: Option<String>,
+        operation_id: &str,
+        shell_pool_manager: Arc<ShellPoolManager>,
+    ) -> Result<std::process::Output, Box<dyn std::error::Error + Send + Sync>> {
+        use tokio::process::Command;
+        use std::path::PathBuf;
+
+        // Try shell pool first if we have a working directory
+        if let Some(ref working_dir) = working_directory {
+            let working_dir_path = PathBuf::from(working_dir);
+            
+            tracing::debug!(
+                operation_id = operation_id,
+                command = %command,
+                working_dir = %working_dir,
+                "Attempting to use shell pool for cargo command"
+            );
+
+            // Try to get a shell from the pool
+            if let Some(mut shell) = shell_pool_manager.get_shell(&working_dir_path).await {
+                // Create shell command for the pool
+                let shell_command = ShellCommand {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    command: vec!["bash".to_string(), "-c".to_string(), command.clone()],
+                    working_dir: working_dir.clone(),
+                    timeout_ms: 300_000, // 5 minute timeout
+                };
+
+                match shell.execute_command(shell_command).await {
+                    Ok(shell_response) => {
+                        tracing::debug!(
+                            operation_id = operation_id,
+                            "Shell pool execution successful, converting to process::Output"
+                        );
+                        
+                        // Convert ShellResponse to std::process::Output
+                        use std::process::Output;
+                        
+                        // Get ExitStatus by running a simple command
+                        let exit_status = if shell_response.exit_code == 0 {
+                            Command::new("true").status().await.unwrap()
+                        } else {
+                            Command::new("false").status().await.unwrap()  
+                        };
+
+                        let output = Output {
+                            status: exit_status,
+                            stdout: shell_response.stdout.into_bytes(),
+                            stderr: shell_response.stderr.into_bytes(),
+                        };
+                        
+                        return Ok(output);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            operation_id = operation_id,
+                            error = %e,
+                            "Shell pool execution failed, falling back to direct spawn"
+                        );
+                        // Fall through to direct spawn
+                    }
+                }
+            } else {
+                tracing::debug!(
+                    operation_id = operation_id,
+                    "No shell available from pool, using direct spawn"
+                );
+            }
+        }
+
+        // Fallback to direct spawn (original behavior)
+        tracing::debug!(
+            operation_id = operation_id,
+            command = %command,
+            "Using direct spawn for cargo command"
+        );
+        
+        let mut cmd = if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.args(["/C", &command]);
+            cmd
+        } else {
+            let mut cmd = Command::new("bash");
+            cmd.args(["-c", &command]);
+            cmd
+        };
+
+        if let Some(ref working_dir) = working_directory {
+            cmd.current_dir(working_dir);
+        }
+
+        cmd.output().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
     }
 
     #[tool(

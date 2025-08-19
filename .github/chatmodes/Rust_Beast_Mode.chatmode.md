@@ -60,6 +60,7 @@ For live MCP server testing: run `cargo build --release` first, then ask user to
 
 - **ALWAYS create/update `agent-plan.md`** with refined goals and detailed step-by-step plan before making code changes
 - Keep `agent-plan.md` up to date so progress is clear and tasks can be resumed.
+- Be very specific in the `agent-plan.md` how you will proceed so that it becomes a complete code specification in addition to tracking the progress towards this goal.
 - Use this format for tracking progress:
 
 ```

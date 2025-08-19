@@ -1,6 +1,5 @@
 use async_cargo_mcp::test_cargo_tools;
 use std::time::Instant;
-use tokio;
 
 mod common;
 use common::test_project::create_basic_project;

@@ -1,3 +1,18 @@
 {
-    "chat.mcp.discovery.enabled": true
+    "chat.mcp.discovery.enabled": true,
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#7895af",
+        "activityBar.background": "#7895af",
+        "activityBar.foreground": "#15202b",
+        "activityBar.inactiveForeground": "#15202b99",
+        "activityBarBadge.background": "#e7d7e0",
+        "activityBarBadge.foreground": "#15202b",
+        "sash.hoverBorder": "#7895af",
+        "statusBar.background": "#5b7c99",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#7895af",
+        "statusBarItem.remoteBackground": "#5b7c99",
+        "statusBarItem.remoteForeground": "#e7e7e7"
+    },
+    "peacock.color": "#5B7C99"
 }

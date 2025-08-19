@@ -15,13 +15,9 @@ A Model Context Protocol (MCP) server that enables AI assistants to execute Rust
 
 ## Overview
 
-This MCP server allows AI assistants to run cargo commands in the background while continuing other tasks. Operations can be executed synchronously or asynchronously, with real-time progress notifications and comprehensive error handling.
+This MCP server allows AI to run cargo commands quickly in the background. Multiple commands can be queued and executed while the AI continues to think. This helps complete tasks faster and, with fewer interruptions, may use less AI premium tokens.
 
-## Asynchronous Workflow
-
-This tool enables AI assistants to run cargo commands in the background while continuing other tasks. Operations return immediately with an ID, allowing the AI to proceed with other work and come back later to accept the results when they are availble.
-
-Some AI models take better advantage of this than others. We continue to iterate the tool hints the models see to improve the experience.
+Most tool-calling AI take advantage of this. All LLMs are equal, some are more equal than others. We continue to iterate.
 
 ### Example: `Claude Sonnet 4`
 

@@ -46,15 +46,29 @@ async fn benchmark_shell_pool_performance() {
             let duration = start.elapsed();
             times.push(duration);
 
-            assert!(result.is_ok(), "{} operation {} failed: {:?}", op_name, i + 1, result);
-            println!("{} operation {} completed in {:?}", op_name, i + 1, duration);
+            assert!(
+                result.is_ok(),
+                "{} operation {} failed: {:?}",
+                op_name,
+                i + 1,
+                result
+            );
+            println!(
+                "{} operation {} completed in {:?}",
+                op_name,
+                i + 1,
+                duration
+            );
         }
 
         let avg_time = times.iter().sum::<std::time::Duration>() / ITERATIONS as u32;
         let min_time = times.iter().min().unwrap();
         let max_time = times.iter().max().unwrap();
 
-        println!("Average: {:?}, Min: {:?}, Max: {:?}", avg_time, min_time, max_time);
+        println!(
+            "Average: {:?}, Min: {:?}, Max: {:?}",
+            avg_time, min_time, max_time
+        );
 
         results.push((op_name, op_desc, avg_time, *min_time, *max_time));
     }
@@ -62,32 +76,46 @@ async fn benchmark_shell_pool_performance() {
     // Summary report
     println!("\n📈 PERFORMANCE BENCHMARK RESULTS");
     println!("================================");
-    
+
     for (op, desc, avg, min, max) in &results {
-        println!("{:>6}: {} - Avg: {:?}, Range: {:?} - {:?}", 
-                 op, desc, avg, min, max);
+        println!(
+            "{:>6}: {} - Avg: {:?}, Range: {:?} - {:?}",
+            op, desc, avg, min, max
+        );
     }
 
     // Performance analysis
     if results.len() >= 3 {
         let first_check = &results[0]; // Initial check
-        let build_time = &results[1];  // Full build
+        let build_time = &results[1]; // Full build
         let second_check = &results[2]; // Subsequent check
-        
+
         let speedup = first_check.2.as_nanos() as f64 / second_check.2.as_nanos() as f64;
-        
+
         println!("\n🎯 SHELL POOL ANALYSIS:");
         println!("First check: {:?}", first_check.2);
         println!("After build check: {:?}", second_check.2);
         if speedup > 1.0 {
-            println!("Improvement: {:.2}x faster for subsequent operations", speedup);
+            println!(
+                "Improvement: {:.2}x faster for subsequent operations",
+                speedup
+            );
         }
-        
+
         // Validate that all operations completed successfully (no zero durations)
-        assert!(first_check.2.as_millis() > 0, "Check operations should have measurable duration");
-        assert!(build_time.2.as_millis() > 0, "Build operations should have measurable duration");
-        assert!(second_check.2.as_millis() > 0, "Subsequent check operations should have measurable duration");
-        
+        assert!(
+            first_check.2.as_millis() > 0,
+            "Check operations should have measurable duration"
+        );
+        assert!(
+            build_time.2.as_millis() > 0,
+            "Build operations should have measurable duration"
+        );
+        assert!(
+            second_check.2.as_millis() > 0,
+            "Subsequent check operations should have measurable duration"
+        );
+
         println!("📈 PERFORMANCE CHARACTERISTICS:");
         println!("  - All operations completed successfully");
         println!("  - Shell pool system is operational");
@@ -113,7 +141,10 @@ async fn benchmark_command_startup_overhead() {
     const STARTUP_TESTS: usize = 5;
     let mut startup_times = Vec::new();
 
-    println!("Running {} quick check operations to measure startup overhead...", STARTUP_TESTS);
+    println!(
+        "Running {} quick check operations to measure startup overhead...",
+        STARTUP_TESTS
+    );
 
     for i in 0..STARTUP_TESTS {
         let start = Instant::now();
@@ -121,7 +152,12 @@ async fn benchmark_command_startup_overhead() {
         let duration = start.elapsed();
         startup_times.push(duration);
 
-        assert!(result.is_ok(), "Startup test {} failed: {:?}", i + 1, result);
+        assert!(
+            result.is_ok(),
+            "Startup test {} failed: {:?}",
+            i + 1,
+            result
+        );
         println!("Startup test {}: {:?}", i + 1, duration);
     }
 
@@ -139,8 +175,8 @@ async fn benchmark_command_startup_overhead() {
     // With shell pools, subsequent operations should be much faster than the first
     if startup_times.len() >= 3 {
         let first_run = startup_times[0];
-        let later_avg = startup_times[2..].iter().sum::<std::time::Duration>() 
-                       / (startup_times.len() - 2) as u32;
+        let later_avg = startup_times[2..].iter().sum::<std::time::Duration>()
+            / (startup_times.len() - 2) as u32;
 
         println!("First run: {:?}", first_run);
         println!("Later runs average: {:?}", later_avg);

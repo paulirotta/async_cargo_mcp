@@ -34,18 +34,21 @@ async fn test_shell_pool_vs_direct_execution_performance() {
         // Ensure the operation was successful
         assert!(result.is_ok(), "Check operation failed: {:?}", result);
         let output = result.unwrap();
-        assert!(output.contains("Finished"), "Check should complete successfully");
+        assert!(
+            output.contains("Finished"),
+            "Check should complete successfully"
+        );
     }
 
     // Calculate average
     let avg_time = check_times.iter().sum::<std::time::Duration>() / NUM_OPERATIONS as u32;
 
     println!("Average check time: {:?}", avg_time);
-    
+
     // The actual performance benefit verification happens at runtime
     // when shell pools are enabled vs disabled. This test verifies
     // that the system works correctly with shell pools active.
-    
+
     println!("✅ Shell Pool Integration Test Completed Successfully");
 }
 
@@ -65,26 +68,43 @@ async fn test_shell_pool_output_consistency() {
 
     for i in 0..CONSISTENCY_TESTS {
         let result = test_cargo_tools::test_check_command(project_path).await;
-        assert!(result.is_ok(), "Check operation {} failed: {:?}", i + 1, result);
-        
+        assert!(
+            result.is_ok(),
+            "Check operation {} failed: {:?}",
+            i + 1,
+            result
+        );
+
         let output = result.unwrap();
         println!("Check operation {} completed", i + 1);
-        
+
         // Verify the operation completed successfully
         // The actual output format includes debug strings, so we just check for success indicators
-        assert!(output.contains("completed successfully"), "Operation {} should complete successfully", i + 1);
-        assert!(output.contains("Finished"), "Operation {} should show 'Finished'", i + 1);
-        
+        assert!(
+            output.contains("completed successfully"),
+            "Operation {} should complete successfully",
+            i + 1
+        );
+        assert!(
+            output.contains("Finished"),
+            "Operation {} should show 'Finished'",
+            i + 1
+        );
+
         // Verify it doesn't contain actual compilation errors (not debug strings)
         // The debug output contains "error:" in field names, so we look for actual errors
-        assert!(!output.contains("compilation failed"), "Operation {} should not have compilation failures", i + 1);
+        assert!(
+            !output.contains("compilation failed"),
+            "Operation {} should not have compilation failures",
+            i + 1
+        );
     }
 
     println!("✅ Shell Pool Output Consistency Test Passed");
 }
 
 /// Test shell pool behavior with build operations
-#[tokio::test] 
+#[tokio::test]
 async fn test_shell_pool_build_operations() {
     // Create a basic test project
     let temp_project = create_basic_project()
@@ -101,9 +121,16 @@ async fn test_shell_pool_build_operations() {
 
     println!("Build operation completed in {:?}", build_duration);
 
-    assert!(build_result.is_ok(), "Build operation failed: {:?}", build_result);
+    assert!(
+        build_result.is_ok(),
+        "Build operation failed: {:?}",
+        build_result
+    );
     let build_output = build_result.unwrap();
-    assert!(build_output.contains("Finished"), "Build should complete successfully");
+    assert!(
+        build_output.contains("Finished"),
+        "Build should complete successfully"
+    );
 
     // Test check operation after build
     let check_start = Instant::now();
@@ -112,9 +139,16 @@ async fn test_shell_pool_build_operations() {
 
     println!("Check operation completed in {:?}", check_duration);
 
-    assert!(check_result.is_ok(), "Check operation failed: {:?}", check_result);
+    assert!(
+        check_result.is_ok(),
+        "Check operation failed: {:?}",
+        check_result
+    );
     let check_output = check_result.unwrap();
-    assert!(check_output.contains("Finished"), "Check should complete successfully");
+    assert!(
+        check_output.contains("Finished"),
+        "Check should complete successfully"
+    );
 
     // With shell pools, the second operation should be notably faster
     // due to reusing the warmed up shell environment

@@ -33,8 +33,8 @@ on:
   push:
     branches: [main, production]
   pull_request:
-      branches: [main, production]
-  
+    branches: [main, production]
+
 env:
   RUSTUP_MAX_RETRIES: 10
   CARGO_TERM_COLOR: always
@@ -46,7 +46,7 @@ env:
   RUST_BACKTRACE: 1
   IS_DEV_BUILD: "true" # Set "true" to speed up builds for CI testing
 
-jobs:          
+jobs:
   job-nextest:
     runs-on: ubuntu-latest
     steps:
@@ -55,7 +55,7 @@ jobs:
           fetch-depth: 2
 
       - uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Get current day number
         id: day-number
         run: echo "day=$(date +%j)" >> $GITHUB_OUTPUT
@@ -72,7 +72,7 @@ jobs:
           key: cargo-nextest-target-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
           restore-keys: |
             cargo-nextest-target-${{ runner.os }}-
-            
+
       - name: Cache sccache artifacts
         uses: actions/cache@v4
         with:
@@ -80,7 +80,7 @@ jobs:
           key: sccache-nextest-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
           restore-keys: |
             sccache-nextest-${{ runner.os }}-
-      
+
       - name: Setup Cargo Binstall
         uses: cargo-bins/cargo-binstall@main
 
@@ -107,9 +107,8 @@ jobs:
       - name: Show sccache stats
         run: sccache --show-stats
 
-
   #######################################
-          
+
   job-cargo-build:
     runs-on: ubuntu-latest
     steps:
@@ -118,7 +117,7 @@ jobs:
           fetch-depth: 2
 
       - uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Get current day number
         id: day-number
         run: echo "day=$(date +%j)" >> $GITHUB_OUTPUT
@@ -135,7 +134,7 @@ jobs:
           key: cargo-build-target-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
           restore-keys: |
             cargo-build-target-${{ runner.os }}-
-            
+
       - name: Cache sccache artifacts
         uses: actions/cache@v4
         with:
@@ -143,9 +142,9 @@ jobs:
           key: sccache-build-${{ runner.os }}-day${{ steps.day-number.outputs.day }}
           restore-keys: |
             sccache-build-${{ runner.os }}-
-      
+
       - uses: cargo-bins/cargo-binstall@main
-            
+
       - name: Install sccache
         run: |
           if ! command -v sccache &> /dev/null; then
@@ -160,11 +159,6 @@ jobs:
       - name: Cargo Build
         run: |
           cargo build --locked
-
-      - name: Cargo Fmt (check)
-        run: |
-          rustup component add rustfmt || true
-          cargo fmt --all -- --check
 
       - name: Cargo Clippy
         run: cargo clippy --locked

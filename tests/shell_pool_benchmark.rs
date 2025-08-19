@@ -1,12 +1,12 @@
 use async_cargo_mcp::{
     cargo_tools::AsyncCargo,
-    operation_monitor::{OperationMonitor, OperationMonitorConfig},
+    operation_monitor::{MonitorConfig, OperationMonitor},
     shell_pool::{ShellPoolConfig, ShellPoolManager},
+    test_cargo_tools,
 };
 use std::sync::Arc;
 use std::time::Instant;
 use tempfile::TempDir;
-use tokio;
 
 /// Comprehensive performance benchmark for shell pool vs direct execution
 #[tokio::test]

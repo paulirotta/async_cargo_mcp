@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
     let monitor = Arc::new(OperationMonitor::new(monitor_config));
 
     // Create shell pool manager
-    use async_cargo_mcp::shell_pool::{ShellPoolManager, ShellPoolConfig};
+    use async_cargo_mcp::shell_pool::{ShellPoolConfig, ShellPoolManager};
     let shell_pool_config = ShellPoolConfig::default();
     let shell_pool_manager = Arc::new(ShellPoolManager::new(shell_pool_config));
 

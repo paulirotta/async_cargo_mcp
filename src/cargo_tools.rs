@@ -1,7 +1,7 @@
 use crate::callback_system::{CallbackSender, ProgressUpdate, no_callback};
 use crate::mcp_callback::mcp_callback;
 use crate::operation_monitor::OperationMonitor;
-use crate::shell_pool::{ShellPoolManager, ShellPoolConfig, ShellCommand};
+use crate::shell_pool::{ShellCommand, ShellPoolConfig, ShellPoolManager};
 use crate::timestamp;
 use rmcp::{
     ErrorData, RoleServer, ServerHandler,
@@ -499,13 +499,13 @@ impl AsyncCargo {
         working_directory: Option<String>,
         operation_id: &str,
     ) -> Result<std::process::Output, Box<dyn std::error::Error + Send + Sync>> {
-        use tokio::process::Command;
         use std::path::PathBuf;
+        use tokio::process::Command;
 
         // Try shell pool first if we have a working directory
         if let Some(ref working_dir) = working_directory {
             let working_dir_path = PathBuf::from(working_dir);
-            
+
             tracing::debug!(
                 operation_id = operation_id,
                 command = %command,
@@ -529,15 +529,15 @@ impl AsyncCargo {
                             operation_id = operation_id,
                             "Shell pool execution successful, converting to process::Output"
                         );
-                        
+
                         // Convert ShellResponse to std::process::Output
                         use std::process::Output;
-                        
+
                         // Get ExitStatus by running a simple command
                         let exit_status = if shell_response.exit_code == 0 {
                             Command::new("true").status().await.unwrap()
                         } else {
-                            Command::new("false").status().await.unwrap()  
+                            Command::new("false").status().await.unwrap()
                         };
 
                         let output = Output {
@@ -545,7 +545,7 @@ impl AsyncCargo {
                             stdout: shell_response.stdout.into_bytes(),
                             stderr: shell_response.stderr.into_bytes(),
                         };
-                        
+
                         return Ok(output);
                     }
                     Err(e) => {
@@ -571,7 +571,7 @@ impl AsyncCargo {
             command = %command,
             "Using direct spawn for cargo command"
         );
-        
+
         let mut cmd = if cfg!(target_os = "windows") {
             let mut cmd = Command::new("cmd");
             cmd.args(["/C", &command]);
@@ -586,7 +586,9 @@ impl AsyncCargo {
             cmd.current_dir(working_dir);
         }
 
-        cmd.output().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        cmd.output()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
     }
 
     /// Check availability of optional cargo components
@@ -999,7 +1001,12 @@ impl AsyncCargo {
 
                 let started_at = Instant::now();
                 // Do the actual build work
-                let result = Self::build_implementation_static(&req_clone, &build_id_clone, shell_pool_manager).await;
+                let result = Self::build_implementation_static(
+                    &req_clone,
+                    &build_id_clone,
+                    shell_pool_manager,
+                )
+                .await;
 
                 // Store the result in the operation monitor for later retrieval by wait
                 // This ensures the full output (stdout/stderr) is available to `wait`
@@ -1043,7 +1050,11 @@ impl AsyncCargo {
     }
 
     /// Internal implementation of build logic using shell pool
-    async fn build_implementation(&self, req: &BuildRequest, operation_id: &str) -> Result<String, String> {
+    async fn build_implementation(
+        &self,
+        req: &BuildRequest,
+        operation_id: &str,
+    ) -> Result<String, String> {
         let mut cmd_args = vec!["cargo".to_string(), "build".to_string()];
 
         // Add package selection
@@ -1169,7 +1180,9 @@ impl AsyncCargo {
 
         // Build the command string and execute using shell pool
         let command = cmd_args.join(" ");
-        let output = self.execute_cargo_command(command, Some(req.working_directory.clone()), operation_id).await
+        let output = self
+            .execute_cargo_command(command, Some(req.working_directory.clone()), operation_id)
+            .await
             .map_err(|e| {
                 format!(
                     "- Build operation failed in {}.\nError: Failed to execute cargo build: {}",
@@ -1230,7 +1243,11 @@ impl AsyncCargo {
     }
 
     /// Static version of build_implementation for use in async contexts
-    async fn build_implementation_static(req: &BuildRequest, operation_id: &str, shell_pool_manager: Arc<ShellPoolManager>) -> Result<String, String> {
+    async fn build_implementation_static(
+        req: &BuildRequest,
+        operation_id: &str,
+        shell_pool_manager: Arc<ShellPoolManager>,
+    ) -> Result<String, String> {
         let mut cmd_args = vec!["cargo".to_string(), "build".to_string()];
 
         // Add package selection
@@ -1356,13 +1373,19 @@ impl AsyncCargo {
 
         // Build the command string and execute using shell pool
         let command = cmd_args.join(" ");
-        let output = Self::execute_cargo_command_static(command, Some(req.working_directory.clone()), operation_id, shell_pool_manager).await
-            .map_err(|e| {
-                format!(
-                    "- Build operation failed in {}.\nError: Failed to execute cargo build: {}",
-                    &req.working_directory, e
-                )
-            })?;
+        let output = Self::execute_cargo_command_static(
+            command,
+            Some(req.working_directory.clone()),
+            operation_id,
+            shell_pool_manager,
+        )
+        .await
+        .map_err(|e| {
+            format!(
+                "- Build operation failed in {}.\nError: Failed to execute cargo build: {}",
+                &req.working_directory, e
+            )
+        })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1423,13 +1446,13 @@ impl AsyncCargo {
         operation_id: &str,
         shell_pool_manager: Arc<ShellPoolManager>,
     ) -> Result<std::process::Output, Box<dyn std::error::Error + Send + Sync>> {
-        use tokio::process::Command;
         use std::path::PathBuf;
+        use tokio::process::Command;
 
         // Try shell pool first if we have a working directory
         if let Some(ref working_dir) = working_directory {
             let working_dir_path = PathBuf::from(working_dir);
-            
+
             tracing::debug!(
                 operation_id = operation_id,
                 command = %command,
@@ -1453,15 +1476,15 @@ impl AsyncCargo {
                             operation_id = operation_id,
                             "Shell pool execution successful, converting to process::Output"
                         );
-                        
+
                         // Convert ShellResponse to std::process::Output
                         use std::process::Output;
-                        
+
                         // Get ExitStatus by running a simple command
                         let exit_status = if shell_response.exit_code == 0 {
                             Command::new("true").status().await.unwrap()
                         } else {
-                            Command::new("false").status().await.unwrap()  
+                            Command::new("false").status().await.unwrap()
                         };
 
                         let output = Output {
@@ -1469,7 +1492,7 @@ impl AsyncCargo {
                             stdout: shell_response.stdout.into_bytes(),
                             stderr: shell_response.stderr.into_bytes(),
                         };
-                        
+
                         return Ok(output);
                     }
                     Err(e) => {
@@ -1495,7 +1518,7 @@ impl AsyncCargo {
             command = %command,
             "Using direct spawn for cargo command"
         );
-        
+
         let mut cmd = if cfg!(target_os = "windows") {
             let mut cmd = Command::new("cmd");
             cmd.args(["/C", &command]);
@@ -1510,7 +1533,9 @@ impl AsyncCargo {
             cmd.current_dir(working_dir);
         }
 
-        cmd.output().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        cmd.output()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
     }
 
     #[tool(

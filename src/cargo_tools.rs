@@ -1684,11 +1684,11 @@ impl AsyncCargo {
         if let Some(binary_args) = &req.binary_args
             && !binary_args.is_empty()
         {
-            eprintln!("DEBUG: Adding binary args: {binary_args:?}");
+            tracing::debug!("Adding binary args: {binary_args:?}");
             cmd.arg("--");
             for arg in binary_args {
                 cmd.arg(arg);
-                eprintln!("DEBUG: Added binary arg: {arg}");
+                tracing::debug!("Added binary arg: {arg}");
             }
         }
 
@@ -1819,7 +1819,7 @@ impl AsyncCargo {
     }
 
     /// Internal implementation of test logic
-    async fn test_implementation(req: &TestRequest) -> Result<String, String> {
+    pub async fn test_implementation(req: &TestRequest) -> Result<String, String> {
         use tokio::process::Command;
 
         let test_id = uuid::Uuid::new_v4().to_string()[..8].to_string();

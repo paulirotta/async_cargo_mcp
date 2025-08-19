@@ -745,7 +745,7 @@ impl AsyncCargo {
             .unwrap_or_else(std::time::Instant::now);
 
         let longest_duration_seconds =
-            timestamp::timestamp::duration_since_as_rounded_seconds(earliest_start_time);
+            timestamp::duration_since_as_rounded_seconds(earliest_start_time);
 
         let content: Vec<Content> = results
                     .into_iter()
@@ -926,7 +926,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&build_id, "build");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Build operation {build_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -1203,7 +1203,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&run_id, "run");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Run operation {run_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -1397,7 +1397,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&test_id, "test");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Test operation {test_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -1641,7 +1641,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&check_id, "check");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "+ Check operation {check_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -1911,7 +1911,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&doc_id, "documentation generation");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "📚 Documentation generation {doc_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -2055,7 +2055,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&clippy_id, "clippy linting");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Clippy operation {clippy_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -2192,7 +2192,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&nextest_id, "nextest");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Nextest operation {nextest_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -2338,7 +2338,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&clean_id, "clean");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Clean operation {clean_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -2457,7 +2457,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&fix_id, "fix");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Fix operation {fix_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -2587,7 +2587,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&search_id, "search");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Search operation {} started at {} in background. Searching crates.io for '{}'.{}",
                 search_id, timestamp, req.query, tool_hint
@@ -2708,7 +2708,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&bench_id, "benchmark");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Benchmark operation {bench_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -2826,7 +2826,7 @@ impl AsyncCargo {
             });
 
             let tool_hint = self.generate_tool_hint(&install_id, "install");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Install operation {} started at {} in background. Installing package '{}'.{}",
                 install_id, timestamp, req.package, tool_hint
@@ -3070,7 +3070,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&audit_id, "audit");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Audit operation {audit_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -3217,7 +3217,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&fmt_id, "format");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Format operation {fmt_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -3494,7 +3494,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&fetch_id, "fetch");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Fetch operation {fetch_id} started at {timestamp} in background.{tool_hint}"
             ))]))
@@ -3640,7 +3640,7 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&rustc_id, "rustc compilation");
-            let timestamp = timestamp::timestamp::format_current_time();
+            let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Rustc operation {rustc_id} started at {timestamp} in background.{tool_hint}"
             ))]))

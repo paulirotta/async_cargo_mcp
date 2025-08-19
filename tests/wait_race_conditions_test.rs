@@ -338,11 +338,7 @@ async fn test_race_b2_short_lived_operation_cleanup() -> Result<()> {
             .await?;
 
         operation_ids.push(format!("op_short_{}", i));
-        println!(
-            "Started short operation {}: {}",
-            i,
-            format!("op_short_{}", i)
-        );
+        println!("Started short operation {}: op_short_{}", i, i);
 
         // Very brief delay between starts
         sleep(Duration::from_millis(10)).await;

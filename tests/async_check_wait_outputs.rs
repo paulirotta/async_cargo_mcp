@@ -34,7 +34,7 @@ async fn test_async_check_then_wait_returns_full_output() -> Result<()> {
             name: "check".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;

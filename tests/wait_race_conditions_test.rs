@@ -60,7 +60,7 @@ async fn test_race_a1_vanishing_operation_after_cleanup() -> Result<()> {
             name: "check".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;
@@ -188,7 +188,7 @@ async fn test_race_a2_completion_history_cleanup_during_wait() -> Result<()> {
                 name: "check".into(),
                 arguments: Some(object!({
                     "working_directory": project_path.clone(),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;
@@ -271,7 +271,7 @@ async fn test_race_b1_double_timeout_boundary() -> Result<()> {
             arguments: Some(object!({
                 "duration_ms": 2000, // 2 seconds - well under any timeout
                 "operation_id": "op_timeout_boundary_test",
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;
@@ -332,7 +332,7 @@ async fn test_race_b2_short_lived_operation_cleanup() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": 100, // Very short - 100ms
                     "operation_id": format!("op_short_{}", i),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;
@@ -407,7 +407,7 @@ async fn test_race_c1_concurrent_waits_same_operation() -> Result<()> {
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;
@@ -561,7 +561,7 @@ async fn test_stress_rapid_operations_and_waits() -> Result<()> {
                 arguments: Some(object!({
                     "duration_ms": 200, // Short but not too short
                     "operation_id": format!("op_stress_{}", i),
-                    "enable_async_notifications": true
+                    "enable_async_notification": true
                 })),
             })
             .await?;

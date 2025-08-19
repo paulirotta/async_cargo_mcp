@@ -40,7 +40,7 @@ async fn test_synchronous_commands_do_not_support_async() -> Result<()> {
         println!("Testing synchronous command: {} - {}", command, description);
 
         let mut args = object!({
-            "enable_async_notifications": true
+            "enable_async_notification": true
         });
 
         // Add working_directory for commands that need it

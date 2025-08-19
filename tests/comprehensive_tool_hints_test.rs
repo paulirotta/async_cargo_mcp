@@ -37,7 +37,7 @@ mod comprehensive_tool_hints_tests {
         println!("Preview excerpt: {}", &preview[..preview.len().min(140)]);
 
         // This test serves as documentation that:
-        // 1. All async operations should include tool hints when enable_async_notifications=true
+        // 1. All async operations should include tool hints when enable_async_notification=true
         // 2. Tool hints should be urgent and explicit about waiting for completion
         // 3. Tool hints should guide LLMs to use the wait command
         // 4. Tool hints should emphasize using MCP tools instead of terminal commands

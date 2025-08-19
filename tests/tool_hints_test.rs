@@ -1,7 +1,7 @@
 //! Test to verify that all async MCP commands include proper tool hints
 //!
 //! This test ensures that:
-//! 1. All async commands return tool hints when enable_async_notifications=true
+//! 1. All async commands return tool hints when enable_async_notification=true
 //! 2. Tool hints contain the expected guidance for LLMs
 //! 3. The wait command is properly referenced in hints
 
@@ -30,7 +30,7 @@ async fn test_all_async_commands_have_tool_hints() {
         "search", "bench", "install", "upgrade", "audit", "fmt", "tree", "fetch", "rustc",
     ];
 
-    println!("Commands that should have tool hints when enable_async_notifications=true:");
+    println!("Commands that should have tool hints when enable_async_notification=true:");
     for cmd in async_commands_with_hints {
         println!("  - {cmd}");
     }
@@ -75,7 +75,7 @@ fn test_wait_command_documentation() {
 #[test]
 fn test_premature_assumption_prevention() {
     println!("Critical LLM behavior pattern to prevent:");
-    println!("1. LLM starts async operation with enable_async_notifications=true");
+    println!("1. LLM starts async operation with enable_async_notification=true");
     println!("2. Gets immediate response saying 'operation started'");
     println!("3. LLM assumes operation is complete and proceeds");
     println!("4. LLM misses actual results and may make incorrect conclusions");

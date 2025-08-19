@@ -4,21 +4,6 @@
 
 The async_cargo_mcp server features a high-performance shell pool system that provides **10x faster cargo command execution** by maintaining persistent shell processes instead of spawning new ones for each command.
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                 Shell Pool Manager                              │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │   Shell Pool    │  │   Shell Pool    │  │   Shell Pool    │ │
-│  │  (Project A)    │  │  (Project B)    │  │  (Project C)    │ │
-│  │                 │  │                 │  │                 │ │
-│  │ [Shell1][Shell2]│  │ [Shell1][Shell2]│  │ [Shell1][Shell2]│ │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
 ### Key Features
 
 - **Persistent Shells**: Each working directory gets its own pool of pre-warmed shells
@@ -27,6 +12,8 @@ The async_cargo_mcp server features a high-performance shell pool system that pr
 - **Graceful Fallback**: Automatic fallback to direct command spawning if pools fail
 
 ## Performance Comparison
+
+Macbook Pro M1:
 
 ### Before (Direct Command Spawning)
 
@@ -39,12 +26,12 @@ cargo check  → 80ms startup + execution time
 ### After (Shell Pool System)
 
 ```
-cargo build  → 15ms startup + execution time  (10x improvement)
-cargo test   → 12ms startup + execution time  (10x improvement)
-cargo check  → 8ms startup + execution time   (10x improvement)
+cargo build  → 15ms startup + execution time  (10x startup improvement)
+cargo test   → 12ms startup + execution time  (10x startup improvement)
+cargo check  → 8ms startup + execution time   (10x startup improvement)
 ```
 
-## Configuration Options
+## Configuration
 
 ### Command Line Arguments
 
@@ -104,7 +91,7 @@ The shell pool system is transparent - all existing cargo commands work exactly 
   "name": "build",
   "arguments": {
     "working_directory": "/path/to/project",
-    "enable_async_notifications": true
+    "enable_async_notification": true
   }
 }
 

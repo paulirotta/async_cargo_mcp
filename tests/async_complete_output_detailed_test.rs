@@ -49,7 +49,7 @@ async fn test_async_build_wait_returns_complete_output_detailed() -> Result<()> 
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;
@@ -123,7 +123,7 @@ async fn test_multiple_async_operations_complete_output() -> Result<()> {
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;
@@ -135,7 +135,7 @@ async fn test_multiple_async_operations_complete_output() -> Result<()> {
             name: "check".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;

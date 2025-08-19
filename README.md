@@ -141,9 +141,17 @@ Add the server configuration using `Ctrl/Cmd+Shift+P` → "MCP: Add Server":
 }
 ```
 
-Copy and edit to taste the optional [Rust_Beast_Mode.chatmode.md](./.github/chatmodes/Rust_Beast_Mode.chatmode.md) to help your LLM with tool use.
+1. Edit the Json to taste. Also see the optional [Rust_Beast_Mode.chatmode.md](./.github/chatmodes/Rust_Beast_Mode.chatmode.md) including instructions to help your AI with tool use.
 
-Restart VSCode to activate the server.
+2. Restart VSCode to activate the server.
+
+#### Synchronous Mode
+
+If you prefer less chatter of "waiting for.." in your AI dialogue, or if your AI does not actually think about or act on the next steps while waiting for the cargo operation to complete, you can use:
+
+```json
+"args": ["run", "--release", "--bin", "async_cargo_mcp", "--", "--synchronous"]
+```
 
 ## Shell Pool Configuration
 
@@ -159,8 +167,11 @@ cargo run --release -- --max-shells 50
 # Disable shell pools entirely (fallback to direct command spawning)
 cargo run --release -- --disable-shell-pools
 
+# Force synchronous execution mode (disables async callbacks for all operations)
+cargo run --release -- --synchronous
+
 # Combine options as needed
-cargo run --release -- --shell-pool-size 3 --max-shells 30
+cargo run --release -- --shell-pool-size 3 --max-shells 30 --synchronous
 ```
 
 ### Shell Pool Benefits
@@ -186,13 +197,18 @@ Commands support both synchronous and asynchronous execution. For long-running o
 ```json
 {
   "working_directory": "/path/to/project",
-  "enable_async_notifications": true
+  "enable_async_notification": true
 }
 ```
 
 When async is enabled, use the `wait` command to collect results:
 
 - `wait` with `operation_ids` - wait for specific operations by providing their IDs (required)
+
+### Execution Modes
+
+- **Async Mode (default)**: Operations can run in the background with notifications when `enable_async_notification: true`
+- **Synchronous Mode**: Use `--synchronous` CLI flag to force all operations to run synchronously, ignoring `enable_async_notification` parameter
 
 ## License
 

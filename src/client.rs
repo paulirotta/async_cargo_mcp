@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
     let tool_result = client
         .call_tool(CallToolRequestParam {
             name: "build".into(),
-            arguments: Some(object!({ "enable_async_notifications": true })),
+            arguments: Some(object!({ "enable_async_notification": true })),
         })
         .await?;
     tracing::info!("Tool result for cargo build with async notifications: {tool_result:#?}");
@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
             arguments: Some(object!({
                 "name": "serde",
                 "version": "1.0",
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;

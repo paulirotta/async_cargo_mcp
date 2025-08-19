@@ -27,7 +27,7 @@ async fn test_synchronous_doc_includes_compile_stderr() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "doc".into(),
             arguments: Some(
-                object!({"working_directory": project_path, "enable_async_notifications": false}),
+                object!({"working_directory": project_path, "enable_async_notification": false}),
             ),
         })
         .await?;

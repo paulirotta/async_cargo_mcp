@@ -6,7 +6,7 @@ pub fn preview(operation_id: &str, operation_type: &str) -> String {
     // Updated to encourage explicit operation ID usage and batching before waiting
     format!(
         "\n\n### ASYNC CARGO OPERATION: {operation_type} (ID: {operation_id})\n\
-1. **STATUS**: Operation is running in background - DO NOT assume it's complete\n\
+1. **STATUS**: Operation is running in the background - DO NOT assume it's complete\n\
 2. **NEXT STEPS**:\n\
  - Continue thinking about your next steps (planning, coding, testing, summarizing context if that is needed soon) while this tool runs\n\
  - Only when you have finished thinking and you need the results from this `{operation_type}`, call: `mcp_async_cargo_m_wait` with operation_ids=['{operation_id}']\n\

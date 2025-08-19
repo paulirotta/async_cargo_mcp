@@ -638,7 +638,7 @@ async fn test_build_command_with_async(project_path: &str) -> Result<String> {
             name: "build".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;
@@ -696,7 +696,7 @@ async fn test_audit_command_with_async(project_path: &str) -> Result<String> {
             name: "audit".into(),
             arguments: Some(object!({
                 "working_directory": project_path,
-                "enable_async_notifications": true
+                "enable_async_notification": true
             })),
         })
         .await?;

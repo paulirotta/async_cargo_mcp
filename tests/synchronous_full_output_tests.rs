@@ -32,7 +32,7 @@ async fn test_synchronous_run_includes_compile_stderr() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "run".into(),
             arguments: Some(
-                object!({"working_directory": project_path, "enable_async_notifications": false}),
+                object!({"working_directory": project_path, "enable_async_notification": false}),
             ),
         })
         .await?;
@@ -66,7 +66,7 @@ async fn test_synchronous_test_includes_compile_stderr() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "test".into(),
             arguments: Some(
-                object!({"working_directory": project_path, "enable_async_notifications": false}),
+                object!({"working_directory": project_path, "enable_async_notification": false}),
             ),
         })
         .await?;

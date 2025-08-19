@@ -141,9 +141,17 @@ Add the server configuration using `Ctrl/Cmd+Shift+P` → "MCP: Add Server":
 }
 ```
 
-Copy and edit to taste the optional [Rust_Beast_Mode.chatmode.md](./.github/chatmodes/Rust_Beast_Mode.chatmode.md) to help your LLM with tool use.
+1. Edit the Json to taste. Also see the optional [Rust_Beast_Mode.chatmode.md](./.github/chatmodes/Rust_Beast_Mode.chatmode.md) including instructions to help your AI with tool use.
 
-Restart VSCode to activate the server.
+2. Restart VSCode to activate the server.
+
+#### Synchronous Mode
+
+If you prefer less chatter of "waiting for.." in your AI dialogue, or if your AI does not actually think about or act on the next steps while waiting for the cargo operation to complete, you can use:
+
+```json
+"args": ["run", "--release", "--bin", "async_cargo_mcp", "--", "--synchronous"]
+```
 
 ## Shell Pool Configuration
 

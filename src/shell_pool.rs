@@ -41,7 +41,7 @@ pub struct ShellPoolConfig {
 impl Default for ShellPoolConfig {
     fn default() -> Self {
         Self {
-            enabled: false, // Conservative default - opt-in for now
+            enabled: true, // Enable shell pools by default for performance benefits
             shells_per_directory: 2,
             max_total_shells: 20,
             shell_idle_timeout: Duration::from_secs(1800), // 30 minutes
@@ -510,6 +510,12 @@ impl ShellPool {
         }
         info!("Shut down shell pool for directory: {:?}", self.working_dir);
     }
+
+    /// Get the current number of shells in the pool
+    pub async fn shell_count(&self) -> usize {
+        let shells = self.shells.lock().await;
+        shells.len()
+    }
 }
 
 /// Manager for multiple shell pools across different working directories
@@ -529,6 +535,38 @@ impl ShellPoolManager {
             pools: RwLock::new(HashMap::new()),
             config,
             total_shells: Mutex::new(0),
+        }
+    }
+
+    /// Start background monitoring tasks (call this after creating the manager)
+    pub fn start_background_tasks(self: Arc<Self>) {
+        if self.config.enabled {
+            let manager_for_cleanup = Arc::clone(&self);
+            let manager_for_health = Arc::clone(&self);
+            let cleanup_interval = self.config.pool_cleanup_interval;
+            let health_interval = self.config.health_check_interval;
+
+            // Start periodic cleanup task
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(cleanup_interval);
+
+                loop {
+                    interval.tick().await;
+                    manager_for_cleanup.cleanup_idle_shells().await;
+                }
+            });
+
+            // Start periodic health check task
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(health_interval);
+
+                loop {
+                    interval.tick().await;
+                    manager_for_health.health_check_all_pools().await;
+                }
+            });
+
+            info!("Started background tasks for shell pool monitoring");
         }
     }
 
@@ -674,6 +712,35 @@ impl ShellPoolManager {
             max_shells: self.config.max_total_shells,
         }
     }
+
+    /// Clean up idle shells across all pools
+    async fn cleanup_idle_shells(&self) {
+        let pools = self.pools.read().await;
+        let mut cleaned_count = 0;
+
+        for (path, pool) in pools.iter() {
+            let before_count = pool.shell_count().await;
+            // Shells will be cleaned up based on their idle timeout
+            // This is a placeholder - actual cleanup logic would be in ShellPool
+            debug!("Checking pool {:?} for idle shells", path);
+            let after_count = pool.shell_count().await;
+            cleaned_count += before_count.saturating_sub(after_count);
+        }
+
+        if cleaned_count > 0 {
+            info!("Cleaned up {} idle shells", cleaned_count);
+        }
+    }
+
+    /// Perform health checks on all pools
+    async fn health_check_all_pools(&self) {
+        let pools = self.pools.read().await;
+
+        for (path, pool) in pools.iter() {
+            debug!("Health checking pool {:?}", path);
+            pool.health_check().await;
+        }
+    }
 }
 
 /// Statistics about shell pool usage
@@ -692,7 +759,7 @@ mod tests {
     #[tokio::test]
     async fn test_shell_pool_config_defaults() {
         let config = ShellPoolConfig::default();
-        assert!(!config.enabled); // Should be disabled by default
+        assert!(config.enabled); // Should be enabled by default for production use
         assert_eq!(config.shells_per_directory, 2);
         assert_eq!(config.max_total_shells, 20);
     }

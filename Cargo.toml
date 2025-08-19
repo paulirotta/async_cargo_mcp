@@ -29,7 +29,7 @@ clap = { version = "4.5.45", features = ["derive"] }
 rmcp = { version = "0.5.0", features = ["server", "client", "macros", "transport-io", "transport-child-process"] }
 schemars = "1.0.4"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.142"
+serde_json = "1.0.143"
 tempfile = "3.20.0"
 thiserror = "2.0.15"
 tokio = { version = "1.47.1", features = ["full"] }

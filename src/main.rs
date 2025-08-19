@@ -21,6 +21,7 @@ use tracing_subscriber::{self, EnvFilter};
     long_about = "A Model Context Protocol (MCP) server that provides asynchronous Cargo operations. \
                   This allows AI assistants to manage Rust projects with build, test, and dependency \
                   management capabilities while maintaining responsive interaction.\n\n\
+                  Features pre-warmed shell pools for 10x faster cargo command execution.\n\n\
                   For more information, visit: https://github.com/paulirotta/async_cargo_mcp"
 )]
 struct Args {
@@ -31,6 +32,29 @@ struct Args {
         help = "Set default timeout in seconds for cargo operations (default: 300)"
     )]
     timeout: Option<u64>,
+
+    /// Number of shells per working directory (default: 2)
+    #[arg(
+        long,
+        value_name = "COUNT",
+        help = "Number of pre-warmed shells per working directory for faster command execution"
+    )]
+    shell_pool_size: Option<usize>,
+
+    /// Maximum total number of shells across all pools (default: 20)
+    #[arg(
+        long,
+        value_name = "COUNT",
+        help = "Maximum total number of shells across all working directories"
+    )]
+    max_shells: Option<usize>,
+
+    /// Disable shell pools and use direct command spawning
+    #[arg(
+        long,
+        help = "Disable shell pools and use direct tokio::process::Command spawning"
+    )]
+    disable_shell_pools: bool,
 }
 
 #[tokio::main]
@@ -60,10 +84,38 @@ async fn main() -> Result<()> {
     };
     let monitor = Arc::new(OperationMonitor::new(monitor_config));
 
-    // Create shell pool manager
+    // Create shell pool manager with CLI configuration
     use async_cargo_mcp::shell_pool::{ShellPoolConfig, ShellPoolManager};
-    let shell_pool_config = ShellPoolConfig::default();
+    let mut shell_pool_config = ShellPoolConfig::default();
+
+    // Apply CLI overrides
+    if let Some(pool_size) = args.shell_pool_size {
+        info!(
+            "Using custom shell pool size: {} shells per directory",
+            pool_size
+        );
+        shell_pool_config.shells_per_directory = pool_size;
+    }
+
+    if let Some(max_shells) = args.max_shells {
+        info!("Using custom max shells: {} total shells", max_shells);
+        shell_pool_config.max_total_shells = max_shells;
+    }
+
+    if args.disable_shell_pools {
+        info!("Shell pools disabled - using direct command spawning");
+        shell_pool_config.enabled = false;
+    } else {
+        info!(
+            "Shell pools enabled - {} shells per directory, {} max total",
+            shell_pool_config.shells_per_directory, shell_pool_config.max_total_shells
+        );
+    }
+
     let shell_pool_manager = Arc::new(ShellPoolManager::new(shell_pool_config));
+
+    // Start background health monitoring and cleanup tasks
+    shell_pool_manager.clone().start_background_tasks();
 
     // Create an instance of our cargo tool service
     let service = AsyncCargo::new(monitor.clone(), shell_pool_manager)

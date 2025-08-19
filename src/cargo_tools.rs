@@ -1568,8 +1568,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let run_id = self.generate_operation_id_for("run");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::run_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -1635,12 +1641,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Run operation {run_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::run_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -2007,8 +2007,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let check_id = self.generate_operation_id_for("check");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::check_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2073,12 +2079,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "+ Check operation {check_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::check_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -2277,8 +2277,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let doc_id = self.generate_operation_id_for("doc");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::doc_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2343,12 +2349,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "📚 Documentation generation {doc_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::doc_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -2421,8 +2421,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let clippy_id = self.generate_operation_id_for("clippy");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::clippy_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2487,12 +2493,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Clippy operation {clippy_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::clippy_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -2558,8 +2558,14 @@ impl AsyncCargo {
             ))]));
         }
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::nextest_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2624,12 +2630,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Nextest operation {nextest_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::nextest_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -2704,8 +2704,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let clean_id = self.generate_operation_id_for("clean");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::clean_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2770,12 +2776,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Clean operation {clean_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::clean_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -2823,8 +2823,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let fix_id = self.generate_operation_id_for("fix");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::fix_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -2889,12 +2895,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Fix operation {fix_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::fix_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -2950,8 +2950,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let search_id = self.generate_operation_id_for("search");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::search_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -3020,12 +3026,6 @@ impl AsyncCargo {
                 "Search operation {} started at {} in the background. Searching crates.io for '{}'.{}",
                 search_id, timestamp, req.query, tool_hint
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::search_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -3074,8 +3074,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let bench_id = self.generate_operation_id_for("bench");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::bench_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -3140,12 +3146,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Benchmark operation {bench_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::bench_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -3198,8 +3198,13 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let install_id = self.generate_operation_id_for("install");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            match Self::install_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             let peer = context.peer.clone();
             let req_clone = req.clone();
             let install_id_clone = install_id.clone();
@@ -3259,11 +3264,6 @@ impl AsyncCargo {
                 "Install operation {} started at {} in the background. Installing package '{}'.{}",
                 install_id, timestamp, req.package, tool_hint
             ))]))
-        } else {
-            match Self::install_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -3435,8 +3435,14 @@ impl AsyncCargo {
             ))]));
         }
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::audit_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -3502,12 +3508,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Audit operation {audit_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::audit_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -3583,8 +3583,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let fmt_id = self.generate_operation_id_for("fmt");
 
-        // Check if async notifications are enabled and we're not in synchronous mode
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::fmt_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -3649,12 +3655,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Format operation {fmt_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::fmt_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -3860,8 +3860,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let fetch_id = self.generate_operation_id_for("fetch");
 
-        // Check if should run asynchronously
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::fetch_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -3926,12 +3932,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Fetch operation {fetch_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::fetch_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 
@@ -4005,8 +4005,14 @@ impl AsyncCargo {
     ) -> Result<CallToolResult, ErrorData> {
         let rustc_id = self.generate_operation_id_for("rustc");
 
-        // Check if should run asynchronously
-        if !self.should_run_synchronously(req.enable_async_notification) {
+        // Check if we should run synchronously or use async notifications
+        if self.should_run_synchronously(req.enable_async_notification) {
+            // Synchronous operation for when async notifications are disabled
+            match Self::rustc_implementation(&req).await {
+                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+            }
+        } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
             // 2. Spawn background task to do actual work and send notifications
@@ -4072,12 +4078,6 @@ impl AsyncCargo {
             Ok(CallToolResult::success(vec![Content::text(format!(
                 "Rustc operation {rustc_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
-        } else {
-            // Synchronous operation for when async notifications are disabled
-            match Self::rustc_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
         }
     }
 

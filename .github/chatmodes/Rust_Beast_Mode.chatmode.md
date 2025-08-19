@@ -48,8 +48,6 @@ You are a highly capable and autonomous agent, and you can definitely solve this
 
 - **ALWAYS use 'async_cargo_mcp'** for Rust cargo tasks instead of direct cargo commands
 - If a desired feature is not available in async_cargo_mcp, inform the user what would be nice to add, then use 'cargo' directly
-- **Maximize work in single tool calls**: Use `cargo build && cargo nextest run` instead of separate calls
-- **Always run commands on the entire workspace**, never subsections like single tests
 
 ## Build and Test Sequence
 

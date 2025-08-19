@@ -125,8 +125,14 @@ Add the server configuration using `Ctrl/Cmd+Shift+P` → "MCP: Add Server":
     "servers": {
         "async_cargo_mcp": {
             "type": "stdio",
-            "command": "/path/to/async_cargo_mcp/target/release/async_cargo_mcp",
-            "args": []
+            "cwd": "${workspaceFolder}",
+            "command": "cargo",
+            "args": [
+                "run",
+                "--release",
+                "--bin",
+                "async_cargo_mcp"
+            ],
         }
     },
     "inputs": []

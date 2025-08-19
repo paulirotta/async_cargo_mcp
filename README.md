@@ -147,11 +147,20 @@ Add the server configuration using `Ctrl/Cmd+Shift+P` → "MCP: Add Server":
 
 #### Synchronous Mode
 
-If you prefer less chatter of "waiting for.." in your AI dialogue, or if your AI does not actually think about or act on the next steps while waiting for the cargo operation to complete, you can use:
+If
+
+- you prefer less chatter of "waiting for.." in your AI dialogue
+- you prefer to see the `cargo` command execute in your terminal
+- you do not mind that the terminal is not available for use while `cargo` commands execute
+- your LLM does not actually think about or act on the next steps while waiting for the cargo operation to complete
+
+then these are good reasons to use `--synchonous`:
 
 ```json
 "args": ["run", "--release", "--bin", "async_cargo_mcp", "--", "--synchronous"]
 ```
+
+Other command line arguments are less common. See `--help`.
 
 ## Shell Pool Configuration
 

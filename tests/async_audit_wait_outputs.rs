@@ -50,10 +50,7 @@ async fn test_async_audit_wait_combines_outputs() -> Result<()> {
         })
         .await?;
     let first = format!("{:?}", resp.content);
-    assert!(
-        first.contains("started in background")
-            || first.contains("failed: cargo-audit is not installed")
-    );
+    assert!(first.contains("started at") || first.contains("failed: cargo-audit is not installed"));
     if first.contains("failed: cargo-audit is not installed") {
         let _ = client.cancel().await;
         return Ok(());

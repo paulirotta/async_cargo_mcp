@@ -41,7 +41,7 @@ async fn test_async_doc_then_wait_returns_full_output_and_path() -> Result<()> {
         .await?;
 
     let first_text = format!("{:?}", start.content);
-    assert!(first_text.contains("started in background"));
+    assert!(first_text.contains("started at"));
 
     // Extract the operation id and confirm preview() content appears
     let op_id = extract_operation_id(&first_text).expect("operation id should be present");

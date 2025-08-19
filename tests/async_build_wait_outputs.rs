@@ -44,7 +44,7 @@ async fn test_async_build_then_wait_returns_full_output() -> Result<()> {
 
     let first_text = format!("{:?}", build_result.content);
     // Should include a hint and an operation id string we can extract
-    assert!(first_text.contains("started in background"));
+    assert!(first_text.contains("started at"));
 
     // Extract operation id using the known prefix `op_`
     let op_id = extract_operation_id(&first_text).expect("operation id should be present");

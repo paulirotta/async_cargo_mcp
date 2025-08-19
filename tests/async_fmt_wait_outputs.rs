@@ -44,7 +44,7 @@ async fn test_async_fmt_wait_combines_outputs() -> Result<()> {
     // Run fmt check (may emit only stderr if issues); ensure merged output
     let resp = client.call_tool(CallToolRequestParam { name: "fmt".into(), arguments: Some(object!({"working_directory": project_path, "enable_async_notifications": true, "check": true})) }).await?;
     let first = format!("{:?}", resp.content);
-    assert!(first.contains("started in background"));
+    assert!(first.contains("started at"));
     let op_id = extract_operation_id(&first).unwrap();
 
     let wait = client

@@ -40,7 +40,8 @@ async fn test_async_check_then_wait_returns_full_output() -> Result<()> {
         .await?;
 
     let first_text = format!("{:?}", check_result.content);
-    assert!(first_text.contains("started in background"));
+    // Should include a hint and an operation id string we can extract
+    assert!(first_text.contains("started at"));
 
     let op_id = extract_operation_id(&first_text).expect("operation id should be present");
     assert!(op_id.starts_with("op_"));

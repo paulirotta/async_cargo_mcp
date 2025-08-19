@@ -61,9 +61,9 @@ async fn test_synchronous_commands_do_not_support_async() -> Result<()> {
         let response_text = format!("{:?}", result.content);
         println!("Response for {}: {}", command, response_text);
 
-        // Synchronous commands should NOT return "started in background" messages
+        // Synchronous commands should NOT return "started at" messages
         assert!(
-            !response_text.contains("started in background"),
+            !response_text.contains("started at"),
             "Command '{}' should be synchronous but returned async response: {}",
             command,
             response_text

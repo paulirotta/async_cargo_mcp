@@ -67,7 +67,7 @@ async fn test_wait_returns_placeholder_for_empty_output() -> Result<()> {
         })
         .await?;
     let text = format!("{:?}", second.content);
-    assert!(text.contains("started in background"));
+    assert!(text.contains("started at"));
     let op_id = extract_operation_id(&text).expect("operation id");
 
     let wait = client

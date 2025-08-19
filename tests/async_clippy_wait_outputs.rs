@@ -43,7 +43,7 @@ async fn test_async_clippy_wait_combines_outputs() -> Result<()> {
 
     let resp = client.call_tool(CallToolRequestParam { name: "clippy".into(), arguments: Some(object!({"working_directory": project_path, "enable_async_notifications": true, "args": ["--", "-W", "clippy::all"]})) }).await?;
     let first = format!("{:?}", resp.content);
-    assert!(first.contains("started in background"));
+    assert!(first.contains("started at"));
     let op_id = extract_operation_id(&first).unwrap();
 
     let wait = client

@@ -40,7 +40,7 @@ async fn test_async_clean_then_wait_returns_status() -> Result<()> {
         .await?;
 
     let first_text = format!("{:?}", clean_result.content);
-    assert!(first_text.contains("started in background"));
+    assert!(first_text.contains("started at"));
 
     // Extract operation id and wait
     let op_id = extract_operation_id(&first_text).expect("operation id should be present");

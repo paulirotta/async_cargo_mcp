@@ -1,6 +1,7 @@
 use crate::callback_system::{CallbackSender, ProgressUpdate, no_callback};
 use crate::mcp_callback::mcp_callback;
 use crate::operation_monitor::OperationMonitor;
+use crate::timestamp;
 use rmcp::{
     ErrorData, RoleServer, ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::Parameters},
@@ -736,6 +737,16 @@ impl AsyncCargo {
 
         let results = wait_result;
 
+        // Calculate duration reporting: find the earliest start time and compute duration
+        let earliest_start_time = results
+            .iter()
+            .map(|op_info| op_info.start_time)
+            .min()
+            .unwrap_or_else(std::time::Instant::now);
+
+        let longest_duration_seconds =
+            timestamp::timestamp::duration_since_as_rounded_seconds(earliest_start_time);
+
         let content: Vec<Content> = results
                     .into_iter()
                     .map(|op_info| {
@@ -823,7 +834,20 @@ impl AsyncCargo {
                     })
                     .collect();
 
-        Ok(CallToolResult::success(content))
+        // Add duration summary as the first content item
+        let duration_summary = if longest_duration_seconds == 0 {
+            "Wait completed. Operations finished quickly (< 1 second).".to_string()
+        } else {
+            format!(
+                "Wait completed. Longest duration: {} seconds.",
+                longest_duration_seconds
+            )
+        };
+
+        let mut final_content = vec![Content::text(duration_summary)];
+        final_content.extend(content);
+
+        Ok(CallToolResult::success(final_content))
     }
 
     #[tool(
@@ -902,8 +926,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&build_id, "build");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Build operation {build_id} started in background.{tool_hint}"
+                "Build operation {build_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1178,8 +1203,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&run_id, "run");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Run operation {run_id} started in background.{tool_hint}"
+                "Run operation {run_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1371,8 +1397,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&test_id, "test");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Test operation {test_id} started in background.{tool_hint}"
+                "Test operation {test_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1614,8 +1641,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&check_id, "check");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "+ Check operation {check_id} started in background.{tool_hint}"
+                "+ Check operation {check_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -1883,8 +1911,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&doc_id, "documentation generation");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "📚 Documentation generation {doc_id} started in background.{tool_hint}"
+                "📚 Documentation generation {doc_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2026,8 +2055,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&clippy_id, "clippy linting");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Clippy operation {clippy_id} started in background.{tool_hint}"
+                "Clippy operation {clippy_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2162,8 +2192,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&nextest_id, "nextest");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Nextest operation {nextest_id} started in background.{tool_hint}"
+                "Nextest operation {nextest_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2307,8 +2338,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&clean_id, "clean");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Clean operation {clean_id} started in background.{tool_hint}"
+                "Clean operation {clean_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2425,8 +2457,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&fix_id, "fix");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Fix operation {fix_id} started in background.{tool_hint}"
+                "Fix operation {fix_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2554,9 +2587,10 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&search_id, "search");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Search operation {} started in background. Searching crates.io for '{}'.{}",
-                search_id, req.query, tool_hint
+                "Search operation {} started at {} in background. Searching crates.io for '{}'.{}",
+                search_id, timestamp, req.query, tool_hint
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2674,8 +2708,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&bench_id, "benchmark");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Benchmark operation {bench_id} started in background.{tool_hint}"
+                "Benchmark operation {bench_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -2791,9 +2826,10 @@ impl AsyncCargo {
             });
 
             let tool_hint = self.generate_tool_hint(&install_id, "install");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Install operation {} started in background. Installing package '{}'.{}",
-                install_id, req.package, tool_hint
+                "Install operation {} started at {} in background. Installing package '{}'.{}",
+                install_id, timestamp, req.package, tool_hint
             ))]))
         } else {
             match Self::install_implementation(&req).await {
@@ -3034,8 +3070,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&audit_id, "audit");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Audit operation {audit_id} started in background.{tool_hint}"
+                "Audit operation {audit_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -3180,8 +3217,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&fmt_id, "format");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Format operation {fmt_id} started in background.{tool_hint}"
+                "Format operation {fmt_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -3456,8 +3494,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&fetch_id, "fetch");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Fetch operation {fetch_id} started in background.{tool_hint}"
+                "Fetch operation {fetch_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled
@@ -3601,8 +3640,9 @@ impl AsyncCargo {
 
             // Return immediate response to LLM - this is the "first stage"
             let tool_hint = self.generate_tool_hint(&rustc_id, "rustc compilation");
+            let timestamp = timestamp::timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "Rustc operation {rustc_id} started in background.{tool_hint}"
+                "Rustc operation {rustc_id} started at {timestamp} in background.{tool_hint}"
             ))]))
         } else {
             // Synchronous operation for when async notifications are disabled

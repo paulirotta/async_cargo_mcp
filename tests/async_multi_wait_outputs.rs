@@ -63,7 +63,7 @@ async fn test_async_multiple_builds_then_wait_returns_full_outputs() -> Result<(
 
     let t1 = format!("{:?}", r1.content);
     let t2 = format!("{:?}", r2.content);
-    assert!(t1.contains("started in background") && t2.contains("started in background"));
+    assert!(t1.contains("started at") && t2.contains("started at"));
     let id1 = extract_operation_id(&t1).expect("id1");
     let id2 = extract_operation_id(&t2).expect("id2");
 

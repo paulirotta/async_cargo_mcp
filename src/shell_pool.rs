@@ -302,7 +302,7 @@ done
                 .read_line(&mut response_line)
                 .await
                 .map_err(|_| ShellError::ProcessDied)?;
-            serde_json::from_str::<ShellResponse>(&response_line.trim()).map_err(ShellError::from)
+            serde_json::from_str::<ShellResponse>(response_line.trim()).map_err(ShellError::from)
         };
 
         let timeout_duration = Duration::from_millis(command.timeout_ms);
@@ -383,7 +383,7 @@ done
         debug!("Shutting down shell {}", self.id);
 
         // Try to send shutdown signal
-        if let Ok(_) = self.stdin.write_all(b"SHUTDOWN\n").await {
+        if (self.stdin.write_all(b"SHUTDOWN\n").await).is_ok() {
             let _ = self.stdin.flush().await;
         }
 

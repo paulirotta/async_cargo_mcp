@@ -30,6 +30,7 @@ Some AI models take better advantage of this than others. We continue to iterate
 > ---
 >
 > **async_cargo_mcp (MCP Server):**
+>
 > > **Perfect! The test is running in the background. While it's running, let me update the `agent-plan.md` to mark this task as substantially complete and document the final findings:**
 >
 > ```
@@ -38,7 +39,6 @@ Some AI models take better advantage of this than others. We continue to iterate
 
 ### Example: `GPT-5`
 
-> 
 > **I'll run clippy fix, build, nextest, and fmt across the workspace to ensure the changes compile and pass checks.**
 >
 > ```
@@ -46,16 +46,17 @@ Some AI models take better advantage of this than others. We continue to iterate
 > async_cargo_mcp (MCP Server)
 > async_cargo_mcp (MCP Server)
 > async_cargo_mcp (MCP Server)
-> async_cargo_mcp (MCP Server)  
+> async_cargo_mcp (MCP Server)
 > ⬇️ agent-plan.md <span style="color:green;">+4</span> <span style="color:red;">-5</span>
+> ```
 
 ### Example: `Gemini 2.5 Pro`
 
 > Now, I'll run cargo build to check for any remaining issues.
-> 
+>
 > async_cargo_mcp (MCP Server)
 > I've addressed the let chain and several polars import errors, including adding imports for col and lit. I am now rebuilding the project to check for any remaining issues.
-> 
+>
 > async_cargo_mcp (MCP Server)
 
 After installing `async_cargo_mcp`, you save development time by enabling your LLM to launch background Rust Cargo operations while continuing to think or update planning documents. LLMs can choose synchronous or asynchronous execution. For long-running tasks, asynchronous operations let the LLM proceed with other work while this tool builds and tests in the background. Callbacks are part of the MCP specification. The implementation uses [Anthropic's official `rmcp` Rust SDK](https://github.com/modelcontextprotocol/rust-sdk).
@@ -63,8 +64,9 @@ After installing `async_cargo_mcp`, you save development time by enabling your L
 ## Supported Commands
 
 ### Core Cargo Commands
+
 - **`build`** - Compile the current package
-- **`run`** - Build and execute the binary  
+- **`run`** - Build and execute the binary
 - **`test`** - Run the test suite
 - **`check`** - Check for compile errors without building
 - **`clean`** - Remove build artifacts
@@ -81,6 +83,7 @@ After installing `async_cargo_mcp`, you save development time by enabling your L
 - **`metadata`** - Output package metadata as JSON (synchronous)
 
 ### Extension Commands (if installed)
+
 - **`clippy`** - Enhanced linting and code quality checks
 - **`nextest`** - Faster test execution
 - **`fmt`** - Code formatting with rustfmt
@@ -89,6 +92,7 @@ After installing `async_cargo_mcp`, you save development time by enabling your L
 - **`bench`** - Run benchmarks
 
 ### Control Commands
+
 - **`wait`** - Wait for async operations to complete (synchronous)
 
 ## Features
@@ -112,9 +116,10 @@ cargo build --release
 ### VSCode with GitHub Copilot
 
 Enable MCP in VSCode settings:
+
 ```json
 {
-    "chat.mcp.enabled": true
+  "chat.mcp.enabled": true
 }
 ```
 
@@ -122,22 +127,19 @@ Add the server configuration using `Ctrl/Cmd+Shift+P` → "MCP: Add Server":
 
 ```json
 {
-    "servers": {
-        "async_cargo_mcp": {
-            "type": "stdio",
-            "cwd": "${workspaceFolder}",
-            "command": "cargo",
-            "args": [
-                "run",
-                "--release",
-                "--bin",
-                "async_cargo_mcp"
-            ],
-        }
-    },
-    "inputs": []
+  "servers": {
+    "async_cargo_mcp": {
+      "type": "stdio",
+      "cwd": "${workspaceFolder}",
+      "command": "cargo",
+      "args": ["run", "--release", "--bin", "async_cargo_mcp"]
+    }
+  },
+  "inputs": []
 }
 ```
+
+Copy and edit to taste the optional [Rust_Beast_Mode.chatmode.md](./.github/chatmodes/Rust_Beast_Mode.chatmode.md) to help your LLM with tool use.
 
 Restart VSCode to activate the server.
 
@@ -147,12 +149,13 @@ Commands support both synchronous and asynchronous execution. For long-running o
 
 ```json
 {
-    "working_directory": "/path/to/project",
-    "enable_async_notifications": true
+  "working_directory": "/path/to/project",
+  "enable_async_notifications": true
 }
 ```
 
 When async is enabled, use the `wait` command to collect results:
+
 - `wait` with `operation_ids` - wait for specific operations by providing their IDs (required)
 
 ## License

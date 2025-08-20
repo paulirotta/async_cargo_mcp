@@ -23,12 +23,12 @@ Most tool-calling AIs take advantage of this. All LLMs are equal, some are more 
 
 > **Now let me run the full test suite to verify that all tests pass with my fixes:**
 >
-> ---
->
-> **async_cargo_mcp (MCP Server):**
->
-> > **Perfect! The test is running in the background. While it's running, let me update the `agent-plan.md` to mark this task as substantially complete and document the final findings:**
->
+> ```
+> async_cargo_mcp (MCP Server):
+> 
+> ```
+> **Perfect! The test is running in the background. While it's running, let me update the `agent-plan.md` to mark this task as substantially complete and document the final findings:**
+> 
 > ```
 > agent-plan.md+3-3
 > ```
@@ -43,19 +43,31 @@ Most tool-calling AIs take advantage of this. All LLMs are equal, some are more 
 > async_cargo_mcp (MCP Server)
 > async_cargo_mcp (MCP Server)
 > async_cargo_mcp (MCP Server)
-> ⬇️ agent-plan.md <span style="color:green;">+4</span> <span style="color:red;">-5</span>
+> 
+> ⬇️ agent-plan.md +4 -5
 > ```
 
 ### Example: `Gemini 2.5 Pro`
 
-> Now, I'll run cargo build to check for any remaining issues.
+> **Now, I'll rerun the tests to verify the fixes and the new title/label functionality.**
 >
+> ```
 > async_cargo_mcp (MCP Server)
-> I've addressed the let chain and several polars import errors, including adding imports for col and lit. I am now rebuilding the project to check for any remaining issues.
+> ```
+> 
+> **I have finished the first two tasks. I'll wait for the tests to finish, and if they pass, I'll start on removing...**
+> 
+> **Then, I'll run the analysis scripts to verify everything.**
 >
+> ```
 > async_cargo_mcp (MCP Server)
+> 
+> Summarized conversation history
+> ```
+>
+> **Whelp, the tests failed with a cascade of errors. It looks like I correctly updated...**
 
-After installing `async_cargo_mcp`, you save development time by enabling your LLM to launch background Rust Cargo operations while continuing to think or update planning documents. LLMs can choose synchronous or asynchronous execution. For long-running tasks, asynchronous operations let the LLM proceed with other work while this tool builds and tests in the background. Callbacks are part of the MCP specification. The implementation uses [Anthropic's official `rmcp` Rust SDK](https://github.com/modelcontextprotocol/rust-sdk).
+As you can see **(1) the developer**, **(2) the AI**, and **(3) Rust tooling** can be easily coordinated to all work productively and concurrently without loosing the storyline.
 
 ### High-Performance Shell Pool Architecture
 

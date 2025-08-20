@@ -150,10 +150,10 @@ Add the server configuration using `Ctrl/Cmd+Shift+P` → "MCP: Add Server":
 These are good reasons to use `--synchronous` to have cargo commands run blocking the AI and terminal:
 
 - you prefer less chatter of `waiting` in your AI dialogue
-- you prefer to see the `cargo` command execute in your terminal, not only after completion
-- you do not mind that the terminal is not available for use while `cargo` commands execute
+- you prefer to see the `cargo` command execute in your terminal
+- you accept that the terminal is blocked while `cargo` commands execute
 - your AI does not actually think or act on the next steps while waiting for cargo operations to complete
-- you prefer to drink coffee and run out the clock
+- you prefer to keep it simple and take your time to stop and drink coffee
 
 ```json
 "args": ["run", "--release", "--bin", "async_cargo_mcp", "--", "--synchronous"]

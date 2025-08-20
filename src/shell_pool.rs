@@ -20,64 +20,45 @@ use uuid::Uuid;
 /// Configuration for shell pool behavior
 #[derive(Debug, Clone)]
 pub struct ShellPoolConfig {
-    /// Whether shell pooling is enabled
     pub enabled: bool,
-    /// Number of shells to maintain per working directory
     pub shells_per_directory: usize,
-    /// Maximum total number of shells across all pools
     pub max_total_shells: usize,
-    /// How long shells can remain idle before termination
     pub shell_idle_timeout: Duration,
-    /// How often to clean up idle pools and shells
     pub pool_cleanup_interval: Duration,
-    /// Maximum time to wait for shell startup
     pub shell_spawn_timeout: Duration,
-    /// Default timeout for command execution
     pub command_timeout: Duration,
-    /// How often to check shell health
     pub health_check_interval: Duration,
 }
 
 impl Default for ShellPoolConfig {
     fn default() -> Self {
         Self {
-            enabled: true, // Enable shell pools by default for performance benefits
+            enabled: true,
             shells_per_directory: 2,
             max_total_shells: 20,
-            shell_idle_timeout: Duration::from_secs(1800), // 30 minutes
-            pool_cleanup_interval: Duration::from_secs(300), // 5 minutes
+            shell_idle_timeout: Duration::from_secs(1800),
+            pool_cleanup_interval: Duration::from_secs(300),
             shell_spawn_timeout: Duration::from_secs(5),
-            command_timeout: Duration::from_secs(300), // 5 minutes
-            health_check_interval: Duration::from_secs(60), // 1 minute
+            command_timeout: Duration::from_secs(300),
+            health_check_interval: Duration::from_secs(60),
         }
     }
 }
 
-/// Command sent to a prewarmed shell
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShellCommand {
-    /// Unique identifier for this command
     pub id: String,
-    /// Command and arguments to execute
     pub command: Vec<String>,
-    /// Working directory for command execution
     pub working_dir: String,
-    /// Timeout in milliseconds
     pub timeout_ms: u64,
 }
 
-/// Response from a prewarmed shell
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShellResponse {
-    /// Command identifier
     pub id: String,
-    /// Exit code from command
     pub exit_code: i32,
-    /// Standard output
     pub stdout: String,
-    /// Standard error
     pub stderr: String,
-    /// Execution duration in milliseconds
     pub duration_ms: u64,
 }
 
@@ -156,7 +137,7 @@ impl PrewarmedShell {
         let mut process = Command::new("bash")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null()) // We'll capture stderr through our protocol
+            .stderr(Stdio::piped()) // capture stderr for diagnostics
             .current_dir(&working_dir)
             .spawn()?;
 
@@ -169,6 +150,27 @@ impl PrewarmedShell {
         })?;
 
         let stdout_reader = BufReader::new(stdout);
+        // Spawn a background task to read and log stderr lines for diagnostics
+        if let Some(stderr) = process.stderr.take() {
+            tokio::spawn(async move {
+                let mut reader = BufReader::new(stderr);
+                loop {
+                    let mut line = String::new();
+                    match reader.read_line(&mut line).await {
+                        Ok(0) => break, // EOF
+                        Ok(_) => {
+                            if !line.trim().is_empty() {
+                                warn!(target: "shell_stderr", "shell stderr: {}", line.trim_end());
+                            }
+                        }
+                        Err(e) => {
+                            warn!(target: "shell_stderr", "error reading shell stderr: {}", e);
+                            break;
+                        }
+                    }
+                }
+            });
+        }
 
         let mut shell = Self {
             id: shell_id.clone(),
@@ -196,52 +198,57 @@ impl PrewarmedShell {
     async fn initialize_protocol(&mut self) -> Result<(), ShellError> {
         // Send initial setup commands to prepare shell for JSON protocol
         let setup_script = r#"
-# Shell setup for async_cargo_mcp
-set -e
-exec 3>&2 2>/dev/null
+# Portable minimal shell setup for async_cargo_mcp (macOS bash 3.2 compatible)
+set +e
 
-# Function to execute commands and return JSON responses
-execute_command() {
-    local cmd_json="$1"
-    local id=$(echo "$cmd_json" | jq -r '.id')
-    local command_array=$(echo "$cmd_json" | jq -r '.command[]')
-    local working_dir=$(echo "$cmd_json" | jq -r '.working_dir')
-    local timeout_ms=$(echo "$cmd_json" | jq -r '.timeout_ms')
-    
-    cd "$working_dir" 2>/dev/null || {
-        echo "{\"id\":\"$id\",\"exit_code\":1,\"stdout\":\"\",\"stderr\":\"Failed to change directory to $working_dir\",\"duration_ms\":0}"
-        return
-    }
-    
-    local start_time=$(date +%s%3N)
-    local temp_stdout=$(mktemp)
-    local temp_stderr=$(mktemp)
-    
-    # Execute the actual command
-    timeout "${timeout_ms}ms" bash -c "$command_array" >"$temp_stdout" 2>"$temp_stderr"
-    local exit_code=$?
-    
-    local end_time=$(date +%s%3N)
-    local duration=$((end_time - start_time))
-    
-    local stdout_content=$(cat "$temp_stdout" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-    local stderr_content=$(cat "$temp_stderr" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-    
-    # Clean up temp files
-    rm -f "$temp_stdout" "$temp_stderr"
-    
-    # Return JSON response
-    echo "{\"id\":\"$id\",\"exit_code\":$exit_code,\"stdout\":\"$stdout_content\",\"stderr\":\"$stderr_content\",\"duration_ms\":$duration}"
+command -v jq >/dev/null 2>&1 || {
+    echo 'MCP_DIAG: jq not found in PATH' >&2
 }
 
-# Ready signal
+json_escape_file() {
+    # Use jq -Rs . to JSON-encode entire file contents
+    jq -Rs . 2>/dev/null || {
+        # Fallback: basic escaping (quotes and newlines)
+        sed 's/\\/\\\\/g; s/"/\\"/g; s/$/\\n/' | tr -d '\n' | sed 's/\\n$//' | sed 's/^/"/;s/$/"/'
+    }
+}
+
+execute_command() {
+    cmd_json="$1"
+    id=$(echo "$cmd_json" | jq -r '.id')
+    working_dir=$(echo "$cmd_json" | jq -r '.working_dir')
+    timeout_ms=$(echo "$cmd_json" | jq -r '.timeout_ms')
+    # Build command line joining args safely (shell-escaped)
+    cmd_line=$(echo "$cmd_json" | jq -r '.command | map(@sh) | join(" ")')
+
+    cd "$working_dir" 2>/dev/null || {
+        echo '{"id":"'"$id"'","exit_code":1,"stdout":"","stderr":"Failed to change directory","duration_ms":0}'
+        return
+    }
+
+    start_time=$(date +%s)
+    temp_stdout=$(mktemp)
+    temp_stderr=$(mktemp)
+
+    # Execute command via bash -c using safe assembled line
+    bash -c "$cmd_line" >"$temp_stdout" 2>"$temp_stderr"
+    exit_code=$?
+    end_time=$(date +%s)
+    duration=$(((end_time - start_time)*1000))
+
+    stdout_json=$(cat "$temp_stdout" | json_escape_file)
+    stderr_json=$(cat "$temp_stderr" | json_escape_file)
+    rm -f "$temp_stdout" "$temp_stderr"
+    echo '{"id":"'"$id"'","exit_code":'"$exit_code"',"stdout":'"$stdout_json"',"stderr":'"$stderr_json"',"duration_ms":'"$duration"'}'
+}
+
 echo "SHELL_READY"
 
-# Command processing loop
 while IFS= read -r line; do
-    if [[ "$line" == "HEALTH_CHECK" ]]; then
+    [ -z "$line" ] && continue
+    if [ "$line" = "HEALTH_CHECK" ]; then
         echo "HEALTHY"
-    elif [[ "$line" == "SHUTDOWN" ]]; then
+    elif [ "$line" = "SHUTDOWN" ]; then
         break
     else
         execute_command "$line"
@@ -258,6 +265,11 @@ done
         self.stdout_reader.read_line(&mut ready_line).await?;
 
         if ready_line.trim() != "SHELL_READY" {
+            error!(
+                "Shell {} failed to emit SHELL_READY, got: '{}'",
+                self.id,
+                ready_line.trim()
+            );
             return Err(ShellError::ProcessDied);
         }
 
@@ -273,7 +285,7 @@ done
         let _lock = self.command_lock.lock().await;
         self.last_used = Instant::now();
 
-        debug!(
+        info!(
             "Executing command {} in shell {}: {:?}",
             command.id, self.id, command.command
         );
@@ -286,23 +298,54 @@ done
             .write_all(command_json.as_bytes())
             .await
             .map_err(|_| ShellError::ProcessDied)?;
+        info!("shell {} wrote command bytes", self.id);
         self.stdin
             .write_all(b"\n")
             .await
             .map_err(|_| ShellError::ProcessDied)?;
+        info!("shell {} wrote newline", self.id);
         self.stdin
             .flush()
             .await
             .map_err(|_| ShellError::ProcessDied)?;
+        info!("shell {} flushed stdin", self.id);
 
         // Read response with timeout
         let response_future = async {
-            let mut response_line = String::new();
-            self.stdout_reader
-                .read_line(&mut response_line)
-                .await
-                .map_err(|_| ShellError::ProcessDied)?;
-            serde_json::from_str::<ShellResponse>(response_line.trim()).map_err(ShellError::from)
+            let mut attempts = 0usize;
+            let mut last_err: Option<serde_json::Error> = None;
+            loop {
+                attempts += 1;
+                if attempts > 50 {
+                    // Prevent infinite loop on persistent junk
+                    if let Some(err) = last_err {
+                        return Err(ShellError::from(err));
+                    }
+                    return Err(ShellError::ProcessDied);
+                }
+                let mut response_line = String::new();
+                let bytes = self
+                    .stdout_reader
+                    .read_line(&mut response_line)
+                    .await
+                    .map_err(|_| ShellError::ProcessDied)?;
+                if bytes == 0 {
+                    return Err(ShellError::ProcessDied);
+                }
+                let trimmed = response_line.trim();
+                info!("shell {} raw line: '{}'", self.id, trimmed);
+                if trimmed.is_empty() {
+                    continue;
+                }
+                match serde_json::from_str::<ShellResponse>(trimmed) {
+                    Ok(resp) => break Ok(resp),
+                    Err(e) => {
+                        info!("Shell {} skipping non-JSON line: '{}'", self.id, trimmed);
+                        last_err = Some(e);
+                        continue;
+                    }
+                }
+            }
         };
 
         let timeout_duration = Duration::from_millis(command.timeout_ms);
@@ -310,7 +353,7 @@ done
             .await
             .map_err(|_| ShellError::Timeout)??;
 
-        debug!(
+        info!(
             "Command {} completed with exit code {} in {}ms",
             response.id, response.exit_code, response.duration_ms
         );

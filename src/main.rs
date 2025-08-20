@@ -69,11 +69,22 @@ async fn main() -> Result<()> {
     // Parse command line arguments
     let args = Args::parse();
 
-    // Initialize the tracing subscriber with file and stdout logging
+    // Initialize the tracing subscriber with improved formatting
+    /* verbose in terminal
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::DEBUG.into()))
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
         .with_writer(std::io::stderr)
         .with_ansi(false)
+        .with_target(false) // Hide target module names
+        .compact() // Use compact format for cleaner output
+        .init();
+    */
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::new("info")) // force info+ (ignores RUST_LOG)
+        .with_writer(std::io::stderr)
+        .with_ansi(true)
+        .with_target(false)
+        //.compact()
         .init();
 
     info!("Starting MCP server");
@@ -95,6 +106,12 @@ async fn main() -> Result<()> {
     use async_cargo_mcp::shell_pool::{ShellPoolConfig, ShellPoolManager};
     let mut shell_pool_config = ShellPoolConfig::default();
 
+    // Allow disabling shell pools via environment variable for test isolation / debugging
+    if std::env::var("ASYNC_CARGO_MCP_DISABLE_SHELL_POOL").is_ok() {
+        shell_pool_config.enabled = false;
+        info!("Shell pools disabled via ASYNC_CARGO_MCP_DISABLE_SHELL_POOL env var");
+    }
+
     // Apply CLI overrides
     if let Some(pool_size) = args.shell_pool_size {
         info!(
@@ -110,13 +127,17 @@ async fn main() -> Result<()> {
     }
 
     if args.disable_shell_pools {
-        info!("Shell pools disabled - using direct command spawning");
         shell_pool_config.enabled = false;
-    } else {
+        info!("Shell pools disabled via CLI flag - using direct command spawning");
+    }
+
+    if shell_pool_config.enabled {
         info!(
             "Shell pools enabled - {} shells per directory, {} max total",
             shell_pool_config.shells_per_directory, shell_pool_config.max_total_shells
         );
+    } else {
+        info!("Shell pools disabled");
     }
 
     let synchronous_mode = args.synchronous;

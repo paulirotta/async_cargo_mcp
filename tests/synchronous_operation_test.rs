@@ -11,6 +11,7 @@ use rmcp::{
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use tokio::process::Command;
+use tokio::time::{Duration, sleep};
 
 #[tokio::test]
 async fn test_synchronous_operations_no_operation_id() -> Result<()> {
@@ -69,7 +70,10 @@ async fn test_synchronous_operations_no_operation_id() -> Result<()> {
         "Version command should never return operation ID: {version_text}"
     );
 
-    let _ = client.cancel().await;
+    // Allow some time for any background tasks to complete before cleanup
+    sleep(Duration::from_millis(100)).await;
+
+    client.cancel().await?;
     Ok(())
 }
 
@@ -112,6 +116,9 @@ async fn test_async_operations_do_return_operation_id() -> Result<()> {
         "Asynchronous fmt should indicate background operation: {fmt_text}"
     );
 
-    let _ = client.cancel().await;
+    // Allow some time for any background tasks to complete before cleanup
+    sleep(Duration::from_millis(100)).await;
+
+    client.cancel().await?;
     Ok(())
 }

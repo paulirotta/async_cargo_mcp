@@ -1,52 +1,59 @@
-//! Logging configuration for the application.
-use anyhow::Result;
+//! Logging initialization utilities.
+//!
+//! Provides a single entry point `init_subscriber` that configures tracing for either
+//! stderr (default) or a rolling daily log file. Verbose mode enables debug level.
+//! The function is idempotent: subsequent calls after the first are no-ops so tests
+//! or library reuse won't panic on duplicate initialization.
+
 use directories::ProjectDirs;
-use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use std::{fs, path::PathBuf, sync::Once};
+use tracing_subscriber::{EnvFilter, fmt};
 
-/// Initializes the tracing subscriber with optional file and stderr logging.
-///
-/// # Arguments
-///
-/// * `log_to_file` - If `true`, logs will be written to a file in the project's log directory.
-/// * `verbose` - If `true`, info-level logs will be written to stderr.
-///
-/// # Returns
-///
-/// * `Ok(())` if the subscriber was initialized successfully.
-/// * `Err(anyhow::Error)` if the project directories could not be determined.
-pub fn init_subscriber(log_to_file: bool, verbose: bool) -> Result<()> {
-    let mut layers = Vec::new();
+static INIT: Once = Once::new();
 
-    // File logger layer
-    if log_to_file {
-        if let Some(proj_dirs) = ProjectDirs::from("com", "async_cargo_mcp", "async_cargo_mcp") {
-            let log_dir = proj_dirs.data_local_dir();
-            let file_appender = tracing_appender::rolling::daily(log_dir, "async_cargo_mcp.log");
-            let file_layer = fmt::layer()
-                .with_writer(file_appender)
-                .with_ansi(false)
-                .with_filter(EnvFilter::new("info"));
-            layers.push(file_layer.boxed());
-        } else {
-            return Err(anyhow::anyhow!("Could not determine project directories"));
+/// Initialize the global tracing subscriber.
+///
+/// * `log_to_file` - if true, write logs to a rolling daily file under the user's cache dir
+/// * `verbose` - if true, set global log level to `debug`, otherwise `info`
+pub fn init_subscriber(log_to_file: bool, verbose: bool) {
+    // Only allow one-time initialization; ignore later calls.
+    INIT.call_once(|| {
+        let level = if verbose { "debug" } else { "info" };
+        let env_filter =
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
+
+        if log_to_file {
+            if let Some(proj) = ProjectDirs::from("dev", "async_cargo_mcp", "async_cargo_mcp") {
+                let mut log_dir = PathBuf::from(proj.cache_dir());
+                log_dir.push("logs");
+                if let Err(e) = fs::create_dir_all(&log_dir) {
+                    eprintln!("Failed to create log dir {:?}: {e}", log_dir);
+                }
+                let file_appender = tracing_appender::rolling::daily(&log_dir, "server.log");
+                let (nb, guard) = tracing_appender::non_blocking(file_appender);
+                // Keep guard alive for program lifetime to ensure flushing.
+                Box::leak(Box::new(guard));
+                fmt()
+                    .with_env_filter(env_filter)
+                    .with_writer(nb)
+                    .with_ansi(false)
+                    .with_target(false)
+                    .init();
+                tracing::debug!(
+                    "Logging initialized (file mode) verbose={} dir={:?}",
+                    verbose,
+                    log_dir
+                );
+                return;
+            }
         }
-    }
 
-    // Stderr logger layer
-    let stderr_filter = if verbose {
-        EnvFilter::new("info")
-    } else {
-        EnvFilter::new("warn") // Only show warnings and errors by default
-    };
-
-    let stderr_layer = fmt::layer()
-        .with_writer(std::io::stderr)
-        .with_ansi(true)
-        .with_target(false)
-        .with_filter(stderr_filter);
-    layers.push(stderr_layer.boxed());
-
-    tracing_subscriber::registry().with(layers).init();
-
-    Ok(())
+        fmt()
+            .with_env_filter(env_filter)
+            .with_writer(std::io::stderr)
+            .with_ansi(true)
+            .with_target(false)
+            .init();
+        tracing::debug!("Logging initialized (stderr mode) verbose={}", verbose);
+    });
 }

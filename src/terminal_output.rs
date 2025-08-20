@@ -16,19 +16,19 @@ impl TerminalOutput {
             return; // Skip whitespace-only content
         }
 
-    // IMPORTANT: Write human-readable diagnostics to stderr so stdout remains a pure MCP JSON transport.
-    let mut stderr = io::stderr();
-    let _ = stderr.write_all(b"\n");
-    let _ = stderr.write_all(format!("=== {} ===\n", operation_id.to_uppercase()).as_bytes());
-    let _ = stderr.write_all(format!("Command: {}\n", command).as_bytes());
-    let _ = stderr.write_all(format!("Description: {}\n", description).as_bytes());
-    let _ = stderr.write_all(b"\n");
+        // IMPORTANT: Write human-readable diagnostics to stderr so stdout remains a pure MCP JSON transport.
+        let mut stderr = io::stderr();
+        let _ = stderr.write_all(b"\n");
+        let _ = stderr.write_all(format!("=== {} ===\n", operation_id.to_uppercase()).as_bytes());
+        let _ = stderr.write_all(format!("Command: {}\n", command).as_bytes());
+        let _ = stderr.write_all(format!("Description: {}\n", description).as_bytes());
+        let _ = stderr.write_all(b"\n");
 
         // Format the content
         let formatted_content = Self::format_content(content);
-    let _ = stderr.write_all(formatted_content.as_bytes());
-    let _ = stderr.write_all(b"\n");
-    let _ = stderr.flush();
+        let _ = stderr.write_all(formatted_content.as_bytes());
+        let _ = stderr.write_all(b"\n");
+        let _ = stderr.flush();
     }
 
     /// Format content with proper JSON pretty-printing and newline handling
@@ -58,12 +58,12 @@ impl TerminalOutput {
 
         let mut stderr = io::stderr();
         let _ = stderr.write_all(b"\n");
-        let _ = stderr
-            .write_all(b"===============================================================\n");
-        let _ = stderr
-            .write_all(b"                    OPERATION RESULTS                         \n");
-        let _ = stderr
-            .write_all(b"===============================================================\n");
+        let _ =
+            stderr.write_all(b"===============================================================\n");
+        let _ =
+            stderr.write_all(b"                    OPERATION RESULTS                         \n");
+        let _ =
+            stderr.write_all(b"===============================================================\n");
         let _ = stderr.write_all(b"\n");
 
         for (i, result) in results.iter().enumerate() {
@@ -78,8 +78,8 @@ impl TerminalOutput {
             let _ = stderr.write_all(b"\n");
         }
 
-        let _ = stderr
-            .write_all(b"===============================================================\n");
+        let _ =
+            stderr.write_all(b"===============================================================\n");
         let _ = stderr.flush();
     }
 

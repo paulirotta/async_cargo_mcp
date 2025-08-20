@@ -69,11 +69,22 @@ async fn main() -> Result<()> {
     // Parse command line arguments
     let args = Args::parse();
 
-    // Initialize the tracing subscriber with file and stdout logging
+    // Initialize the tracing subscriber with improved formatting
+    /* verbose in terminal
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::DEBUG.into()))
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
         .with_writer(std::io::stderr)
         .with_ansi(false)
+        .with_target(false) // Hide target module names
+        .compact() // Use compact format for cleaner output
+        .init();
+    */
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::new("info")) // force info+ (ignores RUST_LOG)
+        .with_writer(std::io::stderr)
+        .with_ansi(true)
+        .with_target(false)
+        //.compact()
         .init();
 
     info!("Starting MCP server");

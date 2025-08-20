@@ -2,6 +2,7 @@ use crate::callback_system::{CallbackSender, ProgressUpdate, no_callback};
 use crate::mcp_callback::mcp_callback;
 use crate::operation_monitor::OperationMonitor;
 use crate::shell_pool::{ShellCommand, ShellPoolConfig, ShellPoolManager};
+use crate::terminal_output::TerminalOutput;
 use crate::timestamp;
 use rmcp::{
     ErrorData, RoleServer, ServerHandler,
@@ -774,6 +775,39 @@ impl AsyncCargo {
         self.synchronous_mode || !enable_async_notification.unwrap_or(false)
     }
 
+    /// Helper to handle synchronous operation results with terminal output
+    fn handle_sync_result(
+        operation_name: &str,
+        command: &str,
+        description: &str,
+        result: Result<String, String>,
+    ) -> Result<CallToolResult, ErrorData> {
+        match result {
+            Ok(result_msg) => {
+                if TerminalOutput::should_display(&result_msg) {
+                    TerminalOutput::display_result(
+                        &format!("SYNC_{}", operation_name.to_uppercase()),
+                        command,
+                        description,
+                        &result_msg,
+                    );
+                }
+                Ok(CallToolResult::success(vec![Content::text(result_msg)]))
+            }
+            Err(error_msg) => {
+                if TerminalOutput::should_display(&error_msg) {
+                    TerminalOutput::display_result(
+                        &format!("SYNC_{}_ERROR", operation_name.to_uppercase()),
+                        command,
+                        &format!("{} (failed)", description),
+                        &error_msg,
+                    );
+                }
+                Ok(CallToolResult::success(vec![Content::text(error_msg)]))
+            }
+        }
+    }
+
     #[tool(
         description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the --timeout CLI parameter (default: 300 seconds). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
@@ -871,7 +905,7 @@ impl AsyncCargo {
         let longest_duration_seconds =
             timestamp::duration_since_as_rounded_seconds(earliest_start_time);
 
-        let content: Vec<Content> = results
+        let content: Vec<Content> = results.clone()
                     .into_iter()
                     .map(|op_info| {
                         let status = match &op_info.state {
@@ -969,7 +1003,68 @@ impl AsyncCargo {
         };
 
         let mut final_content = vec![Content::text(duration_summary)];
-        final_content.extend(content);
+        final_content.extend(content.clone());
+
+        // Display results in terminal for all completed operations
+        let terminal_results: Vec<String> = results
+            .iter()
+            .filter_map(|op_info| match &op_info.state {
+                crate::operation_monitor::OperationState::Completed => {
+                    if let Some(Ok(output)) = &op_info.result {
+                        if TerminalOutput::should_display(output) {
+                            Some(format!(
+                                "OPERATION COMPLETED: '{}'\n\
+                                    Command: {}\n\
+                                    Description: {}\n\
+                                    Working Directory: {}\n\
+                                    \n\
+                                    === FULL OUTPUT ===\n\
+                                    {}",
+                                op_info.id,
+                                op_info.command,
+                                op_info.description,
+                                op_info.working_directory.as_deref().unwrap_or("Unknown"),
+                                output
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                crate::operation_monitor::OperationState::Failed => {
+                    if let Some(Err(error_output)) = &op_info.result {
+                        if TerminalOutput::should_display(error_output) {
+                            Some(format!(
+                                "OPERATION FAILED: '{}'\n\
+                                    Command: {}\n\
+                                    Description: {}\n\
+                                    Working Directory: {}\n\
+                                    \n\
+                                    === FULL ERROR OUTPUT ===\n\
+                                    {}",
+                                op_info.id,
+                                op_info.command,
+                                op_info.description,
+                                op_info.working_directory.as_deref().unwrap_or("Unknown"),
+                                error_output
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect();
+
+        // Display terminal output if we have any results
+        if !terminal_results.is_empty() {
+            TerminalOutput::display_wait_results(&terminal_results);
+        }
 
         Ok(CallToolResult::success(final_content))
     }
@@ -987,10 +1082,13 @@ impl AsyncCargo {
         // Check if async notifications are enabled and not in synchronous mode
         if self.should_run_synchronously(req.enable_async_notification) {
             // Synchronous operation for when async notifications are disabled or synchronous mode is enabled
-            match self.build_implementation(&req, "sync_build").await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
+            let result = self.build_implementation(&req, "sync_build").await;
+            return Self::handle_sync_result(
+                "build",
+                "cargo build",
+                "Synchronous build operation",
+                result,
+            );
         } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started
@@ -2010,10 +2108,13 @@ impl AsyncCargo {
         // Check if we should run synchronously or use async notifications
         if self.should_run_synchronously(req.enable_async_notification) {
             // Synchronous operation for when async notifications are disabled
-            match Self::check_implementation(&req).await {
-                Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
-                Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
-            }
+            let result = Self::check_implementation(&req).await;
+            return Self::handle_sync_result(
+                "check",
+                "cargo check",
+                "Synchronous check operation",
+                result,
+            );
         } else {
             // TRUE 2-STAGE ASYNC PATTERN:
             // 1. Send immediate response that operation has started

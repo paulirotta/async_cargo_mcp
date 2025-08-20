@@ -37,6 +37,8 @@ pub async fn test_build_command(project_path: &str) -> Result<String> {
         })
         .await?;
 
+    eprintln!("TEST_BUILD_COMMAND raw result: {:?}", result);
+
     client.cancel().await?;
 
     Ok(format!("{result:?}"))

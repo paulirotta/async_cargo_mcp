@@ -538,12 +538,19 @@ impl AsyncCargo {
                     working_dir: working_dir.clone(),
                     timeout_ms: 300_000, // 5 minute timeout
                 };
-
-                match shell.execute_command(shell_command).await {
+                tracing::info!(operation_id = operation_id, "Sending command to shell pool shell_id={} cmd={}", shell.id(), command);
+                let exec_result = shell.execute_command(shell_command).await;
+                let shell_id = shell.id().to_string();
+                match exec_result {
                     Ok(shell_response) => {
-                        tracing::debug!(
+                        tracing::info!(
                             operation_id = operation_id,
-                            "Shell pool execution successful, converting to process::Output"
+                            shell_id = %shell_id,
+                            exit_code = shell_response.exit_code,
+                            stdout_len = shell_response.stdout.len(),
+                            stderr_len = shell_response.stderr.len(),
+                            duration_ms = shell_response.duration_ms,
+                            "Shell pool execution successful"
                         );
 
                         // Convert ShellResponse to std::process::Output
@@ -562,14 +569,19 @@ impl AsyncCargo {
                             stderr: shell_response.stderr.into_bytes(),
                         };
 
+                        // Return shell to pool before returning
+                        self.shell_pool_manager.return_shell(shell).await;
                         return Ok(output);
                     }
                     Err(e) => {
                         tracing::warn!(
                             operation_id = operation_id,
+                            shell_id = %shell_id,
                             error = %e,
-                            "Shell pool execution failed, falling back to direct spawn"
+                            "Shell pool execution failed, will fall back"
                         );
+                        // Attempt to return shell if it's still healthy
+                        if shell.is_healthy() { self.shell_pool_manager.return_shell(shell).await; }
                         // Fall through to direct spawn
                     }
                 }
@@ -1298,15 +1310,21 @@ impl AsyncCargo {
 
         // Build the command string and execute using shell pool
         let command = cmd_args.join(" ");
-        let output = self
+        tracing::info!(operation_id = operation_id, "Invoking execute_cargo_command for build in {}", req.working_directory);
+        let output = match self
             .execute_cargo_command(command, Some(req.working_directory.clone()), operation_id)
             .await
-            .map_err(|e| {
-                format!(
+        {
+            Ok(o) => o,
+            Err(e) => {
+                tracing::error!(operation_id = operation_id, error=%e, "execute_cargo_command returned error for build");
+                return Err(format!(
                     "- Build operation failed in {}.\nError: Failed to execute cargo build: {}",
                     &req.working_directory, e
-                )
-            })?;
+                ));
+            }
+        };
+        tracing::info!(operation_id = operation_id, status = %output.status, "execute_cargo_command returned output");
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1587,12 +1605,19 @@ impl AsyncCargo {
                     working_dir: working_dir.clone(),
                     timeout_ms: 300_000, // 5 minute timeout
                 };
-
-                match shell.execute_command(shell_command).await {
+                tracing::info!(operation_id = operation_id, "[static] Sending command to shell pool shell_id={} cmd={}", shell.id(), command);
+                let exec_result = shell.execute_command(shell_command).await;
+                let shell_id = shell.id().to_string();
+                match exec_result {
                     Ok(shell_response) => {
-                        tracing::debug!(
+                        tracing::info!(
                             operation_id = operation_id,
-                            "Shell pool execution successful, converting to process::Output"
+                            shell_id = %shell_id,
+                            exit_code = shell_response.exit_code,
+                            stdout_len = shell_response.stdout.len(),
+                            stderr_len = shell_response.stderr.len(),
+                            duration_ms = shell_response.duration_ms,
+                            "Shell pool execution successful"
                         );
 
                         // Convert ShellResponse to std::process::Output
@@ -1611,15 +1636,18 @@ impl AsyncCargo {
                             stderr: shell_response.stderr.into_bytes(),
                         };
 
+                        shell_pool_manager.return_shell(shell).await;
                         return Ok(output);
                     }
                     Err(e) => {
                         tracing::warn!(
                             operation_id = operation_id,
+                            shell_id = %shell_id,
                             error = %e,
-                            "Shell pool execution failed, falling back to direct spawn"
+                            "Shell pool execution failed, will fall back"
                         );
-                        // Fall through to direct spawn
+                        if shell.is_healthy() { shell_pool_manager.return_shell(shell).await; }
+                        // Fall through
                     }
                 }
             } else {

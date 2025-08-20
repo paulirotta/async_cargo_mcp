@@ -1,6 +1,6 @@
 [package]
 name = "async_cargo_mcp"
-version = "0.3.3"
+version = "0.4.0"
 edition = "2024"
 description = "The package provides a BLAS source of choice."
 authors = ["Paul Houghton <paul.irotta@example.com>"]
@@ -40,5 +40,6 @@ tracing-subscriber = { version = "0.3.19", features = [
     "std",
     "fmt",
 ] }
+tracing-appender = "0.2.3"
+directories = "6.0.0"
 uuid = { version = "1.18.0", features = ["v4", "serde"] }
- 

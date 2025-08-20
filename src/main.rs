@@ -10,7 +10,6 @@ use rmcp::{ServiceExt, transport::stdio};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::info;
-use tracing_subscriber::{self, EnvFilter};
 
 /// Model Context Protocol server for Cargo operations with async support
 #[derive(Parser)]
@@ -62,6 +61,14 @@ struct Args {
         help = "Force synchronous execution of all operations, disabling async callbacks and notifications"
     )]
     synchronous: bool,
+
+    /// Log to rolling file instead of stderr
+    #[arg(long, help = "Write logs to a rolling daily file instead of stderr")]
+    log_to_file: bool,
+
+    /// Enable verbose (debug-level) logging
+    #[arg(long, help = "Enable verbose debug logging")]
+    verbose: bool,
 }
 
 #[tokio::main]
@@ -79,13 +86,8 @@ async fn main() -> Result<()> {
         .compact() // Use compact format for cleaner output
         .init();
     */
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::new("info")) // force info+ (ignores RUST_LOG)
-        .with_writer(std::io::stderr)
-        .with_ansi(true)
-        .with_target(false)
-        //.compact()
-        .init();
+    // Initialize logging (respect new flags)
+    async_cargo_mcp::logging::init_subscriber(args.log_to_file, args.verbose);
 
     info!("Starting MCP server");
 

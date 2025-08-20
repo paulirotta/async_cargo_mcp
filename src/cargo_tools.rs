@@ -538,7 +538,12 @@ impl AsyncCargo {
                     working_dir: working_dir.clone(),
                     timeout_ms: 300_000, // 5 minute timeout
                 };
-                tracing::info!(operation_id = operation_id, "Sending command to shell pool shell_id={} cmd={}", shell.id(), command);
+                tracing::info!(
+                    operation_id = operation_id,
+                    "Sending command to shell pool shell_id={} cmd={}",
+                    shell.id(),
+                    command
+                );
                 let exec_result = shell.execute_command(shell_command).await;
                 let shell_id = shell.id().to_string();
                 match exec_result {
@@ -581,7 +586,9 @@ impl AsyncCargo {
                             "Shell pool execution failed, will fall back"
                         );
                         // Attempt to return shell if it's still healthy
-                        if shell.is_healthy() { self.shell_pool_manager.return_shell(shell).await; }
+                        if shell.is_healthy() {
+                            self.shell_pool_manager.return_shell(shell).await;
+                        }
                         // Fall through to direct spawn
                     }
                 }
@@ -1310,7 +1317,11 @@ impl AsyncCargo {
 
         // Build the command string and execute using shell pool
         let command = cmd_args.join(" ");
-        tracing::info!(operation_id = operation_id, "Invoking execute_cargo_command for build in {}", req.working_directory);
+        tracing::info!(
+            operation_id = operation_id,
+            "Invoking execute_cargo_command for build in {}",
+            req.working_directory
+        );
         let output = match self
             .execute_cargo_command(command, Some(req.working_directory.clone()), operation_id)
             .await
@@ -1605,7 +1616,12 @@ impl AsyncCargo {
                     working_dir: working_dir.clone(),
                     timeout_ms: 300_000, // 5 minute timeout
                 };
-                tracing::info!(operation_id = operation_id, "[static] Sending command to shell pool shell_id={} cmd={}", shell.id(), command);
+                tracing::info!(
+                    operation_id = operation_id,
+                    "[static] Sending command to shell pool shell_id={} cmd={}",
+                    shell.id(),
+                    command
+                );
                 let exec_result = shell.execute_command(shell_command).await;
                 let shell_id = shell.id().to_string();
                 match exec_result {
@@ -1646,7 +1662,9 @@ impl AsyncCargo {
                             error = %e,
                             "Shell pool execution failed, will fall back"
                         );
-                        if shell.is_healthy() { shell_pool_manager.return_shell(shell).await; }
+                        if shell.is_healthy() {
+                            shell_pool_manager.return_shell(shell).await;
+                        }
                         // Fall through
                     }
                 }

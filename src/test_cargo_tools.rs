@@ -12,21 +12,24 @@ use rmcp::{
 };
 use std::env;
 use tokio::process::Command;
+use std::path::PathBuf;
+
+/// Helper to build path to the already-built async_cargo_mcp binary.
+fn server_binary(original_dir: &std::path::Path) -> PathBuf {
+    // During `cargo test` the binary should already be built; if not, user can rerun.
+    original_dir.join("target").join("debug").join("async_cargo_mcp")
+}
 
 /// Test the build command in a specific directory using working_directory parameter
 pub async fn test_build_command(project_path: &str) -> Result<String> {
     let original_dir = env::current_dir()?;
 
     // Start the MCP client from the original directory
+    let bin = server_binary(&original_dir);
     let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .current_dir(&original_dir);
-            },
-        ))?)
+        .serve(TokioChildProcess::new(Command::new(bin).configure(|cmd| {
+            cmd.current_dir(&original_dir);
+        }))?)
         .await?;
 
     // Use working_directory parameter to specify where cargo build should run
@@ -38,6 +41,10 @@ pub async fn test_build_command(project_path: &str) -> Result<String> {
         .await?;
 
     eprintln!("TEST_BUILD_COMMAND raw result: {:?}", result);
+    let rmcp::model::CallToolResult { content, .. } = &result;
+    for (i, c) in content.iter().enumerate() {
+        eprintln!(" content[{i}] = {:?}", c);
+    }
 
     client.cancel().await?;
 
@@ -48,15 +55,11 @@ pub async fn test_build_command(project_path: &str) -> Result<String> {
 pub async fn test_check_command(project_path: &str) -> Result<String> {
     let original_dir = env::current_dir()?;
 
+    let bin = server_binary(&original_dir);
     let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .current_dir(&original_dir);
-            },
-        ))?)
+        .serve(TokioChildProcess::new(Command::new(bin).configure(|cmd| {
+            cmd.current_dir(&original_dir);
+        }))?)
         .await?;
 
     let result = client
@@ -75,15 +78,11 @@ pub async fn test_check_command(project_path: &str) -> Result<String> {
 pub async fn test_test_command(project_path: &str) -> Result<String> {
     let original_dir = env::current_dir()?;
 
+    let bin = server_binary(&original_dir);
     let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .current_dir(&original_dir);
-            },
-        ))?)
+        .serve(TokioChildProcess::new(Command::new(bin).configure(|cmd| {
+            cmd.current_dir(&original_dir);
+        }))?)
         .await?;
 
     let result = client
@@ -106,15 +105,11 @@ pub async fn test_add_dependency(
 ) -> Result<String> {
     let original_dir = env::current_dir()?;
 
+    let bin = server_binary(&original_dir);
     let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .current_dir(&original_dir);
-            },
-        ))?)
+        .serve(TokioChildProcess::new(Command::new(bin).configure(|cmd| {
+            cmd.current_dir(&original_dir);
+        }))?)
         .await?;
 
     let args = if let Some(v) = version {
@@ -139,15 +134,11 @@ pub async fn test_add_dependency(
 pub async fn test_remove_dependency(project_path: &str, dep_name: &str) -> Result<String> {
     let original_dir = env::current_dir()?;
 
+    let bin = server_binary(&original_dir);
     let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .current_dir(&original_dir);
-            },
-        ))?)
+        .serve(TokioChildProcess::new(Command::new(bin).configure(|cmd| {
+            cmd.current_dir(&original_dir);
+        }))?)
         .await?;
 
     let result = client
@@ -166,15 +157,11 @@ pub async fn test_remove_dependency(project_path: &str, dep_name: &str) -> Resul
 pub async fn test_update_command(project_path: &str) -> Result<String> {
     let original_dir = env::current_dir()?;
 
+    let bin = server_binary(&original_dir);
     let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .current_dir(&original_dir);
-            },
-        ))?)
+        .serve(TokioChildProcess::new(Command::new(bin).configure(|cmd| {
+            cmd.current_dir(&original_dir);
+        }))?)
         .await?;
 
     let result = client
@@ -193,15 +180,11 @@ pub async fn test_update_command(project_path: &str) -> Result<String> {
 pub async fn test_doc_command(project_path: &str) -> Result<String> {
     let original_dir = env::current_dir()?;
 
+    let bin = server_binary(&original_dir);
     let client = ()
-        .serve(TokioChildProcess::new(Command::new("cargo").configure(
-            |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .current_dir(&original_dir);
-            },
-        ))?)
+        .serve(TokioChildProcess::new(Command::new(bin).configure(|cmd| {
+            cmd.current_dir(&original_dir);
+        }))?)
         .await?;
 
     let result = client

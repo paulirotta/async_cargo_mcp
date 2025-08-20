@@ -106,6 +106,12 @@ async fn main() -> Result<()> {
     use async_cargo_mcp::shell_pool::{ShellPoolConfig, ShellPoolManager};
     let mut shell_pool_config = ShellPoolConfig::default();
 
+    // Allow disabling shell pools via environment variable for test isolation / debugging
+    if std::env::var("ASYNC_CARGO_MCP_DISABLE_SHELL_POOL").is_ok() {
+        shell_pool_config.enabled = false;
+        info!("Shell pools disabled via ASYNC_CARGO_MCP_DISABLE_SHELL_POOL env var");
+    }
+
     // Apply CLI overrides
     if let Some(pool_size) = args.shell_pool_size {
         info!(
@@ -121,13 +127,17 @@ async fn main() -> Result<()> {
     }
 
     if args.disable_shell_pools {
-        info!("Shell pools disabled - using direct command spawning");
         shell_pool_config.enabled = false;
-    } else {
+        info!("Shell pools disabled via CLI flag - using direct command spawning");
+    }
+
+    if shell_pool_config.enabled {
         info!(
             "Shell pools enabled - {} shells per directory, {} max total",
             shell_pool_config.shells_per_directory, shell_pool_config.max_total_shells
         );
+    } else {
+        info!("Shell pools disabled");
     }
 
     let synchronous_mode = args.synchronous;

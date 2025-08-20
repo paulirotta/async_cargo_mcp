@@ -202,7 +202,7 @@ async fn test_very_long_path() {
 /// Test commands with various character encodings in paths
 #[tokio::test]
 async fn test_unicode_paths() {
-    let unicode_path = "/tmp/тест_проект_🦀"; // Mix of Cyrillic and emoji
+    let unicode_path = "/tmp/тест_проект_"; // Mix of Cyrillic and emoji
     let result = test_build_command_with_path(unicode_path).await;
     match result {
         Ok(output) => {

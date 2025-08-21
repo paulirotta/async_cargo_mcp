@@ -51,11 +51,13 @@ You are a highly capable and autonomous agent, and you can definitely solve this
 
 ## Build and Test Sequence
 
-After completing implementation steps, ALWAYS run this sequence to verify everything works:
+After completing implementation steps, include appropriate `--features` as needed for completeness, ALWAYS run this sequence to verify everything works:
 
 1. `cargo fmt` - Format code
 2. `cargo nextest run` - Run tests (faster than cargo test)
-3. `cargo clippy --fix --tests` - Fix clippy warnings
+3. `cargo clippy --fix --allow-dirty` - Fix warnings and errors
+3. `cargo clippy --fix --tests --alow-ditry` - Fix warnings and errors in tests
+4. `cargo doc --no-deps` - Fix errors and warnings
 
 For live MCP server testing: run `cargo build --release` first, then ask user to restart VSCode.
 

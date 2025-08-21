@@ -409,6 +409,7 @@ pub struct AsyncCargo {
     monitor: Arc<OperationMonitor>,
     shell_pool_manager: Arc<ShellPoolManager>,
     synchronous_mode: bool,
+    disabled_tools: std::collections::HashSet<String>,
 }
 
 impl Default for AsyncCargo {
@@ -458,6 +459,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<SleepRequest>,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        self.ensure_enabled("sleep")?;
         let operation_id = req
             .operation_id
             .unwrap_or_else(|| self.generate_operation_id_for("sleep"));
@@ -492,6 +494,7 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode: false, // Default to async mode
+            disabled_tools: Default::default(),
         }
     }
 
@@ -505,7 +508,52 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode,
+            disabled_tools: Default::default(),
         }
+    }
+
+    /// Create new instance with explicit disabled tools (names normalized to lowercase)
+    pub fn new_with_disabled(
+        monitor: Arc<OperationMonitor>,
+        shell_pool_manager: Arc<ShellPoolManager>,
+        synchronous_mode: bool,
+        disabled: std::collections::HashSet<String>,
+    ) -> Self {
+        let disabled_tools = disabled
+            .into_iter()
+            .map(|s| s.to_ascii_lowercase())
+            .collect();
+        Self {
+            tool_router: Self::tool_router(),
+            monitor,
+            shell_pool_manager,
+            synchronous_mode,
+            disabled_tools,
+        }
+    }
+
+    fn is_tool_disabled(&self, name: &str) -> bool {
+        self.disabled_tools.contains(&name.to_ascii_lowercase())
+    }
+
+    fn ensure_enabled(&self, name: &str) -> Result<(), ErrorData> {
+        if self.is_tool_disabled(name) {
+            // Provide a static message (required by invalid_params signature) and structured data with tool name
+            let data = Some(json!({"tool": name}));
+            return Err(ErrorData::invalid_params(
+                "tool_disabled: requested tool disabled via --disable flag",
+                data,
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn is_tool_disabled_for_tests(&self, name: &str) -> bool {
+        self.is_tool_disabled(name)
+    }
+
+    pub fn ensure_enabled_for_tests(&self, name: &str) -> Result<(), ErrorData> {
+        self.ensure_enabled(name)
     }
 
     /// Execute a cargo command using a pre-warmed shell from the pool, with graceful fallback to direct spawn
@@ -1096,6 +1144,7 @@ impl AsyncCargo {
         Parameters(req): Parameters<BuildRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        self.ensure_enabled("build")?;
         let build_id = self.generate_operation_id_for("build");
 
         // Check if async notifications are enabled and not in synchronous mode

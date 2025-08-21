@@ -22,8 +22,8 @@ pub fn init_subscriber(log_to_file: bool, verbose: bool) {
         let env_filter =
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
 
-        if log_to_file {
-            if let Some(proj) = ProjectDirs::from("dev", "async_cargo_mcp", "async_cargo_mcp") {
+        if log_to_file
+            && let Some(proj) = ProjectDirs::from("dev", "async_cargo_mcp", "async_cargo_mcp") {
                 let mut log_dir = PathBuf::from(proj.cache_dir());
                 log_dir.push("logs");
                 if let Err(e) = fs::create_dir_all(&log_dir) {
@@ -46,7 +46,6 @@ pub fn init_subscriber(log_to_file: bool, verbose: bool) {
                 );
                 return;
             }
-        }
 
         fmt()
             .with_env_filter(env_filter)

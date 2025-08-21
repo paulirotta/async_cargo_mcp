@@ -30,8 +30,8 @@ rmcp = { version = "0.6.0", features = ["server", "client", "macros", "transport
 schemars = "1.0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.143"
-tempfile = "3.20.0"
-thiserror = "2.0.15"
+tempfile = "3.21.0"
+thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-util = "0.7.16"
 tracing = "0.1.41"

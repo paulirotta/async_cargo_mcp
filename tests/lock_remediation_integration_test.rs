@@ -8,7 +8,7 @@ use rmcp::{
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use tokio::process::Command;
 
@@ -42,7 +42,7 @@ edition = "2021"
     Ok(temp_dir)
 }
 
-fn ensure_lock(project_dir: &PathBuf) -> PathBuf {
+fn ensure_lock(project_dir: &Path) -> PathBuf {
     let lock_path = project_dir.join("target").join(".cargo-lock");
     fs::create_dir_all(lock_path.parent().unwrap()).unwrap();
     fs::write(&lock_path, b"lock").unwrap();

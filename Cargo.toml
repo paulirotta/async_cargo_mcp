@@ -26,12 +26,12 @@ async-trait = "0.1.89" # Remove this once Stable Rust supports Box<dyn TraitWith
 axum = "0.8.4"
 chrono = "0.4.41"
 clap = { version = "4.5.45", features = ["derive"] }
-rmcp = { version = "0.6.0", features = ["server", "client", "macros", "transport-io", "transport-child-process"] }
+rmcp = { version = "0.6.0", features = ["server", "client", "macros", "transport-io", "transport-child-process", "elicitation", "schemars"] }
 schemars = "1.0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.143"
-tempfile = "3.20.0"
-thiserror = "2.0.15"
+tempfile = "3.21.0"
+thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-util = "0.7.16"
 tracing = "0.1.41"

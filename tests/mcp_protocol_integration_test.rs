@@ -98,11 +98,11 @@ async fn test_mcp_protocol_comprehensive() -> Result<()> {
     }
 
     // Verify we have exactly the expected number of tools (catches if new tools are added)
-    // We expect 25 total tools including new commands: fmt, tree, version, fetch, rustc, metadata, wait, sleep
+    // We expect 26 total tools including new commands: fmt, tree, version, fetch, rustc, metadata, wait, sleep, and cargo_lock_remediation
     assert_eq!(
         tool_names.len(),
-        25,
-        "Expected exactly 25 tools, but found {}. Tools: {:?}",
+        26,
+        "Expected exactly 26 tools, but found {}. Tools: {:?}",
         tool_names.len(),
         tool_names
     );

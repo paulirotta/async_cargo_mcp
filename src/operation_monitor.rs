@@ -184,6 +184,32 @@ impl OperationMonitor {
         monitor
     }
 
+    /// Cancel all active operations running in the specified working directory.
+    /// Returns the number of operations that were marked as cancelled.
+    pub async fn cancel_by_working_directory(&self, dir: &str) -> usize {
+        let mut cancelled = 0usize;
+        let mut operations = self.operations.write().await;
+
+        for (_id, op) in operations.iter_mut() {
+            if op.is_active()
+                && match &op.working_directory {
+                    Some(wd) => wd == dir,
+                    None => false,
+                }
+            {
+                op.cancel();
+                cancelled += 1;
+            }
+        }
+
+        if cancelled > 0 {
+            tracing::warn!(directory = %dir, count = cancelled, "Cancelled active operations in working directory before remediation");
+        } else {
+            tracing::debug!(directory = %dir, "No active operations to cancel for remediation");
+        }
+
+        cancelled
+    }
     /// Register a new operation for monitoring
     pub async fn register_operation(
         &self,
@@ -868,6 +894,56 @@ mod tests {
         assert_eq!(stats.failed, 1);
         assert_eq!(stats.success_rate(), 50.0);
         assert_eq!(stats.failure_rate(), 50.0);
+    }
+
+    #[tokio::test]
+    async fn test_cancel_by_working_directory() {
+        let monitor = OperationMonitor::new(MonitorConfig::default());
+
+        // Register two operations in dir_a and one in dir_b
+        let dir_a = "/tmp/dir_a".to_string();
+        let dir_b = "/tmp/dir_b".to_string();
+
+        let id1 = monitor
+            .register_operation(
+                "build".to_string(),
+                "Build A1".to_string(),
+                None,
+                Some(dir_a.clone()),
+            )
+            .await;
+        let id2 = monitor
+            .register_operation(
+                "check".to_string(),
+                "Check A2".to_string(),
+                None,
+                Some(dir_a.clone()),
+            )
+            .await;
+        let id3 = monitor
+            .register_operation(
+                "test".to_string(),
+                "Test B1".to_string(),
+                None,
+                Some(dir_b.clone()),
+            )
+            .await;
+
+        monitor.start_operation(&id1).await.unwrap();
+        monitor.start_operation(&id2).await.unwrap();
+        monitor.start_operation(&id3).await.unwrap();
+
+        // Cancel by dir_a should cancel 2 operations
+        let cancelled = monitor.cancel_by_working_directory(&dir_a).await;
+        assert_eq!(cancelled, 2);
+
+        let op1 = monitor.get_operation(&id1).await.unwrap();
+        let op2 = monitor.get_operation(&id2).await.unwrap();
+        let op3 = monitor.get_operation(&id3).await.unwrap();
+
+        assert_eq!(op1.state, OperationState::Cancelled);
+        assert_eq!(op2.state, OperationState::Cancelled);
+        assert_eq!(op3.state, OperationState::Running);
     }
 
     #[tokio::test]

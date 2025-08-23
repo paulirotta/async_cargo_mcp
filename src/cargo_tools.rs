@@ -17,6 +17,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
+use tokio::sync::{Mutex as AsyncMutex, RwLock as AsyncRwLock};
 
 /// Merge stdout and stderr into a unified string for the `Output:` section while preserving
 /// an `Error:` section for failures. Rules:
@@ -403,12 +404,37 @@ pub struct SleepRequest {
     pub enable_async_notification: Option<bool>,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum CargoLockAction {
+    /// Delete target/.cargo-lock then run cargo clean
+    A,
+    /// Only delete .cargo-lock but do not clean
+    B,
+    /// Do nothing
+    C,
+}
+
+/// Fallback remediation request for stuck Cargo lock files
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+pub struct CargoLockRemediationRequest {
+    /// Project working directory containing the Cargo project
+    pub working_directory: String,
+    /// One of: A = delete lock then cargo clean; B = only delete lock; C = no-op
+    pub action: CargoLockAction,
+}
+
+// Mark remediation request as safe for elicitation (object schema)
+rmcp::elicit_safe!(CargoLockRemediationRequest);
+
 #[derive(Clone, Debug)]
 pub struct AsyncCargo {
     tool_router: ToolRouter<AsyncCargo>,
     monitor: Arc<OperationMonitor>,
     shell_pool_manager: Arc<ShellPoolManager>,
     synchronous_mode: bool,
+    // Per-working-directory concurrency guard to serialize lock-file remediation
+    per_dir_mutex: Arc<AsyncRwLock<HashMap<String, Arc<AsyncMutex<()>>>>>,
     disabled_tools: std::collections::HashSet<String>,
 }
 
@@ -425,6 +451,21 @@ impl Default for AsyncCargo {
 
 #[tool_router]
 impl AsyncCargo {
+    /// Get or create a per-working-directory async mutex to serialize operations like lock-file remediation.
+    async fn get_dir_mutex(&self, dir: &str) -> Arc<AsyncMutex<()>> {
+        // First try a read lock for fast path
+        {
+            let map = self.per_dir_mutex.read().await;
+            if let Some(m) = map.get(dir) {
+                return m.clone();
+            }
+        }
+        // Upgrade: acquire write lock to insert if still absent
+        let mut map = self.per_dir_mutex.write().await;
+        map.entry(dir.to_string())
+            .or_insert_with(|| Arc::new(AsyncMutex::new(())))
+            .clone()
+    }
     /// Register and start an async operation with the monitor using the external operation_id.
     async fn register_async_operation(
         &self,
@@ -494,6 +535,7 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode: false, // Default to async mode
+            per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools: Default::default(),
         }
     }
@@ -508,6 +550,7 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode,
+            per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools: Default::default(),
         }
     }
@@ -528,6 +571,7 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode,
+            per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools,
         }
     }
@@ -881,7 +925,7 @@ impl AsyncCargo {
     async fn wait(
         &self,
         Parameters(req): Parameters<WaitRequest>,
-        _context: RequestContext<RoleServer>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
         // Get the timeout from the monitor's configuration instead of hardcoding it
         let timeout_duration = {
@@ -909,6 +953,7 @@ impl AsyncCargo {
             })
             .collect();
 
+        let start_wait = Instant::now();
         let wait_result = tokio::time::timeout(timeout_duration, async move {
             let mut merged = Vec::new();
             for handle in handles {
@@ -951,14 +996,119 @@ impl AsyncCargo {
             }
             merged
         })
-    .await
-    .map_err(|_| {
-        let timeout_seconds = timeout_duration.as_secs();
-        ErrorData::internal_error(
-            format!("Wait timed out for specified operations ({timeout_seconds} second timeout). Operations may still be running in the background."),
-            None
-        )
-    })?;
+        .await;
+
+        // If timeout occurred, craft a remediation-first message instead of a bare error
+        let wait_result = match wait_result {
+            Ok(res) => res,
+            Err(_) => {
+                let timeout_seconds = timeout_duration.as_secs();
+                let waited = start_wait.elapsed().as_secs();
+                tracing::warn!(
+                    timeout_seconds,
+                    waited_seconds = waited,
+                    "wait timed out; preparing remediation guidance"
+                );
+
+                // Gather unique working directories from active operations at timeout moment
+                let active_ops = self.monitor.get_active_operations().await;
+                let mut dirs: Vec<String> = active_ops
+                    .into_iter()
+                    .filter_map(|op| op.working_directory)
+                    .collect();
+                dirs.sort();
+                dirs.dedup();
+
+                // Build remediation guidance per directory where lock file exists
+                let mut guidance_blocks: Vec<String> = Vec::new();
+                for dir in dirs.iter() {
+                    let lock_path = std::path::Path::new(dir).join("target").join(".cargo-lock");
+                    if lock_path.exists() {
+                        let full = lock_path.display().to_string();
+                        let mut block = format!(
+                            "⏰ Wait timed out after {waited}s (limit {timeout_seconds}s) for operations in {dir}.\nDetected Cargo internal lock file: {full}. This file can persist after a crash or interrupt and block new cargo commands."
+                        );
+
+                        // Elicitation path (if supported by client)
+                        let mut elicitation_done = false;
+                        if context.peer.supports_elicitation() {
+                            // Prepare a prefilled request asking only for action (dir is known)
+                            let prompt = format!(
+                                "A Cargo internal lock file was found at: {full}.\nWhy this happens: crashes or interrupts can leave this lock behind, causing future cargo commands to block.\nChoose: (A) Delete lock then cargo clean, (B) Only delete lock, (C) Do nothing."
+                            );
+                            match context
+                                .peer
+                                .elicit::<CargoLockRemediationRequest>(prompt)
+                                .await
+                            {
+                                Ok(Some(user_req)) => {
+                                    // If user didn't include working_directory, fill it
+                                    let wd = if user_req.working_directory.is_empty() {
+                                        dir.clone()
+                                    } else {
+                                        user_req.working_directory.clone()
+                                    };
+                                    match self
+                                        .perform_cargo_lock_remediation(&wd, user_req.action)
+                                        .await
+                                    {
+                                        Ok(sum) => {
+                                            block.push_str("\n\nRemediation applied:\n");
+                                            block.push_str(&sum);
+                                            elicitation_done = true;
+                                        }
+                                        Err(e) => {
+                                            block.push_str(&format!(
+                                                "\n\nAttempted remediation but failed: {e}"
+                                            ));
+                                        }
+                                    }
+                                }
+                                Ok(None) => {
+                                    // No content provided; fall back to guidance
+                                }
+                                Err(_e) => {
+                                    // Peer error or decline; fall back to guidance
+                                }
+                            }
+                        }
+
+                        if elicitation_done {
+                            block.push_str("\n\nRemediation applied:\n");
+                            // already appended above
+                        }
+
+                        if !elicitation_done {
+                            block.push_str(&format!(
+                                "\n\nChoose an option to remediate (use the 'cargo_lock_remediation' tool):\n  - action: 'A' → delete {full} then run 'cargo clean'\n  - action: 'B' → only delete {full}\n  - action: 'C' → do nothing\nExample call: cargo_lock_remediation with working_directory='{}' and action='A'|'B'|'C'",
+                                dir
+                            ));
+                        }
+
+                        guidance_blocks.push(block);
+                    }
+                }
+
+                let mut contents = Vec::new();
+                if guidance_blocks.is_empty() {
+                    contents.push(Content::text(format!(
+                        "Wait timed out after {waited}s (limit {timeout_seconds}s). No target/.cargo-lock files detected for active operations. You may retry 'wait' or inspect running jobs."
+                    )));
+                } else {
+                    for b in guidance_blocks {
+                        contents.push(Content::text(b));
+                    }
+                }
+
+                // Also display in terminal for visibility
+                if !contents.is_empty() {
+                    let joined: Vec<String> = contents.iter().map(|c| format!("{:?}", c)).collect();
+                    TerminalOutput::display_wait_results(&joined);
+                }
+
+                return Ok(CallToolResult::success(contents));
+            }
+        };
 
         let results = wait_result;
 
@@ -1134,6 +1284,97 @@ impl AsyncCargo {
         }
 
         Ok(CallToolResult::success(final_content))
+    }
+
+    // Helper to perform remediation with safety: cancel, delete lock, optional clean
+    async fn perform_cargo_lock_remediation(
+        &self,
+        working_directory: &str,
+        action: CargoLockAction,
+    ) -> Result<String, String> {
+        use std::path::PathBuf;
+        use tokio::fs;
+
+        let dir = working_directory.to_string();
+        let guard = self.get_dir_mutex(&dir).await;
+        let _lock = guard.lock().await;
+
+        let lock_path = PathBuf::from(&dir).join("target").join(".cargo-lock");
+        let lock_path_str = lock_path.display().to_string();
+
+        match action {
+            CargoLockAction::C => {
+                tracing::info!(%lock_path_str, "Remediation choice C (do nothing)");
+                Ok(format!(
+                    "No action taken. If issues persist, consider deleting {lock_path_str} and optionally running cargo clean."
+                ))
+            }
+            CargoLockAction::A | CargoLockAction::B => {
+                // Cancel active ops in this directory before deletion
+                let cancelled = self.monitor.cancel_by_working_directory(&dir).await;
+                tracing::warn!(directory=%dir, cancelled, action=?action, "Cancelling operations before deleting .cargo-lock");
+
+                // Delete the lock file if present
+                let mut deleted = false;
+                match fs::remove_file(&lock_path).await {
+                    Ok(_) => {
+                        deleted = true;
+                    }
+                    Err(e) => {
+                        if e.kind() == std::io::ErrorKind::NotFound { /* already gone */
+                        } else {
+                            tracing::error!(%lock_path_str, error=%e, "Failed deleting .cargo-lock");
+                            return Err(format!("Failed to delete {lock_path_str}: {e}"));
+                        }
+                    }
+                }
+
+                let delete_note = if deleted {
+                    format!("Deleted {lock_path_str}.")
+                } else {
+                    format!("{lock_path_str} did not exist.")
+                };
+
+                if let CargoLockAction::A = action {
+                    // Run cargo clean
+                    let clean_req = CleanRequest {
+                        working_directory: dir.clone(),
+                        enable_async_notification: Some(false),
+                    };
+                    match Self::clean_implementation(&clean_req).await {
+                        Ok(clean_msg) => Ok(format!(
+                            "{delete_note}\nPerformed cargo clean. Summary:\n{clean_msg}"
+                        )),
+                        Err(err) => Err(format!(
+                            "{delete_note}\nAttempted cargo clean but it failed:\n{err}"
+                        )),
+                    }
+                } else {
+                    Ok(delete_note)
+                }
+            }
+        }
+    }
+
+    #[tool(
+        description = "Attempt remediation for a stale Cargo lock file. Options: A = delete target/.cargo-lock then cargo clean; B = only delete .cargo-lock; C = do nothing. Cancels active jobs for the directory before deletion. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
+    )]
+    async fn cargo_lock_remediation(
+        &self,
+        Parameters(req): Parameters<CargoLockRemediationRequest>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let dir = req.working_directory.clone();
+        let action = req.action.clone();
+        let summary = self
+            .perform_cargo_lock_remediation(&dir, action)
+            .await
+            .map_err(|e| ErrorData::internal_error(e, None))?;
+
+        let explanation = format!(
+            "A Cargo internal lock file can persist at <dir>/target/.cargo-lock when previous commands crashed or were interrupted, causing new cargo invocations to block.\nDirectory: {dir}\nResult: {summary}"
+        );
+        Ok(CallToolResult::success(vec![Content::text(explanation)]))
     }
 
     #[tool(
@@ -4553,6 +4794,23 @@ impl ServerHandler for AsyncCargo {
             availability_report
         );
         result.instructions = Some(enhanced_instructions);
+
+        // Best-effort startup lock check in current CWD
+        if let Ok(cwd) = std::env::current_dir() {
+            let lock_path = cwd.join("target").join(".cargo-lock");
+            if lock_path.exists() {
+                let full = lock_path.display().to_string();
+                tracing::warn!(%full, "Detected existing Cargo lock file at startup");
+                // Append a short notice to instructions
+                let notice = format!(
+                    "\n[Notice] Detected Cargo lock file: {full}. If you encounter blocked cargo commands, you may delete this file and optionally run cargo clean. You can also call the 'cargo_lock_remediation' tool."
+                );
+                result.instructions = result.instructions.map(|mut s| {
+                    s.push_str(&notice);
+                    s
+                });
+            }
+        }
 
         tracing::debug!("Initialize result: {result:?}");
         tracing::debug!("=== INITIALIZE METHOD RETURNING ===");

@@ -109,6 +109,7 @@ More in the [Shell Pool Guide](SHELL_POOL_GUIDE.md).
 ### Control Commands
 
 - **`wait`** - Wait for async operations to complete (synchronous)
+- **`cargo_lock_remediation`** - Safely handle `target/.cargo-lock` with options to delete and optionally `cargo clean` (synchronous, used as fallback when elicitation isn't available)
 
 ## Features
 
@@ -228,6 +229,11 @@ Commands support both synchronous and asynchronous execution. For long-running o
 When async is enabled, use the `wait` command to collect results:
 
 - `wait` with `operation_ids` - wait for specific operations by providing their IDs (required)
+
+Notes about `wait` semantics:
+
+- Only `operation_ids` are accepted in the payload; unknown fields are rejected for safety. Configure timeouts via the server CLI (e.g., `--timeout 30`).
+- On timeout, the server provides a helpful message including how long it waited. If a `target/.cargo-lock` is detected, the server will attempt an elicitation flow to resolve it or provide fallback instructions using the `cargo_lock_remediation` tool.
 
 ### Execution Modes
 

@@ -82,22 +82,6 @@ struct Args {
     disable: Vec<String>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::Args;
-    use clap::Parser;
-
-    #[test]
-    fn test_disable_list_parsing_comma_separated() {
-        let args = Args::parse_from(["prog", "--disable", "build,test,clippy"]);
-        assert_eq!(
-            args.disable,
-            vec!["build", "test", "clippy"],
-            "Expected comma-separated list to split into individual tool names"
-        );
-    }
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     // Parse command line arguments
@@ -220,4 +204,20 @@ async fn main() -> Result<()> {
     monitor.shutdown().await;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Args;
+    use clap::Parser;
+
+    #[test]
+    fn test_disable_list_parsing_comma_separated() {
+        let args = Args::parse_from(["prog", "--disable", "build,test,clippy"]);
+        assert_eq!(
+            args.disable,
+            vec!["build", "test", "clippy"],
+            "Expected comma-separated list to split into individual tool names"
+        );
+    }
 }

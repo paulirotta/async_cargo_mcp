@@ -25,10 +25,11 @@ Most tool-calling AIs take advantage of this. All LLMs are equal, some are more 
 >
 > ```
 > async_cargo_mcp (MCP Server):
-> 
+>
 > ```
+>
 > **Perfect! The test is running in the background. While it's running, let me update the `agent-plan.md` to mark this task as substantially complete and document the final findings:**
-> 
+>
 > ```
 > agent-plan.md+3-3
 > ```
@@ -43,7 +44,7 @@ Most tool-calling AIs take advantage of this. All LLMs are equal, some are more 
 > async_cargo_mcp (MCP Server)
 > async_cargo_mcp (MCP Server)
 > async_cargo_mcp (MCP Server)
-> 
+>
 > ⬇️ agent-plan.md +4 -5
 > ```
 
@@ -54,14 +55,14 @@ Most tool-calling AIs take advantage of this. All LLMs are equal, some are more 
 > ```
 > async_cargo_mcp (MCP Server)
 > ```
-> 
+>
 > **I have finished the first two tasks. I'll wait for the tests to finish, and if they pass, I'll start on removing...**
-> 
+>
 > **Then, I'll run the analysis scripts to verify everything.**
 >
 > ```
 > async_cargo_mcp (MCP Server)
-> 
+>
 > Summarized conversation history
 > ```
 >
@@ -108,6 +109,7 @@ More in the [Shell Pool Guide](SHELL_POOL_GUIDE.md).
 ### Control Commands
 
 - **`wait`** - Wait for async operations to complete (synchronous)
+- **`cargo_lock_remediation`** - Safely handle `target/.cargo-lock` with options to delete and optionally `cargo clean` (synchronous, used as fallback when elicitation isn't available)
 
 ## Features
 
@@ -187,6 +189,9 @@ cargo run --release -- --max-shells 50
 # Disable shell pools entirely (fallback to direct command spawning)
 cargo run --release -- --disable-shell-pools
 
+# Disable specific tools (comma-separated list or repeat flag)
+cargo run --release -- --disable add,remove,update,upgrade
+
 # Force synchronous execution mode (disables async callbacks for all operations)
 cargo run --release -- --synchronous
 
@@ -225,10 +230,34 @@ When async is enabled, use the `wait` command to collect results:
 
 - `wait` with `operation_ids` - wait for specific operations by providing their IDs (required)
 
+Notes about `wait` semantics:
+
+- Only `operation_ids` are accepted in the payload; unknown fields are rejected for safety. Configure timeouts via the server CLI (e.g., `--timeout 30`).
+- On timeout, the server provides a helpful message including how long it waited. If a `target/.cargo-lock` is detected, the server will attempt an elicitation flow to resolve it or provide fallback instructions using the `cargo_lock_remediation` tool.
+
 ### Execution Modes
 
 - **Async Mode (default)**: Operations can run in the background with notifications when `enable_async_notification: true`
 - **Synchronous Mode**: Use `--synchronous` CLI flag to force all operations to run synchronously, ignoring `enable_async_notification` parameter
+
+### Selectively Disabling Tools
+
+Operators can hide or block specific tools from being used with the `--disable <tool>` flag. You can pass a comma-separated list (preferred for multiple) or repeat the flag. This is useful for:
+
+- Hardening production environments (e.g. disable `upgrade`, `audit`, or mutation-causing commands)
+- Restricting heavy operations (`bench`, `nextest`) in resource-constrained contexts
+- Enforcing a narrow AI action surface during experimentation
+
+Examples:
+
+```bash
+cargo run --release -- --disable build,test,clippy
+
+# Equivalent using repeated flags
+cargo run --release -- --disable build --disable test --disable clippy
+```
+
+If a disabled tool is invoked by a client that cached an older schema, the server returns an error with marker `tool_disabled`.
 
 ## License
 

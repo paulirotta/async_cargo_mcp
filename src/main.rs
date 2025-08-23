@@ -21,6 +21,7 @@ use tracing::info;
                   This allows AI assistants to manage Rust projects with build, test, and dependency \
                   management capabilities while maintaining responsive interaction.\n\n\
                   Features pre-warmed shell pools for 10x faster cargo command execution.\n\n\
+                  Administrators can selectively disable individual tools at startup using one or more --disable <tool> flags (e.g. --disable build --disable clippy).\n\n\
                   For more information, visit: https://github.com/paulirotta/async_cargo_mcp"
 )]
 struct Args {
@@ -69,6 +70,16 @@ struct Args {
     /// Enable verbose (debug-level) logging
     #[arg(long, help = "Enable verbose debug logging")]
     verbose: bool,
+
+    /// Disable specific tools (can be used multiple times)
+    #[arg(
+        long,
+        value_name = "TOOL",
+        action = clap::ArgAction::Append,
+    value_delimiter = ',',
+    help = "Disable specific tools by name. Accepts comma-separated list or repeat flag. Example: --disable build,test,clippy --disable audit"
+    )]
+    disable: Vec<String>,
 }
 
 #[tokio::main]
@@ -155,13 +166,36 @@ async fn main() -> Result<()> {
     shell_pool_manager.clone().start_background_tasks();
 
     // Create an instance of our cargo tool service
-    let service =
-        AsyncCargo::new_with_config(monitor.clone(), shell_pool_manager, synchronous_mode)
-            .serve(stdio())
-            .await
-            .inspect_err(|e| {
-                tracing::error!("serving error: {:?}", e);
-            })?;
+    // Build disabled tools set from CLI
+    // Expand comma-separated disable entries into individual tool names
+    let disabled_tools: std::collections::HashSet<String> = args
+        .disable
+        .iter()
+        .flat_map(|entry| entry.split(',').map(|s| s.trim().to_ascii_lowercase()))
+        .filter(|s| !s.is_empty())
+        .collect();
+    if !disabled_tools.is_empty() {
+        info!(
+            "Disabled tools: {}",
+            disabled_tools
+                .iter()
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
+
+    let service = AsyncCargo::new_with_disabled(
+        monitor.clone(),
+        shell_pool_manager,
+        synchronous_mode,
+        disabled_tools,
+    )
+    .serve(stdio())
+    .await
+    .inspect_err(|e| {
+        tracing::error!("serving error: {:?}", e);
+    })?;
 
     // Wait for the service to finish
     service.waiting().await?;
@@ -170,4 +204,20 @@ async fn main() -> Result<()> {
     monitor.shutdown().await;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Args;
+    use clap::Parser;
+
+    #[test]
+    fn test_disable_list_parsing_comma_separated() {
+        let args = Args::parse_from(["prog", "--disable", "build,test,clippy"]);
+        assert_eq!(
+            args.disable,
+            vec!["build", "test", "clippy"],
+            "Expected comma-separated list to split into individual tool names"
+        );
+    }
 }

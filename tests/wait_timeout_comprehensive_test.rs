@@ -17,7 +17,11 @@ async fn test_wait_timeout_for_nonexistent_operation() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;
@@ -60,7 +64,11 @@ async fn test_wait_timeout_for_empty_operation_list() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;
@@ -102,7 +110,11 @@ async fn test_wait_default_timeout_is_reasonable() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;

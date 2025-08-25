@@ -92,7 +92,7 @@ async fn test_progress_update_final_result() {
     // Test display formatting
     let display_str = format!("{}", final_result);
     assert!(display_str.contains("op_test_456"));
-    assert!(display_str.contains("✅ COMPLETED"));
+    assert!(display_str.contains("COMPLETED"));
     assert!(display_str.contains("cargo build"));
     assert!(display_str.contains("Finished dev"));
 
@@ -108,7 +108,7 @@ async fn test_progress_update_final_result() {
     };
 
     let failed_display = format!("{}", failed_result);
-    assert!(failed_display.contains("❌ FAILED"));
+    assert!(failed_display.contains("FAILED"));
     assert!(failed_display.contains("test failed with errors"));
 }
 

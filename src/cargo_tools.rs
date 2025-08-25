@@ -1321,7 +1321,7 @@ impl AsyncCargo {
                                     op_info.id, op_info.command, op_info.description
                                 )
                             }
-                            _ => format!("🔄 Operation '{}' is still in progress", op_info.id),
+                            _ => format!("Operation '{}' is still in progress", op_info.id),
                         };
                         Content::text(status)
                     })
@@ -2915,7 +2915,7 @@ impl AsyncCargo {
 
         let result_msg = if output.status.success() {
             format!(
-                "➕ Add operation #{add_id} completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
+                "+ Add operation #{add_id} completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
                 req.name
             )
         } else {
@@ -2958,7 +2958,7 @@ impl AsyncCargo {
         let merged = merge_outputs(&stdout, &stderr, "(no remove output captured)");
         let result_msg = if output.status.success() {
             format!(
-                "➖ Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {merged}",
+                "- Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {merged}",
                 req.name
             )
         } else {
@@ -3097,7 +3097,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&doc_id, "documentation generation");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "📚 Documentation generation {doc_id} started at {timestamp} in the background.{tool_hint}"
+                "Documentation generation {doc_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         }
     }
@@ -3303,8 +3303,8 @@ impl AsyncCargo {
         if nextest_check.is_err() || !nextest_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
                 r#"- Nextest operation #{nextest_id} failed: cargo-nextest is not installed. 
-📦 Install with: cargo install cargo-nextest
-🔄 Falling back to regular cargo test is recommended."#
+Install with: cargo install cargo-nextest
+Falling back to regular cargo test is recommended."#
             ))]));
         }
 
@@ -4077,8 +4077,8 @@ impl AsyncCargo {
         if upgrade_check.is_err() || !upgrade_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
                 "- Upgrade operation #{upgrade_id} failed: cargo-edit with upgrade command is not installed. 
-📦 Install with: cargo install cargo-edit
-🔄 Falling back to regular cargo update is recommended."
+Install with: cargo install cargo-edit
+Falling back to regular cargo update is recommended."
             ))]));
         }
 
@@ -4180,8 +4180,8 @@ impl AsyncCargo {
         if audit_check.is_err() || !audit_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
                 "- Audit operation #{audit_id} failed: cargo-audit is not installed. 
-📦 Install with: cargo install cargo-audit
-🔒 This tool scans for known security vulnerabilities in dependencies."
+Install with: cargo install cargo-audit
+This tool scans for known security vulnerabilities in dependencies."
             ))]));
         }
 
@@ -4418,8 +4418,8 @@ impl AsyncCargo {
         if fmt_check.is_err() || !fmt_check.unwrap().status.success() {
             return Err(format!(
                 "- Format operation failed: rustfmt is not installed in {}. 
-📦 Install with: rustup component add rustfmt
-✨ This tool formats Rust code according to style guidelines.",
+Install with: rustup component add rustfmt
+This tool formats Rust code according to style guidelines.",
                 &req.working_directory
             ));
         }
@@ -4736,7 +4736,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             Ok(format!(
-                "📦 Fetch operation completed successfully{working_dir_msg}.\nDependencies fetched:\n{merged}"
+                "Fetch operation completed successfully{working_dir_msg}.\nDependencies fetched:\n{merged}"
             ))
         } else {
             Err(format!(
@@ -4952,7 +4952,7 @@ impl AsyncCargo {
             };
 
             format!(
-                "📊 Metadata operation #{metadata_id} completed successfully{working_dir_msg}{json_validation}.\nProject metadata:\n{merged}"
+                "Metadata operation #{metadata_id} completed successfully{working_dir_msg}{json_validation}.\nProject metadata:\n{merged}"
             )
         } else {
             format!(
@@ -5220,7 +5220,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg = format!(
-                "➕ Add operation completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
+                "+ Add operation completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
                 req.name
             );
 
@@ -5296,7 +5296,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg = format!(
-                "➖ Remove operation completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
+                "- Remove operation completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
                 req.name
             );
 
@@ -5431,8 +5431,8 @@ impl AsyncCargo {
 
         if audit_check.is_err() || !audit_check.unwrap().status.success() {
             let error_msg = r#"- Audit operation failed: cargo-audit is not installed. 
-📦 Install with: cargo install cargo-audit
-🔒 This tool scans for known security vulnerabilities in dependencies."#
+Install with: cargo install cargo-audit
+This tool scans for known security vulnerabilities in dependencies."#
                 .to_string();
 
             let _ = callback
@@ -5486,7 +5486,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg = format!(
-                "🔒 Audit completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {stdout}"
+                "Audit completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {stdout}"
             );
 
             // Send completion notification

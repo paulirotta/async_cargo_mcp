@@ -152,7 +152,7 @@ impl fmt::Display for ProgressUpdate {
             } => {
                 write!(
                     f,
-                    "[{operation_id}] 🚫 Cancelled after {duration_ms}ms: {message}"
+                    "[{operation_id}] CANCELLED after {duration_ms}ms: {message}"
                 )
             }
             ProgressUpdate::FinalResult {

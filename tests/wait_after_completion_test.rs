@@ -42,7 +42,11 @@ async fn test_wait_after_completion_returns_cached_results() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--").arg("--enable-wait");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;
@@ -114,7 +118,11 @@ async fn test_wait_for_nonexistent_operation_provides_helpful_message() -> Resul
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--").arg("--enable-wait");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;
@@ -150,7 +158,11 @@ async fn test_wait_for_multiple_operations_including_nonexistent() -> Result<()>
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--").arg("--enable-wait");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;

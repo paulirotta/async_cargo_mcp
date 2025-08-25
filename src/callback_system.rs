@@ -162,11 +162,7 @@ impl fmt::Display for ProgressUpdate {
                 full_output,
                 ..
             } => {
-                let status = if *success {
-                    "✅ COMPLETED"
-                } else {
-                    "❌ FAILED"
-                };
+                let status = if *success { "COMPLETED" } else { "FAILED" };
                 write!(f, "[{operation_id}] {status}: {command}\n{full_output}")
             }
         }

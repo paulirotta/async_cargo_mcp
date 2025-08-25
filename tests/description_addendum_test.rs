@@ -7,7 +7,7 @@ fn test_tool_description_addendum_present() {
 
     // Count number of tool definitions and addendum occurrences
     let tools_count = SOURCE.matches("#[tool(").count();
-    let async_addendum = "Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait to collect results.";
+    let async_addendum = "Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results.";
     let sync_addendum = "Always use async_cargo_mcp MCP tools; do not run cargo in a terminal.";
     let async_addendum_count = SOURCE.matches(async_addendum).count();
     let sync_addendum_count = SOURCE.matches(sync_addendum).count() - async_addendum_count; // Subtract because async addendum contains sync addendum
@@ -29,7 +29,7 @@ fn test_tool_description_addendum_present() {
 #[test]
 fn test_readme_like_addendum_phrase() {
     // Useful to keep around for mirroring in README
-    let addendum = "Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait to collect results.";
+    let addendum = "Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results.";
     assert!(addendum.contains("async_cargo_mcp MCP tools"));
     assert!(addendum.contains("enable_async_notification"));
     assert!(addendum.contains("mcp_async_cargo_m_wait"));

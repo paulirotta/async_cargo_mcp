@@ -19,6 +19,7 @@
 The server employs a modular, high-performance architecture optimized for concurrent AI workflows:
 
 **Core Components:**
+
 - **MCP Server Interface**: JSON-RPC 2.0 communication over stdin/stdout
 - **Cargo Tools Router**: Validates requests and routes to appropriate cargo command implementations
 - **Shell Pool Manager**: Maintains pre-warmed shell processes for optimal performance
@@ -26,8 +27,9 @@ The server employs a modular, high-performance architecture optimized for concur
 - **Callback System**: Delivers real-time progress updates via `$/progress` notifications
 
 **Data Flow:**
+
 1. AI sends tool request → Server validates and generates operation ID
-2. Background task executes cargo command via shell pool 
+2. Background task executes cargo command via shell pool
 3. Results automatically pushed to AI via progress notifications
 4. AI continues concurrent work, optionally queries status or waits for specific results
 
@@ -46,6 +48,7 @@ Options:
 ```
 
 **Recommended Production Usage:**
+
 ```bash
 # Default configuration (automatic result push)
 async_cargo_mcp
@@ -60,6 +63,7 @@ async_cargo_mcp --synchronous
 ## 4. Available Tools
 
 ### Core Cargo Commands
+
 - `build` - Compile packages with configurable features and targets
 - `test` / `nextest` - Run test suites (nextest preferred for speed)
 - `check` - Fast compile validation without artifacts
@@ -69,6 +73,7 @@ async_cargo_mcp --synchronous
 - `run` - Execute binaries with arguments
 
 ### Dependency Management
+
 - `add` - Add dependencies with version and feature control
 - `remove` - Remove dependencies safely
 - `update` - Update to latest compatible versions
@@ -76,6 +81,7 @@ async_cargo_mcp --synchronous
 - `fetch` - Download dependencies without building
 
 ### Project Tools
+
 - `clean` - Remove build artifacts
 - `tree` - Display dependency trees
 - `search` - Search crates.io
@@ -83,6 +89,7 @@ async_cargo_mcp --synchronous
 - `install` - Global tool installation
 
 ### Operation Management
+
 - `status` - Non-blocking query of running operations
 - `wait` - Legacy tool for explicit result retrieval (disabled by default)
 - `sleep` - Testing utility for timeout scenarios
@@ -90,6 +97,7 @@ async_cargo_mcp --synchronous
 ## 5. AI Integration Patterns
 
 ### Concurrent Workflow (Recommended)
+
 ```json
 // 1. Start long operation
 {
@@ -102,10 +110,10 @@ async_cargo_mcp --synchronous
 
 // 2. Continue with other tasks immediately
 {
-  "name": "clippy", 
+  "name": "clippy",
   "arguments": {
     "working_directory": "/project",
-    "enable_async_notification": true  
+    "enable_async_notification": true
   }
 }
 
@@ -113,6 +121,7 @@ async_cargo_mcp --synchronous
 ```
 
 ### Status Monitoring
+
 ```json
 {
   "name": "status",
@@ -124,6 +133,7 @@ async_cargo_mcp --synchronous
 ```
 
 ### Legacy Synchronous Mode
+
 ```json
 {
   "name": "build",
@@ -137,17 +147,20 @@ async_cargo_mcp --synchronous
 ## 6. Performance Features
 
 ### Shell Pool System
+
 - Pre-warmed bash processes per working directory
 - Eliminates process startup overhead (typically 50-200ms savings per command)
 - Configurable pool sizes with automatic health monitoring
 - Graceful cleanup of idle shells
 
 ### Concurrency Metrics
+
 - Tracks "concurrency gap" between operation dispatch and result consumption
 - Efficiency scoring for AI task parallelism effectiveness
 - Performance analytics for optimization feedback
 
 ### Resource Management
+
 - Configurable operation timeouts with graceful cancellation
 - Memory-efficient result storage with automatic cleanup
 - Working directory isolation prevents cross-contamination
@@ -155,15 +168,19 @@ async_cargo_mcp --synchronous
 ## 7. AI Behavior Guidance
 
 ### Automatic Result Push System
+
 By default, the server automatically pushes operation results via `$/progress` notifications, eliminating the need for explicit wait calls and enabling true concurrent AI behavior.
 
 ### Anti-Pattern Prevention
+
 - Status polling detection with guidance after 3+ consecutive calls
-- Professional, emoji-free messages designed for AI consumption  
+- Professional, emoji-free messages designed for AI consumption
 - Clear recommendations for optimal tool usage patterns
 
 ### Tool Hints & Education
+
 Each tool response includes contextual guidance:
+
 - When to use async vs synchronous execution
 - Optimal concurrency patterns for multi-step workflows
 - Performance recommendations based on operation type
@@ -171,16 +188,19 @@ Each tool response includes contextual guidance:
 ## 8. Security & Safety
 
 ### Input Validation
+
 - Structured request schemas prevent malicious command injection
 - Working directory validation ensures operations stay within intended scope
 - Command argument sanitization and validation
 
 ### Process Isolation
+
 - Commands executed in isolated shell environments
 - No arbitrary shell command execution capabilities
 - Configurable tool disabling for restricted environments
 
 ### Resource Protection
+
 - Configurable timeouts prevent runaway operations
 - Memory-bounded result storage with cleanup policies
 - Rate limiting on status queries to prevent resource abuse
@@ -188,6 +208,7 @@ Each tool response includes contextual guidance:
 ## 9. Production Deployment
 
 ### Requirements
+
 - Rust toolchain with cargo, clippy, and rustfmt
 - Optional: cargo-nextest for faster testing
 - Optional: cargo-edit for enhanced dependency management
@@ -196,6 +217,7 @@ Each tool response includes contextual guidance:
 ### Integration Examples
 
 **VS Code MCP Client:**
+
 ```json
 {
   "mcpServers": {
@@ -208,22 +230,24 @@ Each tool response includes contextual guidance:
 ```
 
 **Custom AI Integration:**
+
 ```javascript
 // Initialize MCP client connection
 const client = new MCPClient();
 await client.connect({
-  command: 'async_cargo_mcp',
-  args: ['--enable-wait'] // if legacy compatibility needed
+  command: "async_cargo_mcp",
+  args: ["--enable-wait"], // if legacy compatibility needed
 });
 
 // Execute cargo commands with automatic result handling
-await client.callTool('build', {
+await client.callTool("build", {
   working_directory: projectPath,
-  enable_async_notification: true
+  enable_async_notification: true,
 });
 ```
 
 ### Monitoring & Logging
+
 - Structured JSON logging with configurable levels
 - Operation lifecycle tracking and metrics
 - Performance monitoring with concurrency analytics
@@ -232,14 +256,16 @@ await client.callTool('build', {
 ## 10. Future Enhancements
 
 ### Ecosystem Expansion Opportunities
+
 - **IDE Integration**: Visual operation tracker for VS Code with actionable notifications
 - **AI Personas**: "Concurrent Executor" prompt engineering for optimal parallelism
 - **Enhanced Callbacks**: Rich progress updates with build artifact information
 - **Cross-Platform**: Windows PowerShell support alongside Unix shell pools
 
 ### Advanced Features Under Consideration
+
 - Remote cargo execution for distributed development
-- Build artifact caching and intelligent invalidation  
+- Build artifact caching and intelligent invalidation
 - Integration with Rust language server for enhanced diagnostics
 - Custom workflow automation with operation chaining
 

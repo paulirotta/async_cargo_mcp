@@ -449,6 +449,8 @@ pub struct AsyncCargo {
     // Per-working-directory concurrency guard to serialize lock-file remediation
     per_dir_mutex: Arc<AsyncRwLock<HashMap<String, Arc<AsyncMutex<()>>>>>,
     disabled_tools: std::collections::HashSet<String>,
+    // Track status calls per operation to detect polling patterns
+    status_call_counts: Arc<AsyncRwLock<HashMap<String, u32>>>,
 }
 
 impl Default for AsyncCargo {
@@ -551,6 +553,7 @@ impl AsyncCargo {
             enable_wait: false,      // Default to disabled (push results automatically)
             per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools: Default::default(),
+            status_call_counts: Arc::new(AsyncRwLock::new(HashMap::new())),
         }
     }
 
@@ -567,6 +570,7 @@ impl AsyncCargo {
             enable_wait: false, // Default to disabled
             per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools: Default::default(),
+            status_call_counts: Arc::new(AsyncRwLock::new(HashMap::new())),
         }
     }
 
@@ -606,6 +610,7 @@ impl AsyncCargo {
             enable_wait,
             per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools,
+            status_call_counts: Arc::new(AsyncRwLock::new(HashMap::new())),
         }
     }
 
@@ -1044,10 +1049,12 @@ impl AsyncCargo {
                 && efficiency < 0.5
             {
                 early_wait_warnings.push(format!(
-                        "⚡ CONCURRENCY HINT: You waited for '{}' after only {:.1}s (efficiency: {:.0}%). \
+                    "CONCURRENCY HINT: You waited for '{}' after only {:.1}s (efficiency: {:.0}%). \
                         Consider performing other tasks while operations run in the background.",
-                        operation_id, gap.as_secs_f32(), efficiency * 100.0
-                    ));
+                    operation_id,
+                    gap.as_secs_f32(),
+                    efficiency * 100.0
+                ));
             }
         }
 
@@ -1137,7 +1144,7 @@ impl AsyncCargo {
                     if lock_path.exists() {
                         let full = lock_path.display().to_string();
                         let mut block = format!(
-                            "⏰ Wait timed out after {waited}s (limit {timeout_seconds}s) for operations in {dir}.\nDetected Cargo internal lock file: {full}. This file can persist after a crash or interrupt and block new cargo commands."
+                            "Wait timed out after {waited}s (limit {timeout_seconds}s) for operations in {dir}.\nDetected Cargo internal lock file: {full}. This file can persist after a crash or interrupt and block new cargo commands."
                         );
 
                         // Elicitation path (if supported by client)
@@ -1300,7 +1307,7 @@ impl AsyncCargo {
                             }
                             crate::operation_monitor::OperationState::Cancelled => {
                                 format!(
-                                    "🚫 OPERATION CANCELLED: '{}'\n\
+                                    "OPERATION CANCELLED: '{}'\n\
                                     Command: {}\n\
                                     Description: {}",
                                     op_info.id, op_info.command, op_info.description
@@ -1308,7 +1315,7 @@ impl AsyncCargo {
                             }
                             crate::operation_monitor::OperationState::TimedOut => {
                                 format!(
-                                    "⏰ OPERATION TIMED OUT: '{}'\n\
+                                    "OPERATION TIMED OUT: '{}'\n\
                                     Command: {}\n\
                                     Description: {}",
                                     op_info.id, op_info.command, op_info.description
@@ -1405,14 +1412,44 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "Query the status of running operations without blocking. This is the recommended way to check operation progress instead of using the wait tool. Returns current state, runtime, and other details for operations."
+        description = "Query the status of running operations without blocking. This is the recommended way to check operation progress instead of using the wait tool. Returns current state, runtime, and other details for operations. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn status(
         &self,
         Parameters(req): Parameters<StatusRequest>,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        // Track status calls per operation to detect polling patterns
+        let mut guidance_message = None;
+        if let Some(operation_id) = &req.operation_id {
+            let mut call_counts = self.status_call_counts.write().await;
+            let count = call_counts.entry(operation_id.clone()).or_insert(0);
+            *count += 1;
+
+            // If this operation has been polled multiple times, provide guidance
+            if *count >= 3 {
+                guidance_message = Some(format!(
+                    "STATUS POLLING DETECTED: You've called status {} times for operation '{}'. \
+                    Instead of repeatedly polling, consider using 'wait' with enable_async_notification=true \
+                    for automatic results via progress notifications.\n",
+                    count, operation_id
+                ));
+
+                // Clean up the counter to avoid memory leaks for completed operations
+                if let Some(operation) = self.monitor.get_operation(operation_id).await
+                    && !operation.is_active()
+                {
+                    call_counts.remove(operation_id);
+                }
+            }
+        }
+
         let mut status_lines = Vec::new();
+
+        // Add guidance message if present
+        if let Some(guidance) = guidance_message {
+            status_lines.push(guidance);
+        }
 
         if let Some(operation_id) = &req.operation_id {
             // Query specific operation
@@ -1427,7 +1464,7 @@ impl AsyncCargo {
                     status_lines.push(status_line);
                 } else {
                     status_lines.push(format!(
-                        "❓ Operation '{}' not found (may be very old and cleaned up)",
+                        "Operation '{}' not found (may be very old and cleaned up)",
                         operation_id
                     ));
                 }
@@ -1485,12 +1522,9 @@ impl AsyncCargo {
                 .collect();
 
             if filtered_operations.is_empty() {
-                status_lines.push("📋 No operations match the specified criteria".to_string());
+                status_lines.push("No operations match the specified criteria".to_string());
             } else {
-                status_lines.push(format!(
-                    "📋 Found {} operations:",
-                    filtered_operations.len()
-                ));
+                status_lines.push(format!("Found {} operations:", filtered_operations.len()));
                 for operation in filtered_operations {
                     let status_line = self.format_operation_status(&operation);
                     status_lines.push(format!("  {}", status_line));
@@ -1509,13 +1543,13 @@ impl AsyncCargo {
     ) -> String {
         use crate::operation_monitor::OperationState;
 
-        let state_emoji = match operation.state {
-            OperationState::Pending => "⏳",
-            OperationState::Running => "🏃",
-            OperationState::Completed => "✅",
-            OperationState::Failed => "❌",
-            OperationState::Cancelled => "🚫",
-            OperationState::TimedOut => "⏰",
+        let state_text = match operation.state {
+            OperationState::Pending => "PENDING",
+            OperationState::Running => "RUNNING",
+            OperationState::Completed => "COMPLETED",
+            OperationState::Failed => "FAILED",
+            OperationState::Cancelled => "CANCELLED",
+            OperationState::TimedOut => "TIMED_OUT",
         };
 
         let duration = operation.duration();
@@ -1539,11 +1573,10 @@ impl AsyncCargo {
         };
 
         format!(
-            "{} [{}] {} ({}) - {} in {}{}",
-            state_emoji,
+            "[{}] {} ({}) - {} in {}{}",
             operation.id,
+            state_text,
             operation.command,
-            operation.description,
             duration_str,
             working_dir,
             concurrency_info
@@ -3120,7 +3153,7 @@ impl AsyncCargo {
 
             let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("doc"));
             Ok(format!(
-                "📚 Documentation generation completed successfully{working_dir_msg}.\nDocumentation generated at: {doc_path}\nThe generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.\n💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.\n\nOutput: {merged}"
+                "Documentation generation completed successfully{working_dir_msg}.\nDocumentation generated at: {doc_path}\nThe generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.\nTip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.\n\nOutput: {merged}"
             ))
         } else {
             Err(format!(
@@ -3895,7 +3928,7 @@ impl AsyncCargo {
         if output.status.success() {
             let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("bench"));
             Ok(format!(
-                "🏃‍♂️ Benchmark operation completed successfully{working_dir_msg}.\nOutput: {merged}"
+                "Benchmark operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
             let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("bench"));
@@ -4119,7 +4152,7 @@ impl AsyncCargo {
                 ""
             };
             Ok(format!(
-                "⬆️ Upgrade operation #{upgrade_id} completed successfully{working_dir_msg}{dry_run_msg}.\nOutput: {merged}"
+                "Upgrade operation #{upgrade_id} completed successfully{working_dir_msg}{dry_run_msg}.\nOutput: {merged}"
             ))
         } else {
             Err(format!(
@@ -4558,7 +4591,7 @@ impl AsyncCargo {
 
         let result_msg = if output.status.success() {
             format!(
-                "📋 Version operation completed successfully.\nCargo version information:\n{merged}"
+                "Version operation completed successfully.\nCargo version information:\n{merged}"
             )
         } else {
             format!("- Version operation failed.\nErrors: {stderr}\nOutput: {merged}")

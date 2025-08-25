@@ -79,6 +79,16 @@ pub enum ProgressUpdate {
         message: String,
         duration_ms: u64,
     },
+    /// Final comprehensive result with all details (like wait command output)
+    FinalResult {
+        operation_id: String,
+        command: String,
+        description: String,
+        working_directory: String,
+        success: bool,
+        duration_ms: u64,
+        full_output: String,
+    },
 }
 
 impl fmt::Display for ProgressUpdate {
@@ -144,6 +154,20 @@ impl fmt::Display for ProgressUpdate {
                     f,
                     "[{operation_id}] 🚫 Cancelled after {duration_ms}ms: {message}"
                 )
+            }
+            ProgressUpdate::FinalResult {
+                operation_id,
+                command,
+                success,
+                full_output,
+                ..
+            } => {
+                let status = if *success {
+                    "✅ COMPLETED"
+                } else {
+                    "❌ FAILED"
+                };
+                write!(f, "[{operation_id}] {status}: {command}\n{full_output}")
             }
         }
     }

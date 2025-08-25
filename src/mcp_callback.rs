@@ -123,6 +123,37 @@ impl CallbackSender for McpCallbackSender {
                     message: Some(format!("Cancelled: {message}")),
                 }
             }
+            ProgressUpdate::FinalResult {
+                operation_id,
+                command,
+                description,
+                working_directory,
+                success,
+                full_output,
+                duration_ms,
+            } => {
+                let status = if success { "COMPLETED" } else { "FAILED" };
+                debug!("{} operation {}: {}", status, operation_id, command);
+
+                // For final results, we send the complete detailed output
+                let final_message = format!(
+                    "OPERATION {}: '{}'\nCommand: {}\nDescription: {}\nWorking Directory: {}\nDuration: {}ms\n\n=== FULL OUTPUT ===\n{}",
+                    status,
+                    operation_id,
+                    command,
+                    description,
+                    working_directory,
+                    duration_ms,
+                    full_output
+                );
+
+                ProgressNotificationParam {
+                    progress_token: progress_token.clone(),
+                    progress: 100.0,
+                    total: Some(100.0),
+                    message: Some(final_message),
+                }
+            }
         };
 
         // Send the progress notification to the LLM client

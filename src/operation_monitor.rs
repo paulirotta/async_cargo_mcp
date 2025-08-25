@@ -34,6 +34,8 @@ pub struct OperationInfo {
     pub state: OperationState,
     pub start_time: Instant,
     pub end_time: Option<Instant>,
+    /// When the first wait call was made for this operation (for concurrency metrics)
+    pub first_wait_time: Option<Instant>,
     pub timeout_duration: Option<Duration>,
     pub working_directory: Option<String>,
     pub result: Option<Result<String, String>>,
@@ -55,6 +57,7 @@ impl OperationInfo {
             state: OperationState::Pending,
             start_time: Instant::now(),
             end_time: None,
+            first_wait_time: None,
             timeout_duration,
             working_directory,
             result: None,
@@ -100,6 +103,30 @@ impl OperationInfo {
         self.end_time = Some(Instant::now());
         self.state = OperationState::TimedOut;
         self.cancellation_token.cancel();
+    }
+
+    /// Record the first wait call for concurrency metrics
+    pub fn record_first_wait(&mut self) {
+        if self.first_wait_time.is_none() {
+            self.first_wait_time = Some(Instant::now());
+        }
+    }
+
+    /// Get the concurrency gap (time between operation start and first wait call)
+    pub fn concurrency_gap(&self) -> Option<Duration> {
+        self.first_wait_time
+            .map(|wait_time| wait_time.duration_since(self.start_time))
+    }
+
+    /// Calculate concurrency efficiency score (1.0 = never waited, 0.0 = immediate wait)
+    pub fn concurrency_efficiency(&self) -> f32 {
+        match self.concurrency_gap() {
+            None => 1.0,                             // Never waited - perfect efficiency
+            Some(gap) if gap.as_secs() >= 10 => 0.9, // Good - waited after 10+ seconds
+            Some(gap) if gap.as_secs() >= 5 => 0.7,  // Fair - waited after 5+ seconds
+            Some(gap) if gap.as_secs() >= 1 => 0.3,  // Poor - waited after 1+ second
+            Some(_) => 0.0,                          // Very poor - immediate wait
+        }
     }
 
     /// Start the operation (change state from Pending to Running)
@@ -355,6 +382,19 @@ impl OperationMonitor {
             .filter(|op| predicate(op))
             .cloned()
             .collect()
+    }
+
+    /// Record a wait call for concurrency metrics and return timing info
+    pub async fn record_wait_call(&self, operation_id: &str) -> Option<(Duration, f32)> {
+        let mut operations = self.operations.write().await;
+        if let Some(operation) = operations.get_mut(operation_id) {
+            operation.record_first_wait();
+            let gap = operation.concurrency_gap().unwrap_or(Duration::ZERO);
+            let efficiency = operation.concurrency_efficiency();
+            Some((gap, efficiency))
+        } else {
+            None
+        }
     }
 
     /// Get all active operations
@@ -642,6 +682,7 @@ impl OperationMonitor {
                 state: OperationState::Failed,
                 start_time: Instant::now(),
                 end_time: Some(Instant::now()),
+                first_wait_time: None,
                 timeout_duration: None,
                 result: Some(Err(
                     "Invalid operation ID: empty or whitespace-only ID provided".to_string(),
@@ -692,6 +733,7 @@ impl OperationMonitor {
                     state: OperationState::Failed,
                     start_time: Instant::now(),
                     end_time: Some(Instant::now()),
+                    first_wait_time: None,
                     timeout_duration: None,
                     result: Some(Err(format!(
                         "No operation found with ID '{operation_id}'. This could mean:\n\

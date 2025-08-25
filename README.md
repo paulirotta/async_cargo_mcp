@@ -110,16 +110,20 @@ More in the [Shell Pool Guide](SHELL_POOL_GUIDE.md).
 
 ### Control Commands
 
-- **`wait`** - Wait for async operations to complete (synchronous)
+- **`status`** - Query running operations status (non-blocking, returns JSON)
+- **`wait`** - Wait for async operations to complete (synchronous, deprecated - results pushed automatically)
 - **`cargo_lock_remediation`** - Safely handle `target/.cargo-lock` with options to delete and optionally `cargo clean` (synchronous, used as fallback when elicitation isn't available)
 
 ## Features
 
 - **Asynchronous execution** with real-time progress updates
+- **Automatic result push** - Operation results pushed to AI when complete (no manual wait required)
 - **Safe operations** with proper working directory isolation
 - **Type-safe parameters** with JSON schema validation
 - **Operation monitoring** with timeout and cancellation support
 - **Comprehensive error handling** and detailed logging
+- **Concurrency metrics** for optimizing AI task parallelism
+- **Status queries** - Non-blocking visibility into running operations
 
 ## Installation
 
@@ -196,6 +200,9 @@ cargo run --release -- --disable add,remove,update,upgrade
 
 # Force synchronous execution mode (disables async callbacks for all operations)
 cargo run --release -- --synchronous
+
+# Enable the legacy wait tool (deprecated - results pushed automatically by default)
+cargo run --release -- --enable-wait
 
 # Combine options as needed
 cargo run --release -- --shell-pool-size 3 --max-shells 30 --synchronous

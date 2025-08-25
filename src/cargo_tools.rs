@@ -404,6 +404,17 @@ pub struct SleepRequest {
     pub enable_async_notification: Option<bool>,
 }
 
+/// Request to query the status of running operations
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct StatusRequest {
+    /// Optional operation ID to query specific operation (if omitted, shows all active operations)
+    pub operation_id: Option<String>,
+    /// Optional working directory filter (if provided, only show operations in this directory)
+    pub working_directory: Option<String>,
+    /// Filter by operation state (if provided, only show operations matching this state)
+    pub state_filter: Option<String>, // "active", "completed", "failed", etc.
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum CargoLockAction {
@@ -433,9 +444,13 @@ pub struct AsyncCargo {
     monitor: Arc<OperationMonitor>,
     shell_pool_manager: Arc<ShellPoolManager>,
     synchronous_mode: bool,
+    /// Enable the wait tool (legacy mode for debugging and specific use cases)
+    enable_wait: bool,
     // Per-working-directory concurrency guard to serialize lock-file remediation
     per_dir_mutex: Arc<AsyncRwLock<HashMap<String, Arc<AsyncMutex<()>>>>>,
     disabled_tools: std::collections::HashSet<String>,
+    // Track status calls per operation to detect polling patterns
+    status_call_counts: Arc<AsyncRwLock<HashMap<String, u32>>>,
 }
 
 impl Default for AsyncCargo {
@@ -535,8 +550,10 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode: false, // Default to async mode
+            enable_wait: false,      // Default to disabled (push results automatically)
             per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools: Default::default(),
+            status_call_counts: Arc::new(AsyncRwLock::new(HashMap::new())),
         }
     }
 
@@ -550,8 +567,10 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode,
+            enable_wait: false, // Default to disabled
             per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools: Default::default(),
+            status_call_counts: Arc::new(AsyncRwLock::new(HashMap::new())),
         }
     }
 
@@ -560,6 +579,23 @@ impl AsyncCargo {
         monitor: Arc<OperationMonitor>,
         shell_pool_manager: Arc<ShellPoolManager>,
         synchronous_mode: bool,
+        disabled: std::collections::HashSet<String>,
+    ) -> Self {
+        Self::new_with_config_and_disabled(
+            monitor,
+            shell_pool_manager,
+            synchronous_mode,
+            false,
+            disabled,
+        )
+    }
+
+    /// Create new instance with full configuration including wait tool enablement
+    pub fn new_with_config_and_disabled(
+        monitor: Arc<OperationMonitor>,
+        shell_pool_manager: Arc<ShellPoolManager>,
+        synchronous_mode: bool,
+        enable_wait: bool,
         disabled: std::collections::HashSet<String>,
     ) -> Self {
         let disabled_tools = disabled
@@ -571,8 +607,10 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode,
+            enable_wait,
             per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools,
+            status_call_counts: Arc::new(AsyncRwLock::new(HashMap::new())),
         }
     }
 
@@ -919,14 +957,75 @@ impl AsyncCargo {
         }
     }
 
+    /// Create a comprehensive final result for automatic push notifications
+    pub fn create_final_result_update(
+        operation_id: &str,
+        command: &str,
+        description: &str,
+        working_directory: &str,
+        result: &Result<String, String>,
+        duration_ms: u64,
+    ) -> ProgressUpdate {
+        use crate::callback_system::ProgressUpdate;
+
+        let (success, full_output) = match result {
+            Ok(output) => {
+                // Create detailed success output similar to wait command
+                let mut normalized_output = output.clone();
+                if (normalized_output.trim_end().ends_with("Output:")
+                    || normalized_output
+                        .matches("Output:")
+                        .last()
+                        .map(|_| {
+                            if let Some(pos) = normalized_output.rfind("Output:") {
+                                normalized_output[pos + 7..].trim().is_empty()
+                            } else {
+                                false
+                            }
+                        })
+                        .unwrap_or(false))
+                    && let Some(pos) = normalized_output.rfind("Output:")
+                {
+                    let (head, _) = normalized_output.split_at(pos + 7);
+                    normalized_output =
+                        format!("{head} (no command stdout captured – command produced no stdout)");
+                }
+                (true, normalized_output)
+            }
+            Err(error) => (false, error.clone()),
+        };
+
+        ProgressUpdate::FinalResult {
+            operation_id: operation_id.to_string(),
+            command: command.to_string(),
+            description: description.to_string(),
+            working_directory: working_directory.to_string(),
+            success,
+            duration_ms,
+            full_output,
+        }
+    }
+
     #[tool(
-        description = "Wait for async cargo operations to complete. Requires one or more operation IDs to wait for. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the --timeout CLI parameter (default: 300 seconds). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "LEGACY TOOL - Wait for async cargo operations to complete. This tool is deprecated in favor of automatic result push via progress notifications. Enable with --enable-wait flag if needed for debugging or specific use cases. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the --timeout CLI parameter (default: 300 seconds). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn wait(
         &self,
         Parameters(req): Parameters<WaitRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        // Check if wait tool is enabled
+        if !self.enable_wait {
+            let hint_message = "The wait tool is disabled by default to encourage more efficient AI workflows.\n\n\
+                               RECOMMENDED APPROACH:\n\
+                               • Async operations automatically push results via $/progress notifications\n\
+                               • Continue with other tasks instead of waiting\n\
+                               • Use the 'status' tool for non-blocking operation queries\n\n\
+                               To enable this legacy tool, restart the server with the --enable-wait flag.";
+
+            return Ok(CallToolResult::success(vec![Content::text(hint_message)]));
+        }
+
         // Get the timeout from the monitor's configuration instead of hardcoding it
         let timeout_duration = {
             // Access the monitor's config to get the default timeout
@@ -940,6 +1039,23 @@ impl AsyncCargo {
                 "operation_ids cannot be empty. Must specify at least one operation ID to wait for.",
                 None,
             ));
+        }
+
+        // Record wait calls and check for early waits
+        let mut early_wait_warnings = Vec::new();
+        for operation_id in &req.operation_ids {
+            if let Some((gap, efficiency)) = self.monitor.record_wait_call(operation_id).await
+                && gap.as_secs() < 5
+                && efficiency < 0.5
+            {
+                early_wait_warnings.push(format!(
+                    "CONCURRENCY HINT: You waited for '{}' after only {:.1}s (efficiency: {:.0}%). \
+                        Consider performing other tasks while operations run in the background.",
+                    operation_id,
+                    gap.as_secs_f32(),
+                    efficiency * 100.0
+                ));
+            }
         }
 
         // Wait for each ID concurrently and collect using join handles
@@ -968,6 +1084,7 @@ impl AsyncCargo {
                             state: OperationState::Failed,
                             start_time: std::time::Instant::now(),
                             end_time: Some(std::time::Instant::now()),
+                            first_wait_time: None,
                             timeout_duration: None,
                             working_directory: None,
                             result: Some(Err(err)),
@@ -985,6 +1102,7 @@ impl AsyncCargo {
                             state: OperationState::Failed,
                             start_time: std::time::Instant::now(),
                             end_time: Some(std::time::Instant::now()),
+                            first_wait_time: None,
                             timeout_duration: None,
                             working_directory: None,
                             result: Some(Err(msg)),
@@ -1026,7 +1144,7 @@ impl AsyncCargo {
                     if lock_path.exists() {
                         let full = lock_path.display().to_string();
                         let mut block = format!(
-                            "⏰ Wait timed out after {waited}s (limit {timeout_seconds}s) for operations in {dir}.\nDetected Cargo internal lock file: {full}. This file can persist after a crash or interrupt and block new cargo commands."
+                            "Wait timed out after {waited}s (limit {timeout_seconds}s) for operations in {dir}.\nDetected Cargo internal lock file: {full}. This file can persist after a crash or interrupt and block new cargo commands."
                         );
 
                         // Elicitation path (if supported by client)
@@ -1189,7 +1307,7 @@ impl AsyncCargo {
                             }
                             crate::operation_monitor::OperationState::Cancelled => {
                                 format!(
-                                    "🚫 OPERATION CANCELLED: '{}'\n\
+                                    "OPERATION CANCELLED: '{}'\n\
                                     Command: {}\n\
                                     Description: {}",
                                     op_info.id, op_info.command, op_info.description
@@ -1197,13 +1315,13 @@ impl AsyncCargo {
                             }
                             crate::operation_monitor::OperationState::TimedOut => {
                                 format!(
-                                    "⏰ OPERATION TIMED OUT: '{}'\n\
+                                    "OPERATION TIMED OUT: '{}'\n\
                                     Command: {}\n\
                                     Description: {}",
                                     op_info.id, op_info.command, op_info.description
                                 )
                             }
-                            _ => format!("🔄 Operation '{}' is still in progress", op_info.id),
+                            _ => format!("Operation '{}' is still in progress", op_info.id),
                         };
                         Content::text(status)
                     })
@@ -1220,6 +1338,13 @@ impl AsyncCargo {
         };
 
         let mut final_content = vec![Content::text(duration_summary)];
+
+        // Add early wait warnings if any
+        if !early_wait_warnings.is_empty() {
+            let warning_text = early_wait_warnings.join("\n\n");
+            final_content.push(Content::text(format!("\n{}", warning_text)));
+        }
+
         final_content.extend(content.clone());
 
         // Display results in terminal for all completed operations
@@ -1284,6 +1409,178 @@ impl AsyncCargo {
         }
 
         Ok(CallToolResult::success(final_content))
+    }
+
+    #[tool(
+        description = "Query the status of running operations without blocking. This is the recommended way to check operation progress instead of using the wait tool. Returns current state, runtime, and other details for operations. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
+    )]
+    async fn status(
+        &self,
+        Parameters(req): Parameters<StatusRequest>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, ErrorData> {
+        // Track status calls per operation to detect polling patterns
+        let mut guidance_message = None;
+        if let Some(operation_id) = &req.operation_id {
+            let mut call_counts = self.status_call_counts.write().await;
+            let count = call_counts.entry(operation_id.clone()).or_insert(0);
+            *count += 1;
+
+            // If this operation has been polled multiple times, provide guidance
+            if *count >= 3 {
+                guidance_message = Some(format!(
+                    "STATUS POLLING DETECTED: You've called status {} times for operation '{}'. \
+                    Instead of repeatedly polling, consider using 'wait' with enable_async_notification=true \
+                    for automatic results via progress notifications.\n",
+                    count, operation_id
+                ));
+
+                // Clean up the counter to avoid memory leaks for completed operations
+                if let Some(operation) = self.monitor.get_operation(operation_id).await
+                    && !operation.is_active()
+                {
+                    call_counts.remove(operation_id);
+                }
+            }
+        }
+
+        let mut status_lines = Vec::new();
+
+        // Add guidance message if present
+        if let Some(guidance) = guidance_message {
+            status_lines.push(guidance);
+        }
+
+        if let Some(operation_id) = &req.operation_id {
+            // Query specific operation
+            if let Some(operation) = self.monitor.get_operation(operation_id).await {
+                let status_line = self.format_operation_status(&operation);
+                status_lines.push(status_line);
+            } else {
+                // Check completion history for completed operations
+                let completed_ops = self.monitor.get_completed_operations().await;
+                if let Some(completed_op) = completed_ops.iter().find(|op| op.id == *operation_id) {
+                    let status_line = self.format_operation_status(completed_op);
+                    status_lines.push(status_line);
+                } else {
+                    status_lines.push(format!(
+                        "Operation '{}' not found (may be very old and cleaned up)",
+                        operation_id
+                    ));
+                }
+            }
+        } else {
+            // Query all operations with optional filtering
+            let all_active = self.monitor.get_active_operations().await;
+            let all_completed = self.monitor.get_completed_operations().await;
+            let mut all_operations = all_active;
+            all_operations.extend(all_completed);
+
+            // Apply filters
+            let filtered_operations: Vec<_> = all_operations
+                .into_iter()
+                .filter(|op| {
+                    // Filter by working directory if specified
+                    if let Some(ref filter_dir) = req.working_directory {
+                        if let Some(ref op_dir) = op.working_directory {
+                            if !op_dir.contains(filter_dir) {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }
+
+                    // Filter by state if specified
+                    if let Some(ref state_filter) = req.state_filter {
+                        let matches_filter = match state_filter.to_lowercase().as_str() {
+                            "active" => op.is_active(),
+                            "completed" => matches!(
+                                op.state,
+                                crate::operation_monitor::OperationState::Completed
+                            ),
+                            "failed" => {
+                                matches!(op.state, crate::operation_monitor::OperationState::Failed)
+                            }
+                            "cancelled" => matches!(
+                                op.state,
+                                crate::operation_monitor::OperationState::Cancelled
+                            ),
+                            "timedout" => matches!(
+                                op.state,
+                                crate::operation_monitor::OperationState::TimedOut
+                            ),
+                            _ => true, // Unknown filter, include all
+                        };
+                        if !matches_filter {
+                            return false;
+                        }
+                    }
+
+                    true
+                })
+                .collect();
+
+            if filtered_operations.is_empty() {
+                status_lines.push("No operations match the specified criteria".to_string());
+            } else {
+                status_lines.push(format!("Found {} operations:", filtered_operations.len()));
+                for operation in filtered_operations {
+                    let status_line = self.format_operation_status(&operation);
+                    status_lines.push(format!("  {}", status_line));
+                }
+            }
+        }
+
+        let status_text = status_lines.join("\n");
+        Ok(CallToolResult::success(vec![Content::text(status_text)]))
+    }
+
+    /// Format a single operation's status for display
+    fn format_operation_status(
+        &self,
+        operation: &crate::operation_monitor::OperationInfo,
+    ) -> String {
+        use crate::operation_monitor::OperationState;
+
+        let state_text = match operation.state {
+            OperationState::Pending => "PENDING",
+            OperationState::Running => "RUNNING",
+            OperationState::Completed => "COMPLETED",
+            OperationState::Failed => "FAILED",
+            OperationState::Cancelled => "CANCELLED",
+            OperationState::TimedOut => "TIMED_OUT",
+        };
+
+        let duration = operation.duration();
+        let duration_str = if duration.as_secs() > 0 {
+            format!("{:.1}s", duration.as_secs_f32())
+        } else {
+            format!("{}ms", duration.as_millis())
+        };
+
+        let working_dir = operation.working_directory.as_deref().unwrap_or("unknown");
+
+        let concurrency_info = if let Some(gap) = operation.concurrency_gap() {
+            let efficiency = operation.concurrency_efficiency();
+            format!(
+                " (wait gap: {:.1}s, efficiency: {:.0}%)",
+                gap.as_secs_f32(),
+                efficiency * 100.0
+            )
+        } else {
+            String::new()
+        };
+
+        format!(
+            "[{}] {} ({}) - {} in {}{}",
+            operation.id,
+            state_text,
+            operation.command,
+            duration_str,
+            working_dir,
+            concurrency_info
+        )
     }
 
     // Helper to perform remediation with safety: cancel, delete lock, optional clean
@@ -1449,21 +1746,37 @@ impl AsyncCargo {
 
                 // Send completion notification with measured duration
                 let duration_ms = started_at.elapsed().as_millis() as u64;
+
+                // Send brief completion update for legacy support
                 let completion_update = match result {
-                    Ok(msg) => ProgressUpdate::Completed {
-                        operation_id: build_id_clone,
-                        message: msg,
+                    Ok(ref msg) => ProgressUpdate::Completed {
+                        operation_id: build_id_clone.clone(),
+                        message: msg.clone(),
                         duration_ms,
                     },
-                    Err(err) => ProgressUpdate::Failed {
-                        operation_id: build_id_clone,
-                        error: err,
+                    Err(ref err) => ProgressUpdate::Failed {
+                        operation_id: build_id_clone.clone(),
+                        error: err.clone(),
                         duration_ms,
                     },
                 };
 
                 if let Err(e) = callback.send_progress(completion_update).await {
                     tracing::error!("Failed to send build completion progress update: {e:?}");
+                }
+
+                // Send comprehensive final result for AI consumption
+                let final_result_update = Self::create_final_result_update(
+                    &build_id_clone,
+                    "cargo build",
+                    "Building project in the background",
+                    &req_clone.working_directory,
+                    &result,
+                    duration_ms,
+                );
+
+                if let Err(e) = callback.send_progress(final_result_update).await {
+                    tracing::error!("Failed to send build final result update: {e:?}");
                 }
             });
 
@@ -2602,7 +2915,7 @@ impl AsyncCargo {
 
         let result_msg = if output.status.success() {
             format!(
-                "➕ Add operation #{add_id} completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
+                "+ Add operation #{add_id} completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
                 req.name
             )
         } else {
@@ -2645,7 +2958,7 @@ impl AsyncCargo {
         let merged = merge_outputs(&stdout, &stderr, "(no remove output captured)");
         let result_msg = if output.status.success() {
             format!(
-                "➖ Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {merged}",
+                "- Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {merged}",
                 req.name
             )
         } else {
@@ -2784,7 +3097,7 @@ impl AsyncCargo {
             let tool_hint = self.generate_tool_hint(&doc_id, "documentation generation");
             let timestamp = timestamp::format_current_time();
             Ok(CallToolResult::success(vec![Content::text(format!(
-                "📚 Documentation generation {doc_id} started at {timestamp} in the background.{tool_hint}"
+                "Documentation generation {doc_id} started at {timestamp} in the background.{tool_hint}"
             ))]))
         }
     }
@@ -2840,7 +3153,7 @@ impl AsyncCargo {
 
             let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("doc"));
             Ok(format!(
-                "📚 Documentation generation completed successfully{working_dir_msg}.\nDocumentation generated at: {doc_path}\nThe generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.\n💡 Tip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.\n\nOutput: {merged}"
+                "Documentation generation completed successfully{working_dir_msg}.\nDocumentation generated at: {doc_path}\nThe generated documentation provides comprehensive API information that can be used by LLMs for more accurate and up-to-date project understanding.\nTip: Use this documentation to get the latest API details, examples, and implementation notes that complement the source code.\n\nOutput: {merged}"
             ))
         } else {
             Err(format!(
@@ -2990,8 +3303,8 @@ impl AsyncCargo {
         if nextest_check.is_err() || !nextest_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
                 r#"- Nextest operation #{nextest_id} failed: cargo-nextest is not installed. 
-📦 Install with: cargo install cargo-nextest
-🔄 Falling back to regular cargo test is recommended."#
+Install with: cargo install cargo-nextest
+Falling back to regular cargo test is recommended."#
             ))]));
         }
 
@@ -3615,7 +3928,7 @@ impl AsyncCargo {
         if output.status.success() {
             let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("bench"));
             Ok(format!(
-                "🏃‍♂️ Benchmark operation completed successfully{working_dir_msg}.\nOutput: {merged}"
+                "Benchmark operation completed successfully{working_dir_msg}.\nOutput: {merged}"
             ))
         } else {
             let merged = merge_outputs(&stdout, &stderr, &Self::no_output_placeholder("bench"));
@@ -3764,8 +4077,8 @@ impl AsyncCargo {
         if upgrade_check.is_err() || !upgrade_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
                 "- Upgrade operation #{upgrade_id} failed: cargo-edit with upgrade command is not installed. 
-📦 Install with: cargo install cargo-edit
-🔄 Falling back to regular cargo update is recommended."
+Install with: cargo install cargo-edit
+Falling back to regular cargo update is recommended."
             ))]));
         }
 
@@ -3839,7 +4152,7 @@ impl AsyncCargo {
                 ""
             };
             Ok(format!(
-                "⬆️ Upgrade operation #{upgrade_id} completed successfully{working_dir_msg}{dry_run_msg}.\nOutput: {merged}"
+                "Upgrade operation #{upgrade_id} completed successfully{working_dir_msg}{dry_run_msg}.\nOutput: {merged}"
             ))
         } else {
             Err(format!(
@@ -3867,8 +4180,8 @@ impl AsyncCargo {
         if audit_check.is_err() || !audit_check.unwrap().status.success() {
             return Ok(CallToolResult::success(vec![Content::text(format!(
                 "- Audit operation #{audit_id} failed: cargo-audit is not installed. 
-📦 Install with: cargo install cargo-audit
-🔒 This tool scans for known security vulnerabilities in dependencies."
+Install with: cargo install cargo-audit
+This tool scans for known security vulnerabilities in dependencies."
             ))]));
         }
 
@@ -4105,8 +4418,8 @@ impl AsyncCargo {
         if fmt_check.is_err() || !fmt_check.unwrap().status.success() {
             return Err(format!(
                 "- Format operation failed: rustfmt is not installed in {}. 
-📦 Install with: rustup component add rustfmt
-✨ This tool formats Rust code according to style guidelines.",
+Install with: rustup component add rustfmt
+This tool formats Rust code according to style guidelines.",
                 &req.working_directory
             ));
         }
@@ -4278,7 +4591,7 @@ impl AsyncCargo {
 
         let result_msg = if output.status.success() {
             format!(
-                "📋 Version operation completed successfully.\nCargo version information:\n{merged}"
+                "Version operation completed successfully.\nCargo version information:\n{merged}"
             )
         } else {
             format!("- Version operation failed.\nErrors: {stderr}\nOutput: {merged}")
@@ -4423,7 +4736,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             Ok(format!(
-                "📦 Fetch operation completed successfully{working_dir_msg}.\nDependencies fetched:\n{merged}"
+                "Fetch operation completed successfully{working_dir_msg}.\nDependencies fetched:\n{merged}"
             ))
         } else {
             Err(format!(
@@ -4639,7 +4952,7 @@ impl AsyncCargo {
             };
 
             format!(
-                "📊 Metadata operation #{metadata_id} completed successfully{working_dir_msg}{json_validation}.\nProject metadata:\n{merged}"
+                "Metadata operation #{metadata_id} completed successfully{working_dir_msg}{json_validation}.\nProject metadata:\n{merged}"
             )
         } else {
             format!(
@@ -4907,7 +5220,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg = format!(
-                "➕ Add operation completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
+                "+ Add operation completed successfully{working_dir_msg}.\nAdded dependency: {}\nOutput: {stdout}",
                 req.name
             );
 
@@ -4983,7 +5296,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg = format!(
-                "➖ Remove operation completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
+                "- Remove operation completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
                 req.name
             );
 
@@ -5118,8 +5431,8 @@ impl AsyncCargo {
 
         if audit_check.is_err() || !audit_check.unwrap().status.success() {
             let error_msg = r#"- Audit operation failed: cargo-audit is not installed. 
-📦 Install with: cargo install cargo-audit
-🔒 This tool scans for known security vulnerabilities in dependencies."#
+Install with: cargo install cargo-audit
+This tool scans for known security vulnerabilities in dependencies."#
                 .to_string();
 
             let _ = callback
@@ -5173,7 +5486,7 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg = format!(
-                "🔒 Audit completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {stdout}"
+                "Audit completed successfully{working_dir_msg}.\nNo known vulnerabilities found.\nOutput: {stdout}"
             );
 
             // Send completion notification

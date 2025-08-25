@@ -63,6 +63,13 @@ struct Args {
     )]
     synchronous: bool,
 
+    /// Enable wait tool (legacy mode for debugging and specific use cases)
+    #[arg(
+        long,
+        help = "Enable wait tool for legacy workflows. Default behavior pushes results automatically via progress notifications."
+    )]
+    enable_wait: bool,
+
     /// Log to rolling file instead of stderr
     #[arg(long, help = "Write logs to a rolling daily file instead of stderr")]
     log_to_file: bool,
@@ -154,10 +161,20 @@ async fn main() -> Result<()> {
     }
 
     let synchronous_mode = args.synchronous;
+    let enable_wait = args.enable_wait;
+
     if synchronous_mode {
         info!("Synchronous mode enabled - async callbacks disabled for all operations");
     } else {
         info!("Async mode enabled - operations can use async callbacks and notifications");
+    }
+
+    if enable_wait {
+        info!("Wait tool enabled - legacy mode for debugging and specific use cases");
+    } else {
+        info!(
+            "Wait tool disabled - results will be pushed automatically via progress notifications"
+        );
     }
 
     let shell_pool_manager = Arc::new(ShellPoolManager::new(shell_pool_config));
@@ -185,10 +202,11 @@ async fn main() -> Result<()> {
         );
     }
 
-    let service = AsyncCargo::new_with_disabled(
+    let service = AsyncCargo::new_with_config_and_disabled(
         monitor.clone(),
         shell_pool_manager,
         synchronous_mode,
+        enable_wait,
         disabled_tools,
     )
     .serve(stdio())

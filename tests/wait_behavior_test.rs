@@ -96,11 +96,15 @@ async fn test_wait_after_completion() -> Result<()> {
     let temp = create_basic_project().await?;
     let project_path = temp.path().to_str().unwrap().to_string();
 
-    // Start the MCP server
+    // Start the MCP server with wait tool enabled
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;
@@ -167,11 +171,15 @@ async fn test_wait_nonexistent_operation() -> Result<()> {
     let temp = create_basic_project().await?;
     let _project_path = temp.path().to_str().unwrap().to_string();
 
-    // Start the MCP server
+    // Start the MCP server with wait tool enabled
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;
@@ -213,11 +221,15 @@ async fn test_wait_empty_operation_list() -> Result<()> {
     let temp = create_basic_project().await?;
     let _project_path = temp.path().to_str().unwrap().to_string();
 
-    // Start the MCP server
+    // Start the MCP server with wait tool enabled
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;
@@ -254,11 +266,15 @@ async fn test_wait_mixed_real_and_fake_operations() -> Result<()> {
     let temp = create_basic_project().await?;
     let project_path = temp.path().to_str().unwrap().to_string();
 
-    // Start the MCP server
+    // Start the MCP server with wait tool enabled
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;

@@ -42,7 +42,11 @@ async fn test_async_multiple_builds_then_wait_returns_full_outputs() -> Result<(
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run").arg("--bin").arg("async_cargo_mcp");
+                cmd.arg("run")
+                    .arg("--bin")
+                    .arg("async_cargo_mcp")
+                    .arg("--")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;

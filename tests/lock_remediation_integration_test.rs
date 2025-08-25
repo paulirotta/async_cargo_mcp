@@ -55,7 +55,7 @@ async fn wait_timeout_with_lock_detects_and_guides() -> Result<()> {
     let project_path = temp.path().to_path_buf();
     let lock_path = ensure_lock(&project_path);
 
-    // Start server with small timeout
+    // Start server with small timeout and wait tool enabled
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
@@ -64,7 +64,8 @@ async fn wait_timeout_with_lock_detects_and_guides() -> Result<()> {
                     .arg("async_cargo_mcp")
                     .arg("--")
                     .arg("--timeout")
-                    .arg("1");
+                    .arg("1")
+                    .arg("--enable-wait");
             },
         ))?)
         .await?;

@@ -81,45 +81,52 @@ fn test_cargo_lock_action_from_letter() {
 
 #[test]
 fn test_cargo_lock_action_from_str() {
-    // Test parsing from string
-    assert_eq!(CargoLockAction::from_str("A"), Some(CargoLockAction::A));
+    // Test parsing from string using the new FromStr trait
+    assert_eq!("A".parse::<CargoLockAction>(), Ok(CargoLockAction::A));
     assert_eq!(
-        CargoLockAction::from_str("delete-and-clean"),
-        Some(CargoLockAction::A)
+        "delete-and-clean".parse::<CargoLockAction>(),
+        Ok(CargoLockAction::A)
     );
     assert_eq!(
-        CargoLockAction::from_str("delete_and_clean"),
-        Some(CargoLockAction::A)
-    );
-
-    assert_eq!(CargoLockAction::from_str("B"), Some(CargoLockAction::B));
-    assert_eq!(
-        CargoLockAction::from_str("delete-only"),
-        Some(CargoLockAction::B)
-    );
-    assert_eq!(
-        CargoLockAction::from_str("delete_only"),
-        Some(CargoLockAction::B)
+        "delete_and_clean".parse::<CargoLockAction>(),
+        Ok(CargoLockAction::A)
     );
 
-    assert_eq!(CargoLockAction::from_str("C"), Some(CargoLockAction::C));
-    assert_eq!(CargoLockAction::from_str("no-op"), Some(CargoLockAction::C));
-    assert_eq!(CargoLockAction::from_str("noop"), Some(CargoLockAction::C));
+    assert_eq!("B".parse::<CargoLockAction>(), Ok(CargoLockAction::B));
     assert_eq!(
-        CargoLockAction::from_str("do-nothing"),
-        Some(CargoLockAction::C)
+        "delete-only".parse::<CargoLockAction>(),
+        Ok(CargoLockAction::B)
+    );
+    assert_eq!(
+        "delete_only".parse::<CargoLockAction>(),
+        Ok(CargoLockAction::B)
+    );
+
+    assert_eq!("C".parse::<CargoLockAction>(), Ok(CargoLockAction::C));
+    assert_eq!("no-op".parse::<CargoLockAction>(), Ok(CargoLockAction::C));
+    assert_eq!("noop".parse::<CargoLockAction>(), Ok(CargoLockAction::C));
+    assert_eq!(
+        "do-nothing".parse::<CargoLockAction>(),
+        Ok(CargoLockAction::C)
     );
 
     // Test case insensitive
-    assert_eq!(CargoLockAction::from_str("a"), Some(CargoLockAction::A));
+    assert_eq!("a".parse::<CargoLockAction>(), Ok(CargoLockAction::A));
     assert_eq!(
-        CargoLockAction::from_str("DELETE-AND-CLEAN"),
-        Some(CargoLockAction::A)
+        "DELETE-AND-CLEAN".parse::<CargoLockAction>(),
+        Ok(CargoLockAction::A)
     );
 
-    // Test unknown
-    assert_eq!(CargoLockAction::from_str("unknown"), None);
-    assert_eq!(CargoLockAction::from_str(""), None);
+    // Test unknown cases
+    assert!("unknown".parse::<CargoLockAction>().is_err());
+    assert!("".parse::<CargoLockAction>().is_err());
+
+    // Test the convenience method
+    assert_eq!(
+        CargoLockAction::from_string("A"),
+        Some(CargoLockAction::A)
+    );
+    assert_eq!(CargoLockAction::from_string("unknown"), None);
 }
 
 #[test]

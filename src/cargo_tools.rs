@@ -96,20 +96,30 @@ impl DependencySection {
         }
     }
 
-    /// Parse from string representation
-    pub fn from_str(s: &str) -> Option<Self> {
+    /// Parse from string representation (case-insensitive)
+    /// Supports: "dev", "build", "target:name"
+    pub fn from_string(s: &str) -> Option<Self> {
+        s.parse().ok()
+    }
+}
+
+impl std::str::FromStr for DependencySection {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "dev" => Some(DependencySection::Dev),
-            "build" => Some(DependencySection::Build),
+            "dev" => Ok(DependencySection::Dev),
+            "build" => Ok(DependencySection::Build),
             s if s.starts_with("target:") => {
-                let target = s.strip_prefix("target:")?;
+                let target = s.strip_prefix("target:")
+                    .ok_or_else(|| "Invalid target format".to_string())?;
                 if target.is_empty() {
-                    None
+                    Err("Target name cannot be empty".to_string())
                 } else {
-                    Some(DependencySection::Target(target.to_string()))
+                    Ok(DependencySection::Target(target.to_string()))
                 }
             }
-            _ => None,
+            _ => Err(format!("Invalid dependency section: '{}'", s)),
         }
     }
 }
@@ -583,16 +593,24 @@ impl CargoLockAction {
     }
 
     /// Parse from string representation (case insensitive, supports multiple formats)
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_string(s: &str) -> Option<Self> {
+        s.parse().ok()
+    }
+}
+
+impl std::str::FromStr for CargoLockAction {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.to_lowercase();
         match s.as_str() {
-            "a" => Some(CargoLockAction::A),
-            "delete-and-clean" | "delete_and_clean" => Some(CargoLockAction::A),
-            "b" => Some(CargoLockAction::B),
-            "delete-only" | "delete_only" => Some(CargoLockAction::B),
-            "c" => Some(CargoLockAction::C),
-            "no-op" | "noop" | "do-nothing" => Some(CargoLockAction::C),
-            _ => None,
+            "a" => Ok(CargoLockAction::A),
+            "delete-and-clean" | "delete_and_clean" => Ok(CargoLockAction::A),
+            "b" => Ok(CargoLockAction::B),
+            "delete-only" | "delete_only" => Ok(CargoLockAction::B),
+            "c" => Ok(CargoLockAction::C),
+            "no-op" | "noop" | "do-nothing" => Ok(CargoLockAction::C),
+            _ => Err(format!("Invalid cargo lock action: '{}'", s)),
         }
     }
 }

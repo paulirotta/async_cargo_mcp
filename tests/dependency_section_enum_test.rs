@@ -75,31 +75,39 @@ fn test_dependency_section_target_name() {
 
 #[test]
 fn test_dependency_section_from_string() {
-    // Test parsing from string
+    // Test valid cases using the new FromStr trait
     assert_eq!(
-        DependencySection::from_str("dev"),
-        Some(DependencySection::Dev)
+        "dev".parse::<DependencySection>(),
+        Ok(DependencySection::Dev)
     );
     assert_eq!(
-        DependencySection::from_str("build"),
-        Some(DependencySection::Build)
+        "build".parse::<DependencySection>(),
+        Ok(DependencySection::Build)
     );
     assert_eq!(
-        DependencySection::from_str("target:test"),
-        Some(DependencySection::Target("test".to_string()))
-    );
-
-    // Test case insensitive
-    assert_eq!(
-        DependencySection::from_str("DEV"),
-        Some(DependencySection::Dev)
-    );
-    assert_eq!(
-        DependencySection::from_str("Build"),
-        Some(DependencySection::Build)
+        "target:test".parse::<DependencySection>(),
+        Ok(DependencySection::Target("test".to_string()))
     );
 
-    // Test unknown
-    assert_eq!(DependencySection::from_str("unknown"), None);
-    assert_eq!(DependencySection::from_str(""), None);
+    // Test case insensitivity
+    assert_eq!(
+        "DEV".parse::<DependencySection>(),
+        Ok(DependencySection::Dev)
+    );
+    assert_eq!(
+        "Build".parse::<DependencySection>(),
+        Ok(DependencySection::Build)
+    );
+
+    // Test invalid cases
+    assert!("unknown".parse::<DependencySection>().is_err());
+    assert!("".parse::<DependencySection>().is_err());
+    assert!("target:".parse::<DependencySection>().is_err()); // Empty target name
+
+    // Test the convenience method
+    assert_eq!(
+        DependencySection::from_string("dev"),
+        Some(DependencySection::Dev)
+    );
+    assert_eq!(DependencySection::from_string("unknown"), None);
 }

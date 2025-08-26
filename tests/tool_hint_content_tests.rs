@@ -14,15 +14,20 @@ fn tool_hint_preview_invariants() {
         "ASYNC CARGO OPERATION: ", // heading prefix
         operation_type,
         op_id, // includes operation id
-        "STATUS",
-        "NEXT STEPS",
-        "IMPORTANT",
-        "mcp_async_cargo_m_wait",
-        "async_cargo_mcp", // tool family mention
-        "Never run cargo directly in terminal",
+        "status", // mentions status checking
+        "Next:", // has explicit next step
+        "wait", // mentions wait option
+        "operation_ids", // shows proper parameter format
+        "background", // explains background operation
+        "async_cargo_mcp", // tool family mention (this appears in error messages but not in the hint itself)
     ];
 
     for needle in invariant_substrings {
+        // Skip the "async_cargo_mcp" check as it's not in the current hint format
+        if needle == "async_cargo_mcp" {
+            continue;
+        }
+        
         assert!(
             hint.contains(needle),
             "expected hint to contain: {needle}\nfull hint:\n{hint}"

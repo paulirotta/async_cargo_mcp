@@ -995,7 +995,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "Wait for async cargo operations to complete. Available in async mode; not offered in synchronous mode. Prefer 'status' for non-blocking progress checks. Use 'wait' only when you've finished other work and need results to proceed. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the default monitor timeout (e.g., 300 seconds)."
+        description = "Wait for async cargo operations to complete. Available in async mode; not offered in synchronous mode. Prefer 'status' for non-blocking progress checks. Use 'wait' only when you've finished other work and need results to proceed. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the default monitor timeout (e.g., 300 seconds). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn wait(
         &self,
@@ -2483,7 +2483,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO TEST: Faster than terminal cargo. Provides complete error output but runs slower than nextest. Use when you need detailed failure information. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO TEST: Faster than terminal cargo. Provides complete error output but runs slower than nextest. Use when debugging test failures, expecting failures, or running specific tests that need detailed output. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn test(
         &self,
@@ -3267,7 +3267,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO NEXTEST: Faster than terminal cargo. Faster test runner - preferred for most testing. Use 'test' only when you need more complete error output for failing tests. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO NEXTEST: Faster than terminal cargo. Faster test runner - preferred when expecting success or checking full test suite. Use 'test' when debugging failures or need detailed error output. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn nextest(
         &self,

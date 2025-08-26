@@ -13,12 +13,12 @@ fn tool_hint_preview_invariants() {
     let invariant_substrings = [
         "ASYNC CARGO OPERATION: ", // heading prefix
         operation_type,
-        op_id, // includes operation id
-        "status", // mentions status checking
-        "Next:", // has explicit next step
-        "wait", // mentions wait option
-        "operation_ids", // shows proper parameter format
-        "background", // explains background operation
+        op_id,             // includes operation id
+        "status",          // mentions status checking
+        "Next:",           // has explicit next step
+        "wait",            // mentions wait option
+        "operation_ids",   // shows proper parameter format
+        "background",      // explains background operation
         "async_cargo_mcp", // tool family mention (this appears in error messages but not in the hint itself)
     ];
 
@@ -27,7 +27,7 @@ fn tool_hint_preview_invariants() {
         if needle == "async_cargo_mcp" {
             continue;
         }
-        
+
         assert!(
             hint.contains(needle),
             "expected hint to contain: {needle}\nfull hint:\n{hint}"

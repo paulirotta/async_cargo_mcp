@@ -444,8 +444,6 @@ pub struct AsyncCargo {
     monitor: Arc<OperationMonitor>,
     shell_pool_manager: Arc<ShellPoolManager>,
     synchronous_mode: bool,
-    /// Enable the wait tool (legacy mode for debugging and specific use cases)
-    enable_wait: bool,
     // Per-working-directory concurrency guard to serialize lock-file remediation
     per_dir_mutex: Arc<AsyncRwLock<HashMap<String, Arc<AsyncMutex<()>>>>>,
     disabled_tools: std::collections::HashSet<String>,
@@ -550,7 +548,6 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode: false, // Default to async mode
-            enable_wait: false,      // Default to disabled (push results automatically)
             per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools: Default::default(),
             status_call_counts: Arc::new(AsyncRwLock::new(HashMap::new())),
@@ -567,7 +564,6 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode,
-            enable_wait: false, // Default to disabled
             per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools: Default::default(),
             status_call_counts: Arc::new(AsyncRwLock::new(HashMap::new())),
@@ -581,13 +577,7 @@ impl AsyncCargo {
         synchronous_mode: bool,
         disabled: std::collections::HashSet<String>,
     ) -> Self {
-        Self::new_with_config_and_disabled(
-            monitor,
-            shell_pool_manager,
-            synchronous_mode,
-            false,
-            disabled,
-        )
+        Self::new_with_config_and_disabled(monitor, shell_pool_manager, synchronous_mode, disabled)
     }
 
     /// Create new instance with full configuration including wait tool enablement
@@ -595,7 +585,6 @@ impl AsyncCargo {
         monitor: Arc<OperationMonitor>,
         shell_pool_manager: Arc<ShellPoolManager>,
         synchronous_mode: bool,
-        enable_wait: bool,
         disabled: std::collections::HashSet<String>,
     ) -> Self {
         let disabled_tools = disabled
@@ -607,7 +596,6 @@ impl AsyncCargo {
             monitor,
             shell_pool_manager,
             synchronous_mode,
-            enable_wait,
             per_dir_mutex: Arc::new(AsyncRwLock::new(HashMap::new())),
             disabled_tools,
             status_call_counts: Arc::new(AsyncRwLock::new(HashMap::new())),
@@ -1007,23 +995,17 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "LEGACY TOOL - Wait for async cargo operations to complete. This tool is deprecated in favor of automatic result push via progress notifications. Enable with --enable-wait flag if needed for debugging or specific use cases. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the --timeout CLI parameter (default: 300 seconds). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "Wait for async cargo operations to complete. Available in async mode; not offered in synchronous mode. Prefer 'status' for non-blocking progress checks. Use 'wait' only when you've finished other work and need results to proceed. Operations are waited for concurrently and results returned as soon as all specified operations complete. Timeout is configurable via the default monitor timeout (e.g., 300 seconds). Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
     )]
     async fn wait(
         &self,
         Parameters(req): Parameters<WaitRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        // Check if wait tool is enabled
-        if !self.enable_wait {
-            let hint_message = "The wait tool is disabled by default to encourage more efficient AI workflows.\n\n\
-                               RECOMMENDED APPROACH:\n\
-                               • Async operations automatically push results via $/progress notifications\n\
-                               • Continue with other tasks instead of waiting\n\
-                               • Use the 'status' tool for non-blocking operation queries\n\n\
-                               To enable this legacy tool, restart the server with the --enable-wait flag.";
-
-            return Ok(CallToolResult::success(vec![Content::text(hint_message)]));
+        // In synchronous mode, do not offer wait
+        if self.synchronous_mode {
+            let msg = "'wait' is not available in synchronous mode. Synchronous mode runs operations to completion and returns results directly. Switch to async mode to use 'wait', or prefer 'status' for non-blocking checks.";
+            return Ok(CallToolResult::success(vec![Content::text(msg)]));
         }
 
         // Get the timeout from the monitor's configuration instead of hardcoding it
@@ -2501,7 +2483,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO TEST: Faster than terminal cargo. Provides complete error output but runs slower than nextest. Use when you need detailed failure information. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO TEST: Faster than terminal cargo. Provides complete error output but runs slower than nextest. Use when debugging test failures, expecting failures, or running specific tests that need detailed output. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn test(
         &self,
@@ -3285,7 +3267,7 @@ impl AsyncCargo {
     }
 
     #[tool(
-        description = "CARGO NEXTEST: Faster than terminal cargo. Faster test runner - preferred for most testing. Use 'test' only when you need more complete error output for failing tests. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
+        description = "CARGO NEXTEST: Faster than terminal cargo. Faster test runner - preferred when expecting success or checking full test suite. Use 'test' when debugging failures or need detailed error output. ALWAYS use enable_async_notification=true for test suites to multitask. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal. For operations >1s, set enable_async_notification=true and call mcp_async_cargo_m_wait with specific operation_ids to collect results."
     )]
     async fn nextest(
         &self,

@@ -100,11 +100,8 @@ async fn test_wait_after_completion() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .arg("--")
-                    .arg("--enable-wait");
+                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--");
+                // wait is available by default in async mode
             },
         ))?)
         .await?;
@@ -175,11 +172,8 @@ async fn test_wait_nonexistent_operation() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .arg("--")
-                    .arg("--enable-wait");
+                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--");
+                // wait is available by default in async mode
             },
         ))?)
         .await?;
@@ -225,11 +219,8 @@ async fn test_wait_empty_operation_list() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .arg("--")
-                    .arg("--enable-wait");
+                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--");
+                // wait is available by default in async mode
             },
         ))?)
         .await?;
@@ -270,11 +261,8 @@ async fn test_wait_mixed_real_and_fake_operations() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .arg("--")
-                    .arg("--enable-wait");
+                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--");
+                // wait is available by default in async mode
             },
         ))?)
         .await?;

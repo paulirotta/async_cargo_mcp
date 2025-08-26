@@ -64,8 +64,7 @@ async fn wait_timeout_with_lock_detects_and_guides() -> Result<()> {
                     .arg("async_cargo_mcp")
                     .arg("--")
                     .arg("--timeout")
-                    .arg("1")
-                    .arg("--enable-wait");
+                    .arg("1");
             },
         ))?)
         .await?;

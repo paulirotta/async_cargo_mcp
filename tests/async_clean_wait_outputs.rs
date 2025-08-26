@@ -23,11 +23,7 @@ async fn test_async_clean_then_wait_returns_status() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .arg("--")
-                    .arg("--enable-wait");
+                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--");
             },
         ))?)
         .await?;

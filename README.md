@@ -201,9 +201,6 @@ cargo run --release -- --disable add,remove,update,upgrade
 # Force synchronous execution mode (disables async callbacks for all operations)
 cargo run --release -- --synchronous
 
-# Enable the legacy wait tool (deprecated - results pushed automatically by default)
-cargo run --release -- --enable-wait
-
 # Combine options as needed
 cargo run --release -- --shell-pool-size 3 --max-shells 30 --synchronous
 ```
@@ -235,19 +232,20 @@ Commands support both synchronous and asynchronous execution. For long-running o
 }
 ```
 
-When async is enabled, use the `wait` command to collect results:
+When async is enabled, prefer `status` to check progress. Use `wait` only if blocked and you need results to proceed:
 
-- `wait` with `operation_ids` - wait for specific operations by providing their IDs (required)
+- `wait` with `operation_ids` waits for specific operations by ID.
 
 Notes about `wait` semantics:
 
-- Only `operation_ids` are accepted in the payload; unknown fields are rejected for safety. Configure timeouts via the server CLI (e.g., `--timeout 30`).
-- On timeout, the server provides a helpful message including how long it waited. If a `target/.cargo-lock` is detected, the server will attempt an elicitation flow to resolve it or provide fallback instructions using the `cargo_lock_remediation` tool.
+- Available only in async mode (default). It’s not offered in synchronous mode.
+- Only `operation_ids` are accepted; unknown fields are rejected. Configure timeouts via the server CLI (e.g., `--timeout 30`).
+- On timeout, you’ll get a clear message including how long it waited. If a `target/.cargo-lock` issue is detected, the server suggests remediation using the `cargo_lock_remediation` tool.
 
 ### Execution Modes
 
-- **Async Mode (default)**: Operations can run in the background with notifications when `enable_async_notification: true`
-- **Synchronous Mode**: Use `--synchronous` CLI flag to force all operations to run synchronously, ignoring `enable_async_notification` parameter
+- **Async Mode (default)**: Operations can run in the background with notifications when `enable_async_notification: true`. `wait` is available but discouraged; prefer `status`.
+- **Synchronous Mode**: Use `--synchronous` to run all operations synchronously. `wait` is not offered in this mode.
 
 ### Selectively Disabling Tools
 

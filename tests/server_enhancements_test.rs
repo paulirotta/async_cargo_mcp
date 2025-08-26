@@ -1,7 +1,7 @@
 //! Test the new server-side enhancements
 //!
 //! This test verifies:
-//! 1. CLI flag for enable_wait works
+//! 1. Wait availability is based on synchronous mode (no enable flag)
 //! 2. Status tool functions properly
 //! 3. Automatic result push system works
 //! 4. Wait tool is properly disabled by default
@@ -21,27 +21,25 @@ async fn test_enable_wait_flag_functionality() {
     let shell_pool_config = ShellPoolConfig::default();
     let shell_pool_manager = Arc::new(ShellPoolManager::new(shell_pool_config));
 
-    // Test with wait disabled (default)
-    let cargo_disabled = AsyncCargo::new_with_config_and_disabled(
+    // Test with synchronous mode (wait unavailable)
+    let cargo_sync = AsyncCargo::new_with_config_and_disabled(
         monitor.clone(),
         shell_pool_manager.clone(),
-        false, // synchronous mode
-        false, // enable_wait = false
+        true, // synchronous mode
         HashSet::new(),
     );
 
-    // Test with wait enabled
-    let cargo_enabled = AsyncCargo::new_with_config_and_disabled(
+    // Test with async mode (wait available)
+    let cargo_async = AsyncCargo::new_with_config_and_disabled(
         monitor.clone(),
         shell_pool_manager.clone(),
-        false, // synchronous mode
-        true,  // enable_wait = true
+        false, // asynchronous mode
         HashSet::new(),
     );
 
-    // Both should be valid instances
-    assert!(format!("{:?}", cargo_disabled).contains("enable_wait: false"));
-    assert!(format!("{:?}", cargo_enabled).contains("enable_wait: true"));
+    // Instances should reflect synchronous flag
+    assert!(format!("{:?}", cargo_sync).contains("synchronous_mode: true"));
+    assert!(format!("{:?}", cargo_async).contains("synchronous_mode: false"));
 }
 
 #[tokio::test]

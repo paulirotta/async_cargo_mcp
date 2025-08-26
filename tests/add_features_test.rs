@@ -57,9 +57,9 @@ async fn test_add_with_features() -> Result<()> {
     // Verify the dependency was added correctly by reading Cargo.toml
     let cargo_toml_path = temp_project.path().join("Cargo.toml");
     let cargo_toml_content = fs::read_to_string(cargo_toml_path).await?;
-    
+
     println!("Cargo.toml content: {}", cargo_toml_content);
-    
+
     // Check if serde was added with the derive feature
     assert!(cargo_toml_content.contains("serde"));
     assert!(cargo_toml_content.contains("derive"));
@@ -102,9 +102,9 @@ async fn test_add_with_no_default_features() -> Result<()> {
     // Verify the dependency was added with no default features
     let cargo_toml_path = temp_project.path().join("Cargo.toml");
     let cargo_toml_content = fs::read_to_string(cargo_toml_path).await?;
-    
+
     println!("Cargo.toml content: {}", cargo_toml_content);
-    
+
     // Check if tokio was added with no default features
     assert!(cargo_toml_content.contains("tokio"));
     assert!(cargo_toml_content.contains("default-features = false"));

@@ -25,6 +25,122 @@ pub enum OperationState {
     TimedOut,
 }
 
+impl Default for OperationState {
+    fn default() -> Self {
+        Self::Pending
+    }
+}
+
+impl OperationState {
+    /// Check if this state represents an active (non-terminal) operation
+    pub fn is_active(&self) -> bool {
+        matches!(self, Self::Pending | Self::Running)
+    }
+
+    /// Check if this state represents a terminal (completed) operation
+    pub fn is_terminal(&self) -> bool {
+        matches!(
+            self,
+            Self::Completed | Self::Failed | Self::Cancelled | Self::TimedOut
+        )
+    }
+
+    /// Check if this state represents a successful completion
+    pub fn is_success(&self) -> bool {
+        matches!(self, Self::Completed)
+    }
+
+    /// Check if this state represents a failure (any non-success terminal state)
+    pub fn is_failure(&self) -> bool {
+        matches!(self, Self::Failed | Self::Cancelled | Self::TimedOut)
+    }
+
+    /// Get the uppercase string representation (for status display)
+    pub fn as_status_string(&self) -> &'static str {
+        match self {
+            Self::Pending => "PENDING",
+            Self::Running => "RUNNING",
+            Self::Completed => "COMPLETED",
+            Self::Failed => "FAILED",
+            Self::Cancelled => "CANCELLED",
+            Self::TimedOut => "TIMED_OUT",
+        }
+    }
+
+    /// Get the lowercase string representation (for filtering)
+    pub fn as_lowercase_string(&self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Running => "running",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+            Self::Cancelled => "cancelled",
+            Self::TimedOut => "timedout",
+        }
+    }
+
+    /// Check if this state can legally transition to another state
+    pub fn can_transition_to(&self, target: &OperationState) -> bool {
+        match (self, target) {
+            // From Pending: can go to Running or be Cancelled
+            (Self::Pending, Self::Running | Self::Cancelled) => true,
+            // From Running: can go to any terminal state
+            (Self::Running, Self::Completed | Self::Failed | Self::Cancelled | Self::TimedOut) => {
+                true
+            }
+            // Terminal states cannot transition anywhere
+            (terminal, _) if terminal.is_terminal() => false,
+            // All other transitions are invalid
+            _ => false,
+        }
+    }
+
+    /// Parse a state from a filter string (case-insensitive)
+    pub fn from_filter_string(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "pending" => Some(Self::Pending),
+            "running" => Some(Self::Running),
+            "completed" => Some(Self::Completed),
+            "failed" => Some(Self::Failed),
+            "cancelled" => Some(Self::Cancelled),
+            "timedout" => Some(Self::TimedOut),
+            _ => None,
+        }
+    }
+
+    /// Get a category string for progress reporting
+    pub fn progress_category(&self) -> &'static str {
+        match self {
+            Self::Pending => "waiting",
+            Self::Running => "active",
+            Self::Completed => "success",
+            Self::Failed => "error",
+            Self::Cancelled => "cancelled",
+            Self::TimedOut => "timeout",
+        }
+    }
+
+    /// Get all active state variants
+    pub fn all_active_states() -> Vec<Self> {
+        vec![Self::Pending, Self::Running]
+    }
+
+    /// Get all terminal state variants
+    pub fn all_terminal_states() -> Vec<Self> {
+        vec![
+            Self::Completed,
+            Self::Failed,
+            Self::Cancelled,
+            Self::TimedOut,
+        ]
+    }
+
+    /// Get all failure state variants
+    pub fn all_failure_states() -> Vec<Self> {
+        vec![Self::Failed, Self::Cancelled, Self::TimedOut]
+    }
+}
+
 /// Information about a running operation
 #[derive(Debug, Clone)]
 pub struct OperationInfo {
@@ -75,10 +191,7 @@ impl OperationInfo {
 
     /// Check if the operation is still active (running or pending)
     pub fn is_active(&self) -> bool {
-        matches!(
-            self.state,
-            OperationState::Pending | OperationState::Running
-        )
+        self.state.is_active()
     }
 
     /// Mark the operation as completed with a result
@@ -704,16 +817,11 @@ impl OperationMonitor {
         // If not in completion history, check active operations
         loop {
             if let Some(operation) = self.get_operation(operation_id).await {
-                match operation.state {
-                    OperationState::Completed
-                    | OperationState::Failed
-                    | OperationState::Cancelled => {
-                        return Ok(vec![operation]);
-                    }
-                    _ => {
-                        // Operation is still in progress, wait a bit
-                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                    }
+                if operation.state.is_terminal() {
+                    return Ok(vec![operation]);
+                } else {
+                    // Operation is still in progress, wait a bit
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                 }
             } else {
                 // Check completion history one more time in case operation completed

@@ -169,6 +169,74 @@ impl fmt::Display for ProgressUpdate {
     }
 }
 
+impl ProgressUpdate {
+    /// Check if this update represents a terminal state (operation is complete)
+    pub fn is_terminal(&self) -> bool {
+        matches!(
+            self,
+            ProgressUpdate::Completed { .. }
+                | ProgressUpdate::Failed { .. }
+                | ProgressUpdate::Cancelled { .. }
+                | ProgressUpdate::FinalResult { .. }
+        )
+    }
+
+    /// Check if this update represents a successful completion
+    pub fn is_success(&self) -> bool {
+        match self {
+            ProgressUpdate::Completed { .. } => true,
+            ProgressUpdate::FinalResult { success, .. } => *success,
+            _ => false,
+        }
+    }
+
+    /// Check if this update represents a failure (failed or cancelled)
+    pub fn is_failure(&self) -> bool {
+        match self {
+            ProgressUpdate::Failed { .. } | ProgressUpdate::Cancelled { .. } => true,
+            ProgressUpdate::FinalResult { success, .. } => !*success,
+            _ => false,
+        }
+    }
+
+    /// Get the operation ID from any update variant
+    pub fn operation_id(&self) -> &str {
+        match self {
+            ProgressUpdate::Started { operation_id, .. }
+            | ProgressUpdate::Progress { operation_id, .. }
+            | ProgressUpdate::Output { operation_id, .. }
+            | ProgressUpdate::Completed { operation_id, .. }
+            | ProgressUpdate::Failed { operation_id, .. }
+            | ProgressUpdate::Cancelled { operation_id, .. }
+            | ProgressUpdate::FinalResult { operation_id, .. } => operation_id,
+        }
+    }
+
+    /// Get the duration in milliseconds if this update contains timing information
+    pub fn duration_ms(&self) -> Option<u64> {
+        match self {
+            ProgressUpdate::Completed { duration_ms, .. }
+            | ProgressUpdate::Failed { duration_ms, .. }
+            | ProgressUpdate::Cancelled { duration_ms, .. }
+            | ProgressUpdate::FinalResult { duration_ms, .. } => Some(*duration_ms),
+            _ => None,
+        }
+    }
+
+    /// Get the variant name as a string for logging and debugging
+    pub fn variant_name(&self) -> &'static str {
+        match self {
+            ProgressUpdate::Started { .. } => "Started",
+            ProgressUpdate::Progress { .. } => "Progress",
+            ProgressUpdate::Output { .. } => "Output",
+            ProgressUpdate::Completed { .. } => "Completed",
+            ProgressUpdate::Failed { .. } => "Failed",
+            ProgressUpdate::Cancelled { .. } => "Cancelled",
+            ProgressUpdate::FinalResult { .. } => "FinalResult",
+        }
+    }
+}
+
 /// Trait for sending progress updates during cargo operations
 /// This allows for different callback implementations (MCP notifications, logging, etc.)
 #[async_trait]
@@ -199,6 +267,49 @@ pub enum CallbackError {
     Cancelled,
     #[error("Callback timeout: {0}")]
     Timeout(String),
+}
+
+impl CallbackError {
+    /// Check if this error represents a potentially recoverable condition
+    pub fn is_recoverable(&self) -> bool {
+        matches!(
+            self,
+            CallbackError::SendFailed(_) | CallbackError::Timeout(_)
+        )
+    }
+
+    /// Check if this error was caused by user action
+    pub fn is_user_initiated(&self) -> bool {
+        matches!(self, CallbackError::Cancelled)
+    }
+
+    /// Get error code for programmatic handling
+    pub fn error_code(&self) -> &'static str {
+        match self {
+            CallbackError::SendFailed(_) => "SEND_FAILED",
+            CallbackError::Disconnected => "DISCONNECTED",
+            CallbackError::Cancelled => "CANCELLED",
+            CallbackError::Timeout(_) => "TIMEOUT",
+        }
+    }
+
+    /// Get severity level for logging
+    pub fn severity(&self) -> &'static str {
+        match self {
+            CallbackError::SendFailed(_)
+            | CallbackError::Disconnected
+            | CallbackError::Timeout(_) => "ERROR",
+            CallbackError::Cancelled => "WARN", // User action, less severe
+        }
+    }
+
+    /// Get detailed message if available
+    pub fn message_detail(&self) -> Option<&str> {
+        match self {
+            CallbackError::SendFailed(msg) | CallbackError::Timeout(msg) => Some(msg),
+            CallbackError::Disconnected | CallbackError::Cancelled => None,
+        }
+    }
 }
 
 /// Channel-based callback sender for async communication

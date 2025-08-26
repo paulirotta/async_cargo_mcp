@@ -69,7 +69,7 @@ impl DependencySection {
         match self {
             DependencySection::Dev => cmd.arg("--dev"),
             DependencySection::Build => cmd.arg("--build"),
-            DependencySection::Target(target) => cmd.args(&["--target", target]),
+            DependencySection::Target(target) => cmd.args(["--target", target]),
         }
     }
 

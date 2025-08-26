@@ -98,10 +98,7 @@ This section outlines prioritized ideas for improving the server and the AI's in
 
 - **Profile-Guided Optimization (PGO) Support**: Abstract the multi-step PGO process into a single, powerful async tool.
 - **Cross-Compilation Management**: Simplify cross-compilation by adding a tool that checks for and installs required `rustup` targets before a `--target` build.
-- **Enhanced Dependency Management**: Allow specifying features when adding a dependency (e.g., `add --name serde --features derive`).
 
 ### Tier 3: Ecosystem & Enterprise
 
 - **Remote Cargo Execution**: Support for running `cargo` commands on a remote or containerized development environment.
-- **Build Artifact Caching**: Intelligent caching and invalidation of build artifacts across different operations.
-- **Windows PowerShell Support**: Add a `PowerShell` pool for first-class support on Windows.

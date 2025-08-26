@@ -40,12 +40,27 @@ fn merge_outputs(stdout: &str, stderr: &str, empty_placeholder: &str) -> String 
     format!("{s}\n\n{e}")
 }
 
+/// Dependency section specification for cargo add/remove commands
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
+pub enum DependencySection {
+    /// Add/remove as development dependency (--dev)
+    Dev,
+    /// Add/remove as build dependency (--build)
+    Build,
+    /// Add/remove as target dependency (--target TARGET)
+    Target(String),
+}
+
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct DependencyRequest {
     pub name: String,
     pub version: Option<String>,
     pub features: Option<Vec<String>>,
+    /// Do not activate the `default` feature
+    pub no_default_features: Option<bool>,
     pub optional: Option<bool>,
+    /// Dependency section (dev, build, or target)
+    pub section: Option<DependencySection>,
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
     pub enable_async_notification: Option<bool>,
@@ -53,7 +68,14 @@ pub struct DependencyRequest {
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct RemoveDependencyRequest {
-    pub name: String,
+    /// Single dependency name for backward compatibility
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Dependencies to be removed (multiple dependencies supported)
+    #[serde(default)]
+    pub names: Vec<String>,
+    /// Dependency section (dev, build, or target)
+    pub section: Option<DependencySection>,
     pub working_directory: String,
     /// Enable async callback notifications for operation progress
     pub enable_async_notification: Option<bool>,
@@ -449,6 +471,26 @@ pub struct AsyncCargo {
     disabled_tools: std::collections::HashSet<String>,
     // Track status calls per operation to detect polling patterns
     status_call_counts: Arc<AsyncRwLock<HashMap<String, u32>>>,
+}
+
+/// Apply dependency section arguments to a cargo command
+fn apply_dependency_section_args(
+    cmd: &mut tokio::process::Command,
+    section: &Option<DependencySection>,
+) {
+    if let Some(section) = section {
+        match section {
+            DependencySection::Dev => {
+                cmd.arg("--dev");
+            }
+            DependencySection::Build => {
+                cmd.arg("--build");
+            }
+            DependencySection::Target(target) => {
+                cmd.arg("--target").arg(target);
+            }
+        }
+    }
 }
 
 impl Default for AsyncCargo {
@@ -2881,10 +2923,18 @@ impl AsyncCargo {
             cmd.arg("--features").arg(features.join(","));
         }
 
+        // Add no-default-features flag
+        if req.no_default_features.unwrap_or(false) {
+            cmd.arg("--no-default-features");
+        }
+
         // Add optional flag
         if req.optional.unwrap_or(false) {
             cmd.arg("--optional");
         }
+
+        // Apply dependency section arguments
+        apply_dependency_section_args(&mut cmd, &req.section);
 
         let output = cmd.output().await.map_err(|e| {
             ErrorData::internal_error(format!("Failed to execute cargo add: {e}"), None)
@@ -2915,15 +2965,35 @@ impl AsyncCargo {
     )]
     async fn remove(
         &self,
-        Parameters(req): Parameters<RemoveDependencyRequest>,
+        Parameters(mut req): Parameters<RemoveDependencyRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let remove_id = self.generate_operation_id_for("remove");
+
+        // Handle backward compatibility: if name is provided and names is empty, use name
+        if req.names.is_empty() {
+            if let Some(name) = &req.name {
+                req.names = vec![name.clone()];
+            } else {
+                return Err(ErrorData::invalid_params(
+                    "Either 'name' or 'names' must be provided",
+                    None,
+                ));
+            }
+        }
 
         // Always use synchronous execution for Cargo.toml modifications
         use tokio::process::Command;
 
         let mut cmd = Command::new("cargo");
-        cmd.arg("remove").arg(&req.name);
+        cmd.arg("remove");
+
+        // Add all dependency names
+        for name in &req.names {
+            cmd.arg(name);
+        }
+
+        // Apply dependency section arguments
+        apply_dependency_section_args(&mut cmd, &req.section);
 
         // Set working directory
         cmd.current_dir(&req.working_directory);
@@ -2936,17 +3006,18 @@ impl AsyncCargo {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         let working_dir_msg = format!(" in {}", &req.working_directory);
+        let deps_list = req.names.join(", ");
 
         let merged = merge_outputs(&stdout, &stderr, "(no remove output captured)");
         let result_msg = if output.status.success() {
             format!(
-                "- Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {merged}",
-                req.name
+                "- Remove operation #{remove_id} completed successfully{working_dir_msg}.\nRemoved dependencies: {}\nOutput: {merged}",
+                deps_list
             )
         } else {
             format!(
-                "- Remove operation #{remove_id} failed{working_dir_msg}.\nDependency: {}\nErrors: {stderr}\nOutput: {merged}",
-                req.name
+                "- Remove operation #{remove_id} failed{working_dir_msg}.\nDependencies: {}\nErrors: {stderr}\nOutput: {merged}",
+                deps_list
             )
         };
 
@@ -5153,7 +5224,33 @@ impl AsyncCargo {
         let callback = callback.unwrap_or_else(|| no_callback());
 
         // Send start notification
-        let cmd_str = format!("cargo add {}", req.name);
+        let mut cmd_args = vec!["cargo".to_string(), "add".to_string(), req.name.clone()];
+        if let Some(version) = &req.version {
+            cmd_args.extend(vec!["--vers".to_string(), version.clone()]);
+        }
+        if let Some(features) = &req.features
+            && !features.is_empty()
+        {
+            cmd_args.extend(vec!["--features".to_string(), features.join(",")]);
+        }
+        if req.no_default_features.unwrap_or(false) {
+            cmd_args.push("--no-default-features".to_string());
+        }
+        if let Some(true) = req.optional {
+            cmd_args.push("--optional".to_string());
+        }
+        // Add dependency section args to command display
+        if let Some(section) = &req.section {
+            match section {
+                DependencySection::Dev => cmd_args.push("--dev".to_string()),
+                DependencySection::Build => cmd_args.push("--build".to_string()),
+                DependencySection::Target(target) => {
+                    cmd_args.push("--target".to_string());
+                    cmd_args.push(target.clone());
+                }
+            }
+        }
+        let cmd_str = cmd_args.join(" ");
         let _ = callback
             .send_progress(ProgressUpdate::Started {
                 operation_id: operation_id.clone(),
@@ -5183,10 +5280,18 @@ impl AsyncCargo {
             cmd.arg("--features").arg(features.join(","));
         }
 
+        // Add no-default-features flag
+        if req.no_default_features.unwrap_or(false) {
+            cmd.arg("--no-default-features");
+        }
+
         // Add optional flag
         if req.optional.unwrap_or(false) {
             cmd.arg("--optional");
         }
+
+        // Apply dependency section arguments
+        apply_dependency_section_args(&mut cmd, &req.section);
 
         // Execute command and collect full output
         let output = cmd
@@ -5238,10 +5343,19 @@ impl AsyncCargo {
     /// Remove a dependency with optional async callback notifications
     pub async fn remove_with_callback(
         &self,
-        req: RemoveDependencyRequest,
+        mut req: RemoveDependencyRequest,
         callback: Option<Box<dyn CallbackSender>>,
     ) -> Result<String, String> {
         use tokio::process::Command;
+
+        // Handle backward compatibility: if name is provided and names is empty, use name
+        if req.names.is_empty() {
+            if let Some(name) = &req.name {
+                req.names = vec![name.clone()];
+            } else {
+                return Err("Either 'name' or 'names' must be provided".to_string());
+            }
+        }
 
         let operation_id = self.generate_operation_id_for("remove");
         let start_time = Instant::now();
@@ -5249,17 +5363,41 @@ impl AsyncCargo {
         let callback = callback.unwrap_or_else(|| no_callback());
 
         // Send start notification
-        let cmd_str = format!("cargo remove {}", req.name);
+        let deps_list = req.names.join(", ");
+        let mut cmd_args = vec!["cargo".to_string(), "remove".to_string()];
+        cmd_args.extend(req.names.iter().cloned());
+
+        // Add dependency section args to command display
+        if let Some(section) = &req.section {
+            match section {
+                DependencySection::Dev => cmd_args.push("--dev".to_string()),
+                DependencySection::Build => cmd_args.push("--build".to_string()),
+                DependencySection::Target(target) => {
+                    cmd_args.push("--target".to_string());
+                    cmd_args.push(target.clone());
+                }
+            }
+        }
+
+        let cmd_str = cmd_args.join(" ");
         let _ = callback
             .send_progress(ProgressUpdate::Started {
                 operation_id: operation_id.clone(),
                 command: cmd_str.clone(),
-                description: format!("Removing dependency: {}", req.name),
+                description: format!("Removing dependencies: {}", deps_list),
             })
             .await;
 
         let mut cmd = Command::new("cargo");
-        cmd.arg("remove").arg(&req.name);
+        cmd.arg("remove");
+
+        // Add all dependency names
+        for name in &req.names {
+            cmd.arg(name);
+        }
+
+        // Apply dependency section arguments
+        apply_dependency_section_args(&mut cmd, &req.section);
 
         // Set working directory
         cmd.current_dir(&req.working_directory);
@@ -5278,8 +5416,8 @@ impl AsyncCargo {
 
         if output.status.success() {
             let success_msg = format!(
-                "- Remove operation completed successfully{working_dir_msg}.\nRemoved dependency: {}\nOutput: {stdout}",
-                req.name
+                "- Remove operation completed successfully{working_dir_msg}.\nRemoved dependencies: {}\nOutput: {stdout}",
+                deps_list
             );
 
             // Send completion notification
@@ -5294,8 +5432,8 @@ impl AsyncCargo {
             Ok(success_msg)
         } else {
             let error_msg = format!(
-                "- Remove operation failed{working_dir_msg}.\nDependency: {}\nError: {stderr}\nOutput: {stdout}",
-                req.name
+                "- Remove operation failed{working_dir_msg}.\nDependencies: {}\nError: {stderr}\nOutput: {stdout}",
+                deps_list
             );
 
             // Send failure notification

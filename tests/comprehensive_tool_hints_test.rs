@@ -23,11 +23,11 @@ mod comprehensive_tool_hints_tests {
             "ASYNC CARGO OPERATION:",
             operation_type,
             op_id,
-            "STATUS",
-            "NEXT STEPS",
-            "IMPORTANT",
-            "mcp_async_cargo_m_wait",
-            "async_cargo_mcp",
+            "The operation is running in the background",
+            "What to do now",
+            "Tips:",
+            "operation_ids",
+            "status",
         ];
 
         println!(

@@ -38,11 +38,7 @@ async fn test_async_build_wait_returns_complete_output_detailed() -> Result<()> 
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .arg("--")
-                    .arg("--enable-wait");
+                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--"); // async mode default; wait available without flag
             },
         ))?)
         .await?;
@@ -116,11 +112,7 @@ async fn test_multiple_async_operations_complete_output() -> Result<()> {
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .arg("--")
-                    .arg("--enable-wait");
+                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--"); // async mode default; wait available without flag
             },
         ))?)
         .await?;

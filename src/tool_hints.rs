@@ -3,27 +3,20 @@
 /// Public helper to preview the standardized tool hint content.
 /// This is a pure function (no async runtime needed) so tests can call it in #[test] contexts.
 pub fn preview(operation_id: &str, operation_type: &str) -> String {
-    // Updated to encourage explicit operation ID usage and batching before waiting
+    // Encourage status over wait and promote productive work while operation runs
     format!(
         "\n\n### ASYNC CARGO OPERATION: {operation_type} (ID: {operation_id})\n\
-1. **STATUS**: Operation is running in the background - DO NOT assume it's complete\n\
-2. **NEXT STEPS**:\n\
- - Continue thinking about your next steps (planning, coding, testing, summarizing context if that is needed soon) while this tool runs\n\
- - Only when you have finished thinking and you need the results from this `{operation_type}`, call: `mcp_async_cargo_m_wait` with operation_ids=['{operation_id}']\n\
- - For multiple pending operations: call `mcp_async_cargo_m_wait` with operation_ids=['id1', 'id2', ...] to wait for them concurrently\n\
- - **Before you wait**: briefly decide what you'll do next and tell the user.\n\
- - **Consider outcomes**: if you expect success or failure, set expectations and outline follow-ups.\n\
- - **Batch actions**: send any other needed tool calls first, then wait for all relevant operation IDs at once.\n\
-\n\
-**Only call `wait` after you've queued your needed tools and collected all operation IDs you need to wait for.**\n\
-\n\
-+Next step: When you are ready to consume results, call `mcp_async_cargo_m_wait` with operation_ids=['{operation_id}'].\n\n\
-3. **IMPORTANT**:\n\
- - Always use async_cargo_mcp MCP tools for ALL cargo operations\n\
- - Never run cargo directly in terminal\n\
- - Only wait for results when you're ready to use them\n\
- - Always specify explicit operation IDs - never leave operation_ids empty\n\
- - You'll receive a notification with results when complete\n\n\
-Wait only for the specific operation(s) needed for your next step by providing their IDs explicitly.\n\n"
+1. The operation is running in the background — do not assume it’s complete.\n\
+2. What to do now (pick one):\n\
+ - Update the plan with what’s already achieved and list the next concrete steps.\n\
+ - Do unrelated code, tests, or docs not blocked by this `{operation_type}`.\n\
+ - If you’ll need these results soon, schedule a later `status` check instead of polling.\n\
+ - If you have nothing else to do and need results to proceed, use `wait` with operation_ids=['{operation_id}'].\n\
+3. Tips:\n\
+ - Prefer `status` for non-blocking checks; avoid tight polling.\n\
+ - Batch actions: start other needed tools first, then wait for all IDs at once.\n\
+ - Always specify explicit operation IDs; never pass an empty list.\n\
+ - You’ll also receive a completion notification via progress updates.\n\n\
+Next: Continue useful work now. Check `status` later, or `wait` only if you’re blocked.\n\n"
     )
 }

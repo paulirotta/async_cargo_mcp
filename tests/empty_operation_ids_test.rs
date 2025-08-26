@@ -12,15 +12,11 @@ use tokio::process::Command;
 
 #[tokio::test]
 async fn test_wait_with_empty_operation_ids_fails() -> Result<()> {
-    // Start the MCP server with --enable-wait flag to test legacy behavior
+    // Start the MCP server; wait is available by default in async mode
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(
             |cmd| {
-                cmd.arg("run")
-                    .arg("--bin")
-                    .arg("async_cargo_mcp")
-                    .arg("--")
-                    .arg("--enable-wait");
+                cmd.arg("run").arg("--bin").arg("async_cargo_mcp").arg("--");
             },
         ))?)
         .await?;

@@ -111,7 +111,8 @@ impl std::str::FromStr for DependencySection {
             "dev" => Ok(DependencySection::Dev),
             "build" => Ok(DependencySection::Build),
             s if s.starts_with("target:") => {
-                let target = s.strip_prefix("target:")
+                let target = s
+                    .strip_prefix("target:")
                     .ok_or_else(|| "Invalid target format".to_string())?;
                 if target.is_empty() {
                     Err("Target name cannot be empty".to_string())

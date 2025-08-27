@@ -104,10 +104,10 @@ fn test_dependency_section_from_string() {
     assert!("".parse::<DependencySection>().is_err());
     assert!("target:".parse::<DependencySection>().is_err()); // Empty target name
 
-    // Test the convenience method
+    // Test direct .parse() usage (preferred over convenience method)
     assert_eq!(
-        DependencySection::from_string("dev"),
+        "dev".parse::<DependencySection>().ok(),
         Some(DependencySection::Dev)
     );
-    assert_eq!(DependencySection::from_string("unknown"), None);
+    assert_eq!("unknown".parse::<DependencySection>().ok(), None);
 }

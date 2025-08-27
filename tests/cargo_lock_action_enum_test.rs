@@ -121,12 +121,12 @@ fn test_cargo_lock_action_from_str() {
     assert!("unknown".parse::<CargoLockAction>().is_err());
     assert!("".parse::<CargoLockAction>().is_err());
 
-    // Test the convenience method
+    // Test direct .parse() usage (preferred over convenience method)
     assert_eq!(
-        CargoLockAction::from_string("A"),
+        "A".parse::<CargoLockAction>().ok(),
         Some(CargoLockAction::A)
     );
-    assert_eq!(CargoLockAction::from_string("unknown"), None);
+    assert_eq!("unknown".parse::<CargoLockAction>().ok(), None);
 }
 
 #[test]

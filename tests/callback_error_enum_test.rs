@@ -68,10 +68,16 @@ fn test_callback_error_severity() {
 fn test_callback_error_message_detail() {
     // Test extracting detailed message where available
     let send_failed = CallbackError::SendFailed("Network connection lost".to_string());
-    assert_eq!(send_failed.message_detail(), Some("Network connection lost"));
+    assert_eq!(
+        send_failed.message_detail(),
+        Some("Network connection lost")
+    );
 
     let timeout = CallbackError::Timeout("Operation exceeded 30s limit".to_string());
-    assert_eq!(timeout.message_detail(), Some("Operation exceeded 30s limit"));
+    assert_eq!(
+        timeout.message_detail(),
+        Some("Operation exceeded 30s limit")
+    );
 
     let disconnected = CallbackError::Disconnected;
     assert_eq!(disconnected.message_detail(), None);

@@ -95,12 +95,6 @@ impl DependencySection {
             _ => None,
         }
     }
-
-    /// Parse from string representation (case-insensitive)
-    /// Supports: "dev", "build", "target:name"
-    pub fn from_string(s: &str) -> Option<Self> {
-        s.parse().ok()
-    }
 }
 
 impl std::str::FromStr for DependencySection {
@@ -591,11 +585,6 @@ impl CargoLockAction {
             'C' => Some(CargoLockAction::C),
             _ => None,
         }
-    }
-
-    /// Parse from string representation (case insensitive, supports multiple formats)
-    pub fn from_string(s: &str) -> Option<Self> {
-        s.parse().ok()
     }
 }
 
@@ -1110,11 +1099,6 @@ impl AsyncCargo {
     /// Use for success-path Output sections when both streams are empty.
     fn no_output_placeholder(command: &str) -> String {
         format!("(no {command} output captured)")
-    }
-
-    /// Public helper to preview the standardized tool hint content.
-    pub fn tool_hint_preview(operation_id: &str, operation_type: &str) -> String {
-        crate::tool_hints::preview(operation_id, operation_type)
     }
 
     /// Determine if an operation should run synchronously based on CLI flag and request parameter

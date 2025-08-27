@@ -142,7 +142,7 @@ fn test_progress_update_is_failure() {
 #[test]
 fn test_progress_update_operation_id() {
     let test_id = "test_operation_123";
-    
+
     let updates = vec![
         ProgressUpdate::Started {
             operation_id: test_id.to_string(),
@@ -229,46 +229,67 @@ fn test_progress_update_duration_ms() {
 #[test]
 fn test_progress_update_variant_name() {
     let updates = vec![
-        (ProgressUpdate::Started {
-            operation_id: "test".to_string(),
-            command: "cargo build".to_string(),
-            description: "Building".to_string(),
-        }, "Started"),
-        (ProgressUpdate::Progress {
-            operation_id: "test".to_string(),
-            message: "Building...".to_string(),
-            percentage: Some(50.0),
-            current_step: Some("compiling".to_string()),
-        }, "Progress"),
-        (ProgressUpdate::Output {
-            operation_id: "test".to_string(),
-            line: "   Compiling".to_string(),
-            is_stderr: false,
-        }, "Output"),
-        (ProgressUpdate::Completed {
-            operation_id: "test".to_string(),
-            message: "Build successful".to_string(),
-            duration_ms: 1000,
-        }, "Completed"),
-        (ProgressUpdate::Failed {
-            operation_id: "test".to_string(),
-            error: "Build failed".to_string(),
-            duration_ms: 500,
-        }, "Failed"),
-        (ProgressUpdate::Cancelled {
-            operation_id: "test".to_string(),
-            message: "Build cancelled".to_string(),
-            duration_ms: 300,
-        }, "Cancelled"),
-        (ProgressUpdate::FinalResult {
-            operation_id: "test".to_string(),
-            command: "cargo build".to_string(),
-            description: "Building project".to_string(),
-            working_directory: "/path/to/project".to_string(),
-            success: true,
-            duration_ms: 2000,
-            full_output: "Build completed".to_string(),
-        }, "FinalResult"),
+        (
+            ProgressUpdate::Started {
+                operation_id: "test".to_string(),
+                command: "cargo build".to_string(),
+                description: "Building".to_string(),
+            },
+            "Started",
+        ),
+        (
+            ProgressUpdate::Progress {
+                operation_id: "test".to_string(),
+                message: "Building...".to_string(),
+                percentage: Some(50.0),
+                current_step: Some("compiling".to_string()),
+            },
+            "Progress",
+        ),
+        (
+            ProgressUpdate::Output {
+                operation_id: "test".to_string(),
+                line: "   Compiling".to_string(),
+                is_stderr: false,
+            },
+            "Output",
+        ),
+        (
+            ProgressUpdate::Completed {
+                operation_id: "test".to_string(),
+                message: "Build successful".to_string(),
+                duration_ms: 1000,
+            },
+            "Completed",
+        ),
+        (
+            ProgressUpdate::Failed {
+                operation_id: "test".to_string(),
+                error: "Build failed".to_string(),
+                duration_ms: 500,
+            },
+            "Failed",
+        ),
+        (
+            ProgressUpdate::Cancelled {
+                operation_id: "test".to_string(),
+                message: "Build cancelled".to_string(),
+                duration_ms: 300,
+            },
+            "Cancelled",
+        ),
+        (
+            ProgressUpdate::FinalResult {
+                operation_id: "test".to_string(),
+                command: "cargo build".to_string(),
+                description: "Building project".to_string(),
+                working_directory: "/path/to/project".to_string(),
+                success: true,
+                duration_ms: 2000,
+                full_output: "Build completed".to_string(),
+            },
+            "FinalResult",
+        ),
     ];
 
     for (update, expected_name) in updates {

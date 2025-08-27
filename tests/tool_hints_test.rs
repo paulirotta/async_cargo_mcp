@@ -5,7 +5,7 @@
 //! 2. Tool hints contain the expected guidance for LLMs
 //! 3. The wait command is properly referenced in hints
 
-use async_cargo_mcp::{cargo_tools::AsyncCargo, tool_hints};
+use async_cargo_mcp::tool_hints;
 use rmcp::service::{RequestContext, RoleServer};
 // no additional imports needed
 
@@ -39,18 +39,26 @@ async fn test_all_async_commands_have_tool_hints() {
     // This would require setting up proper request contexts and verifying responses
 }
 
-/// Test the preview() contract: AsyncCargo::tool_hint_preview delegates to tool_hints::preview
+/// Test the preview() function directly (tool_hint_preview wrapper eliminated)
 #[test]
-fn test_tool_hint_preview_delegation() {
+fn test_tool_hint_direct_usage() {
     let operation_id = "op_123456789";
     let operation_type = "test";
 
-    let via_async_cargo = AsyncCargo::tool_hint_preview(operation_id, operation_type);
-    let via_tool_hints = tool_hints::preview(operation_id, operation_type);
+    let preview = tool_hints::preview(operation_id, operation_type);
 
-    assert_eq!(
-        via_async_cargo, via_tool_hints,
-        "tool_hint_preview should return the exact preview() output"
+    // Verify the direct usage provides all expected functionality
+    assert!(
+        preview.contains(operation_id),
+        "Should contain operation ID"
+    );
+    assert!(
+        preview.contains(operation_type),
+        "Should contain operation type"
+    );
+    assert!(
+        preview.contains("ASYNC CARGO OPERATION"),
+        "Should have proper header"
     );
 }
 

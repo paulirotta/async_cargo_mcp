@@ -1,7 +1,7 @@
 //! Verify async check returns full output via wait and progress notifications
 
 use anyhow::Result;
-use async_cargo_mcp::tool_hints;
+use async_cargo_mcp::{test_utils, tool_hints};
 mod common;
 use common::test_project::create_basic_project;
 use rmcp::{
@@ -48,10 +48,9 @@ async fn test_async_check_then_wait_returns_full_output() -> Result<()> {
 
     // Verify the standardized preview() hint is included (accept raw or debug-escaped forms)
     let expected_hint = tool_hints::preview(&op_id, "check");
-    let expected_hint_debug = expected_hint.replace('\n', "\\n");
     assert!(
-        first_text.contains(&expected_hint_debug) || first_text.contains(&expected_hint),
-        "Initial async response must include preview() content.\nExpected preview (raw or debug-escaped):\n{expected_hint}\n--- Escaped ---\n{expected_hint_debug}\nGot:\n{first_text}"
+        test_utils::includes(&first_text, &expected_hint),
+        "Initial async response must include preview() content.\nExpected preview:\n{expected_hint}\nGot:\n{first_text}"
     );
 
     // Wait for completion

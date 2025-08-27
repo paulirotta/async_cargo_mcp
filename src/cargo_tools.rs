@@ -1224,13 +1224,15 @@ impl AsyncCargo {
                 && gap.as_secs() < 5
                 && efficiency < 0.5
             {
-                early_wait_warnings.push(format!(
-                    "CONCURRENCY HINT: You waited for '{}' after only {:.1}s (efficiency: {:.0}%). \
-                        Consider performing other tasks while operations run in the background.",
-                    operation_id,
-                    gap.as_secs_f32(),
-                    efficiency * 100.0
-                ));
+                early_wait_warnings.push(
+                    crate::constants::CONCURRENCY_HINT_TEMPLATE
+                        .replace("{operation_id}", operation_id)
+                        .replace("{gap_seconds:.1}", &format!("{:.1}", gap.as_secs_f32()))
+                        .replace(
+                            "{efficiency_percent:.0}",
+                            &format!("{:.0}", efficiency * 100.0),
+                        ),
+                );
             }
         }
 
@@ -1604,12 +1606,11 @@ impl AsyncCargo {
 
             // If this operation has been polled multiple times, provide guidance
             if *count >= 3 {
-                guidance_message = Some(format!(
-                    "STATUS POLLING DETECTED: You've called status {} times for operation '{}'. \
-                    Instead of repeatedly polling, consider using 'wait' with enable_async_notification=true \
-                    for automatic results via progress notifications.\n",
-                    count, operation_id
-                ));
+                guidance_message = Some(
+                    crate::constants::STATUS_POLLING_HINT_TEMPLATE
+                        .replace("{count}", &count.to_string())
+                        .replace("{operation_id}", operation_id),
+                );
 
                 // Clean up the counter to avoid memory leaks for completed operations
                 if let Some(operation) = self.monitor.get_operation(operation_id).await
@@ -1699,7 +1700,10 @@ impl AsyncCargo {
             if filtered_operations.is_empty() {
                 status_lines.push("No operations match the specified criteria".to_string());
             } else {
-                status_lines.push(format!("Found {} operations:", filtered_operations.len()));
+                status_lines.push(format!(
+                    "Found {n} operations:",
+                    n = filtered_operations.len()
+                ));
                 for operation in filtered_operations {
                     let status_line = self.format_operation_status(&operation);
                     status_lines.push(format!("  {}", status_line));
@@ -1739,13 +1743,9 @@ impl AsyncCargo {
         };
 
         format!(
-            "[{}] {} ({}) - {} in {}{}",
-            operation.id,
-            state_text,
-            operation.command,
-            duration_str,
-            working_dir,
-            concurrency_info
+            "[{id}] {state_text} ({command}) - {duration_str} in {working_dir}{concurrency_info}",
+            id = operation.id,
+            command = operation.command,
         )
     }
 

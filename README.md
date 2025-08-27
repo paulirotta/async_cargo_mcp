@@ -17,7 +17,7 @@ A Model Context Protocol (MCP) server that enables AI assistants to execute Rust
 
 This MCP server allows AI to run cargo commands quickly in the background. Multiple commands can be queued and executed while the AI continues to think. This helps complete tasks faster and, with fewer interruptions, may use less AI premium tokens.
 
-See the full product specification and roadmap: [product-specification.md](product-specification.md)
+See the full product specification and roadmap: [docs/product-specification.md](docs/product-specification.md)
 
 Most tool-calling AIs take advantage of this. All LLMs are equal, some are more equal than others. We continue to iterate and help is welcome.
 

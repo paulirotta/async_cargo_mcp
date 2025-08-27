@@ -74,11 +74,11 @@ As you can see **(1) the developer**, **(2) the AI**, and **(3) Rust tooling** c
 
 ### High-Performance Shell Pool Architecture
 
-The server features a **pre-warmed shell pool system** that provides **10x faster command execution**. This reduces command startup latency from 50-200ms to just 5-20ms, delivering rapid responses during development workflows.
-
-More in the [Shell Pool Guide](SHELL_POOL_GUIDE.md).
+The server features a **pre-warmed shell pool** that provides **10x faster command start** vs unpooled. Command startup latency from 50-200ms to just 5-20ms (Macbook Pro M1), delivering rapid responses while allowing stacking of commands. For example, `test` and `nextest` (after initial compile) do not hold the cargo filesystem lock while they run, allowing both the AI and other spawned cargo commands such as `clippy`to do useful work while they complete.
 
 ## Supported Commands
+
+More information is available in `--help`.
 
 ### Core Cargo Commands
 

@@ -2,7 +2,9 @@ use async_cargo_mcp::shell_pool::ShellError;
 use std::io;
 
 fn create_serialization_error() -> ShellError {
-    ShellError::SerializationError(serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err())
+    ShellError::SerializationError(
+        serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err(),
+    )
 }
 
 #[test]
@@ -14,7 +16,10 @@ fn test_shell_error_is_recoverable() {
     let pool_full = ShellError::PoolFull;
     assert!(pool_full.is_recoverable());
 
-    let spawn_error = ShellError::SpawnError(io::Error::new(io::ErrorKind::PermissionDenied, "permission denied"));
+    let spawn_error = ShellError::SpawnError(io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        "permission denied",
+    ));
     assert!(!spawn_error.is_recoverable()); // Permission issues typically not recoverable
 
     let process_died = ShellError::ProcessDied;
@@ -36,7 +41,10 @@ fn test_shell_error_is_resource_exhaustion() {
     let timeout = ShellError::Timeout;
     assert!(timeout.is_resource_exhaustion()); // Could be system overload
 
-    let spawn_error = ShellError::SpawnError(io::Error::new(io::ErrorKind::PermissionDenied, "permission denied"));
+    let spawn_error = ShellError::SpawnError(io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        "permission denied",
+    ));
     assert!(!spawn_error.is_resource_exhaustion());
 
     let process_died = ShellError::ProcessDied;
@@ -52,7 +60,10 @@ fn test_shell_error_is_resource_exhaustion() {
 #[test]
 fn test_shell_error_is_io_error() {
     // Test if error is related to I/O operations
-    let spawn_error = ShellError::SpawnError(io::Error::new(io::ErrorKind::PermissionDenied, "permission denied"));
+    let spawn_error = ShellError::SpawnError(io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        "permission denied",
+    ));
     assert!(spawn_error.is_io_error());
 
     let working_dir_error = ShellError::WorkingDirectoryError("path does not exist".to_string());
@@ -74,7 +85,10 @@ fn test_shell_error_is_io_error() {
 #[test]
 fn test_shell_error_error_category() {
     // Test categorizing errors for handling
-    let spawn_error = ShellError::SpawnError(io::Error::new(io::ErrorKind::PermissionDenied, "permission denied"));
+    let spawn_error = ShellError::SpawnError(io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        "permission denied",
+    ));
     assert_eq!(spawn_error.error_category(), "IO");
 
     let timeout = ShellError::Timeout;
@@ -96,7 +110,10 @@ fn test_shell_error_error_category() {
 #[test]
 fn test_shell_error_severity_level() {
     // Test error severity for logging
-    let spawn_error = ShellError::SpawnError(io::Error::new(io::ErrorKind::PermissionDenied, "permission denied"));
+    let spawn_error = ShellError::SpawnError(io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        "permission denied",
+    ));
     assert_eq!(spawn_error.severity_level(), "ERROR");
 
     let timeout = ShellError::Timeout;

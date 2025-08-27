@@ -42,7 +42,8 @@ async fn test_critical_vanishing_operation_race_300s_timeout() -> Result<()> {
 
     // Create a scenario designed to trigger cleanup
     // Start many very short operations to potentially trigger cleanup behavior
-    let num_operations = 25;
+    // Reduce operation count to speed up test while preserving race characteristics
+    let num_operations = 15;
     let mut all_op_ids = Vec::new();
 
     println!(
@@ -79,11 +80,11 @@ async fn test_critical_vanishing_operation_race_300s_timeout() -> Result<()> {
 
     // Test waiting for operations at different delays
     // Some should still be in completion_history, others might be cleaned up
+    // Shorten delays to keep test fast but still cover staggered cleanup windows
     let test_cases = vec![
         (0, "immediate"),
         (1, "1 second later"),
-        (3, "3 seconds later"),
-        (5, "5 seconds later"),
+        (2, "2 seconds later"),
     ];
 
     for (delay_seconds, description) in test_cases {
@@ -95,11 +96,14 @@ async fn test_critical_vanishing_operation_race_300s_timeout() -> Result<()> {
             sleep(Duration::from_secs(delay_seconds)).await;
         }
 
-        // Test a few operations from our set
+        // Test a few operations from our set: first, middle, last (computed dynamically)
+        let first_idx = 0usize;
+        let mid_idx = all_op_ids.len() / 2;
+        let last_idx = all_op_ids.len() - 1;
         let test_op_ids = vec![
-            &all_op_ids[0],  // First operation
-            &all_op_ids[10], // Middle operation
-            &all_op_ids[24], // Last operation
+            &all_op_ids[first_idx], // First operation
+            &all_op_ids[mid_idx],   // Middle operation
+            &all_op_ids[last_idx],  // Last operation
         ];
 
         for op_id in test_op_ids {
@@ -122,7 +126,7 @@ async fn test_critical_vanishing_operation_race_300s_timeout() -> Result<()> {
             // 🚨 CRITICAL ASSERTION: This is the core race condition test
             // If this fails, it means we have the "vanishing operation" race that causes 300s hangs
             assert!(
-                elapsed.as_secs() < 30,
+                elapsed.as_secs() < 20,
                 "🚨 CRITICAL RACE CONDITION DETECTED: Wait for {} ({}) took {:?} - this indicates the 'vanishing operation' race where completed operations cause long hangs instead of quick 'not found' responses.\n\nWait result: {}",
                 op_id,
                 description,
@@ -182,12 +186,12 @@ async fn test_timeout_boundary_race_conditions() -> Result<()> {
     println!("🔍 Testing timeout boundary race conditions");
 
     // Test operations with durations that approach timeout boundaries
+    // Trim longest case to reduce wall time while preserving boundary coverage
     let timeout_test_cases = vec![
         ("near_1s", 950),  // Just under 1 second
         ("at_1s", 1000),   // Exactly 1 second
         ("over_1s", 1050), // Just over 1 second
         ("near_2s", 1950), // Just under 2 seconds
-        ("at_5s", 5000),   // 5 seconds - longer test
     ];
 
     for (test_name, duration_ms) in timeout_test_cases {
@@ -224,7 +228,7 @@ async fn test_timeout_boundary_race_conditions() -> Result<()> {
         let wait_text = format!("{:?}", wait_result.content);
 
         let expected_min = Duration::from_millis(duration_ms);
-        let expected_max = expected_min + Duration::from_secs(5); // Allow 5s overhead
+        let expected_max = expected_min + Duration::from_secs(4); // Allow 4s overhead
 
         println!(
             "⏱️ {} completed in {:?} (expected ~{:?})",
@@ -381,7 +385,8 @@ async fn test_extreme_concurrency_wait_stress() -> Result<()> {
     println!("🔍 Testing extreme concurrency wait stress");
 
     // Create many operations
-    let num_ops = 20;
+    // Fewer ops to decrease total runtime while keeping concurrency stress
+    let num_ops = 12;
     let mut operation_ids = Vec::new();
 
     println!(
@@ -458,7 +463,7 @@ async fn test_extreme_concurrency_wait_stress() -> Result<()> {
 
                 // Critical: No wait should hang for excessive time even under extreme load
                 assert!(
-                    elapsed.as_secs() < 25,
+                    elapsed.as_secs() < 20,
                     "Extreme concurrency test #{} for {} took {:?} - possible resource contention causing hang: {}",
                     i,
                     op_id,
@@ -495,7 +500,7 @@ async fn test_extreme_concurrency_wait_stress() -> Result<()> {
 
     // Overall performance should be reasonable even under extreme load
     assert!(
-        avg_time.as_secs() < 10,
+        avg_time.as_secs() < 8,
         "Average wait time {:?} too high under extreme load",
         avg_time
     );

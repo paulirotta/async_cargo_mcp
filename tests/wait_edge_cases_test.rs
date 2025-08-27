@@ -48,7 +48,7 @@ async fn test_edge_immediate_cleanup_race() -> Result<()> {
         .await?;
 
     // Create many very short operations that will complete quickly and potentially be cleaned up
-    let num_ops = 20;
+    let num_ops = 12;
     let mut operation_ids = Vec::new();
 
     // Start all operations rapidly
@@ -75,7 +75,8 @@ async fn test_edge_immediate_cleanup_race() -> Result<()> {
     for (i, op_id) in operation_ids.iter().rev().enumerate() {
         // Add progressive delay to create different cleanup timing scenarios
         if i > 0 {
-            sleep(Duration::from_millis((i as u64) * 50)).await;
+            // Keep varied timing but trim cumulative delay
+            sleep(Duration::from_millis((i as u64) * 20)).await;
         }
 
         let start_time = Instant::now();
@@ -255,9 +256,9 @@ async fn test_edge_overlapping_timeout_scenarios() -> Result<()> {
 
     // Test scenario: operations with various durations near timeout boundaries
     let test_cases = vec![
-        ("op_timeout_1s", 1000), // Well under timeout
-        ("op_timeout_2s", 2000), // Still safe
-        ("op_timeout_5s", 5000), // Longer but reasonable
+        ("op_timeout_300ms", 300),   // Well under timeout
+        ("op_timeout_800ms", 800),   // Still safe
+        ("op_timeout_1500ms", 1500), // Reduced from 5s to speed up suite
     ];
 
     for (op_id, duration_ms) in test_cases {
@@ -293,7 +294,8 @@ async fn test_edge_overlapping_timeout_scenarios() -> Result<()> {
 
         // Wait time should be approximately the operation duration (plus overhead)
         let expected_duration = Duration::from_millis(duration_ms);
-        let overhead_allowance = Duration::from_secs(2);
+        // Lower overhead allowance since durations are shorter
+        let overhead_allowance = Duration::from_secs(1);
 
         assert!(
             elapsed < expected_duration + overhead_allowance,

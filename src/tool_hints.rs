@@ -8,3 +8,17 @@ pub fn preview(operation_id: &str, operation_type: &str) -> String {
         .replace("{operation_type}", operation_type)
         .replace("{operation_id}", operation_id)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preview_replaces_placeholders() {
+        let out = preview("abc123", "build");
+        assert!(out.contains("abc123"));
+        assert!(out.contains("build"));
+        assert!(!out.contains("{operation_id}"));
+        assert!(!out.contains("{operation_type}"));
+    }
+}

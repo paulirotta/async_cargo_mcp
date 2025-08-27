@@ -6,11 +6,14 @@
 //! 3. Automatic result push system works
 //! 4. Wait tool is properly disabled by default
 
+use async_cargo_mcp::callback_system::ProgressUpdate;
+use async_cargo_mcp::cargo_tools::StatusRequest;
 use async_cargo_mcp::{
     cargo_tools::AsyncCargo,
     operation_monitor::{MonitorConfig, OperationMonitor},
     shell_pool::{ShellPoolConfig, ShellPoolManager},
 };
+use serde_json::json;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -44,9 +47,6 @@ async fn test_enable_wait_flag_functionality() {
 
 #[tokio::test]
 async fn test_status_tool_request_parsing() {
-    use async_cargo_mcp::cargo_tools::StatusRequest;
-    use serde_json::json;
-
     // Test parsing different status request formats
     let json_data = json!({
         "operation_id": "op_build_123",
@@ -75,8 +75,6 @@ async fn test_status_tool_request_parsing() {
 
 #[tokio::test]
 async fn test_progress_update_final_result() {
-    use async_cargo_mcp::callback_system::ProgressUpdate;
-
     let final_result = ProgressUpdate::FinalResult {
         operation_id: "op_test_456".to_string(),
         command: "cargo build".to_string(),

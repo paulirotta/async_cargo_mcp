@@ -389,6 +389,15 @@ pub struct UpgradeRequest {
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
+pub struct BumpVersionRequest {
+    pub working_directory: String,
+    /// Version bump type: patch, minor, or major
+    pub bump_type: String,
+    /// Perform a dry run without making changes
+    pub dry_run: Option<bool>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
 pub struct AuditRequest {
     pub working_directory: String,
     /// Output format (default, json, yaml)
@@ -1033,7 +1042,7 @@ impl AsyncCargo {
         }
 
         if *availability.get("cargo-edit").unwrap_or(&false) {
-            report.push_str("+ cargo-edit - Available (upgrade command for dependency updates)\n");
+            report.push_str("+ cargo-edit - Available (upgrade and bump_version commands for dependency updates and version management)\n");
         } else {
             report.push_str(
                 "- cargo-edit - Not available (install with: cargo install cargo-edit)\n",
@@ -1062,6 +1071,9 @@ impl AsyncCargo {
         report.push_str("* Use 'clippy' for enhanced code quality checks if available\n");
         report.push_str(
             "* Use 'upgrade' for intelligent dependency updates if cargo-edit is available\n",
+        );
+        report.push_str(
+            "* Use 'bump_version' for version bumping (patch, minor, major) if cargo-edit is available\n",
         );
         report.push_str(
             "* Use 'audit' for security vulnerability scanning if cargo-audit is available\n",
@@ -4265,16 +4277,11 @@ Falling back to regular cargo test is recommended."#
         let upgrade_id = self.generate_operation_id_for("upgrade");
 
         // First check if cargo-edit (upgrade command) is available
-        let upgrade_check = tokio::process::Command::new("cargo")
-            .args(["upgrade", "--version"])
-            .output()
-            .await;
-
-        if upgrade_check.is_err() || !upgrade_check.unwrap().status.success() {
+        if let Err(error_msg) = Self::check_cargo_edit_command("upgrade").await {
             return Ok(CallToolResult::success(vec![Content::text(format!(
-                "- Upgrade operation #{upgrade_id} failed: cargo-edit with upgrade command is not installed. 
-Install with: cargo install cargo-edit
-Falling back to regular cargo update is recommended."
+                "- Upgrade operation #{upgrade_id} failed: {}
+Falling back to regular cargo update is recommended.",
+                error_msg
             ))]));
         }
 
@@ -4282,6 +4289,26 @@ Falling back to regular cargo update is recommended."
         match Self::upgrade_implementation(&req).await {
             Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
             Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+        }
+    }
+
+    /// Check if cargo-edit is installed by checking if a specific command is available
+    async fn check_cargo_edit_command(command: &str) -> Result<(), String> {
+        let check_result = tokio::process::Command::new("cargo")
+            .args([command, "--version"])
+            .output()
+            .await;
+
+        match check_result {
+            Ok(output) if output.status.success() => Ok(()),
+            Ok(_) => Err(format!(
+                "cargo-edit with {} command is not installed. Install with: cargo install cargo-edit",
+                command
+            )),
+            Err(_) => Err(format!(
+                "cargo-edit with {} command is not installed. Install with: cargo install cargo-edit",
+                command
+            )),
         }
     }
 
@@ -4353,6 +4380,88 @@ Falling back to regular cargo update is recommended."
         } else {
             Err(format!(
                 "- Upgrade operation #{upgrade_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
+            ))
+        }
+    }
+
+    #[tool(
+        description = "CARGO BUMP-VERSION: Faster than terminal cargo. Synchronous operation - returns results immediately once cargo lock is acquired. Bumps package version using cargo-edit. Always use async_cargo_mcp MCP tools; do not run cargo in a terminal."
+    )]
+    async fn bump_version(
+        &self,
+        Parameters(req): Parameters<BumpVersionRequest>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let bump_id = self.generate_operation_id_for("bump-version");
+
+        // Validate bump_type before checking cargo-edit
+        if !["patch", "minor", "major"].contains(&req.bump_type.as_str()) {
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "- Bump-version operation #{bump_id} failed: Invalid bump type '{}'. 
+Supported bump types: patch, minor, major",
+                req.bump_type
+            ))]));
+        }
+
+        // Check if cargo-edit (set-version command) is available
+        if let Err(error_msg) = Self::check_cargo_edit_command("set-version").await {
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "- Bump-version operation #{bump_id} failed: {}
+The bump-version tool requires cargo-edit to be installed.",
+                error_msg
+            ))]));
+        }
+
+        // Always use synchronous execution for Cargo.toml modifications
+        match Self::bump_version_implementation(&req).await {
+            Ok(result_msg) => Ok(CallToolResult::success(vec![Content::text(result_msg)])),
+            Err(error_msg) => Ok(CallToolResult::success(vec![Content::text(error_msg)])),
+        }
+    }
+
+    /// Internal implementation of bump-version logic
+    async fn bump_version_implementation(req: &BumpVersionRequest) -> Result<String, String> {
+        use tokio::process::Command;
+
+        let bump_id = uuid::Uuid::new_v4().to_string()[..8].to_string();
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("set-version").args(["--bump", &req.bump_type]);
+
+        // Add dry run flag if requested
+        if req.dry_run.unwrap_or(false) {
+            cmd.arg("--dry-run");
+        }
+
+        cmd.current_dir(&req.working_directory);
+
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute cargo set-version: {e}"))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        let working_dir_msg = format!(" in {}", &req.working_directory);
+        let merged = merge_outputs(
+            &stdout,
+            &stderr,
+            &Self::no_output_placeholder("bump-version"),
+        );
+
+        if output.status.success() {
+            let dry_run_msg = if req.dry_run.unwrap_or(false) {
+                " (dry run - no changes made)"
+            } else {
+                ""
+            };
+            Ok(format!(
+                "Bump-version operation #{bump_id} completed successfully{working_dir_msg}{dry_run_msg}.\nOutput: {merged}"
+            ))
+        } else {
+            Err(format!(
+                "- Bump-version operation #{bump_id} failed{working_dir_msg}.\nErrors: {stderr}\nOutput: {merged}"
             ))
         }
     }

@@ -110,7 +110,7 @@ dependencies = [
 
 [[package]]
 name = "async_cargo_mcp"
-version = "0.4.2"
+version = "0.5.1"
 dependencies = [
  "anyhow",
  "async-trait",

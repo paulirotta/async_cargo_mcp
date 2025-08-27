@@ -104,6 +104,7 @@ More information is available in `--help`.
 - **`fmt`** - Code formatting with rustfmt
 - **`audit`** - Security vulnerability scanning
 - **`upgrade`** - Upgrade dependencies to latest versions (synchronous)
+- **`bump_version`** - Bump package version (patch, minor, major) (synchronous)
 - **`bench`** - Run benchmarks
 
 ### Control Commands
@@ -230,6 +231,27 @@ Commands support both synchronous and asynchronous execution. For long-running o
 }
 ```
 
+### Version Management with `bump_version`
+
+The `bump_version` tool (requires `cargo install cargo-edit`) safely bumps package versions:
+
+```json
+{
+  "working_directory": "/path/to/project",
+  "bump_type": "patch"
+}
+```
+
+Supported bump types:
+
+- `"patch"` - 1.2.3 → 1.2.4
+- `"minor"` - 1.2.3 → 1.3.0
+- `"major"` - 1.2.3 → 2.0.0
+
+Use `"dry_run": true` to preview changes without modifying Cargo.toml.
+
+````
+
 When async is enabled, prefer `status` to check progress. Use `wait` only if blocked and you need results to proceed:
 
 - `wait` with `operation_ids` waits for specific operations by ID.
@@ -260,7 +282,7 @@ cargo run --release -- --disable build,test,clippy
 
 # Equivalent using repeated flags
 cargo run --release -- --disable build --disable test --disable clippy
-```
+````
 
 If a disabled tool is invoked by a client that cached an older schema, the server returns an error with marker `tool_disabled`.
 

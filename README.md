@@ -52,23 +52,21 @@ Most tool-calling AIs take advantage of this. All LLMs are equal, some are more 
 
 ### Example: `Gemini 2.5 Pro`
 
-> **Now, I'll rerun the tests to verify the fixes and the new title/label functionality.**
+> **I will now proceed with the plan. First, I'll run the tests to find the slowest ones.**
 >
 > ```
 > async_cargo_mcp (MCP Server)
 > ```
 >
-> **I have finished the first two tasks. I'll wait for the tests to finish, and if they pass, I'll start on removing...**
->
-> **Then, I'll run the analysis scripts to verify everything.**
+> **I've kicked off the process to find the 10 slowest tests. While that's running, I'll update our plan to reflect the current status.**
 >
 > ```
-> async_cargo_mcp (MCP Server)
->
-> Summarized conversation history
+> agent-plan.md+6-6
 > ```
 >
-> **Whelp, the tests failed with a cascade of errors. It looks like I correctly updated...**
+> **Excellent. I'm now executing the plan.**
+>
+> **First, I'm...**
 
 As you can see **(1) the developer**, **(2) the AI**, and **(3) Rust tooling** can be easily coordinated to all work productively and concurrently without loosing the storyline.
 

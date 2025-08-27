@@ -41,7 +41,7 @@ fn merge_outputs(stdout: &str, stderr: &str, empty_placeholder: &str) -> String 
 }
 
 /// Dependency section specification for cargo add/remove commands
-#[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, schemars::JsonSchema)]
 pub enum DependencySection {
     /// Add/remove as development dependency (--dev)
     Dev,
@@ -49,6 +49,90 @@ pub enum DependencySection {
     Build,
     /// Add/remove as target dependency (--target TARGET)
     Target(String),
+}
+
+impl DependencySection {
+    /// Convert to command line arguments
+    pub fn to_args(&self) -> Vec<String> {
+        match self {
+            DependencySection::Dev => vec!["--dev".to_string()],
+            DependencySection::Build => vec!["--build".to_string()],
+            DependencySection::Target(target) => vec!["--target".to_string(), target.clone()],
+        }
+    }
+
+    /// Apply this section's arguments to a tokio Command
+    pub fn apply_to_command<'a>(
+        &self,
+        cmd: &'a mut tokio::process::Command,
+    ) -> &'a mut tokio::process::Command {
+        match self {
+            DependencySection::Dev => cmd.arg("--dev"),
+            DependencySection::Build => cmd.arg("--build"),
+            DependencySection::Target(target) => cmd.args(["--target", target]),
+        }
+    }
+
+    /// Check if this is a development dependency section
+    pub fn is_dev(&self) -> bool {
+        matches!(self, DependencySection::Dev)
+    }
+
+    /// Check if this is a build dependency section
+    pub fn is_build(&self) -> bool {
+        matches!(self, DependencySection::Build)
+    }
+
+    /// Check if this is a target dependency section
+    pub fn is_target(&self) -> bool {
+        matches!(self, DependencySection::Target(_))
+    }
+
+    /// Get target name if this is a target section
+    pub fn target_name(&self) -> Option<&str> {
+        match self {
+            DependencySection::Target(target) => Some(target),
+            _ => None,
+        }
+    }
+
+    /// Parse from string representation (case-insensitive)
+    /// Supports: "dev", "build", "target:name"
+    pub fn from_string(s: &str) -> Option<Self> {
+        s.parse().ok()
+    }
+}
+
+impl std::str::FromStr for DependencySection {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "dev" => Ok(DependencySection::Dev),
+            "build" => Ok(DependencySection::Build),
+            s if s.starts_with("target:") => {
+                let target = s
+                    .strip_prefix("target:")
+                    .ok_or_else(|| "Invalid target format".to_string())?;
+                if target.is_empty() {
+                    Err("Target name cannot be empty".to_string())
+                } else {
+                    Ok(DependencySection::Target(target.to_string()))
+                }
+            }
+            _ => Err(format!("Invalid dependency section: '{}'", s)),
+        }
+    }
+}
+
+impl std::fmt::Display for DependencySection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DependencySection::Dev => write!(f, "dev"),
+            DependencySection::Build => write!(f, "build"),
+            DependencySection::Target(target) => write!(f, "target ({})", target),
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -437,7 +521,7 @@ pub struct StatusRequest {
     pub state_filter: Option<String>, // "active", "completed", "failed", etc.
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum CargoLockAction {
     /// Delete target/.cargo-lock then run cargo clean
@@ -446,6 +530,100 @@ pub enum CargoLockAction {
     B,
     /// Do nothing
     C,
+}
+
+impl Default for CargoLockAction {
+    /// Default to the safest action: do nothing
+    fn default() -> Self {
+        CargoLockAction::C
+    }
+}
+
+impl CargoLockAction {
+    /// Check if this action deletes the lock file and runs cargo clean
+    pub fn is_delete_and_clean(&self) -> bool {
+        matches!(self, CargoLockAction::A)
+    }
+
+    /// Check if this action only deletes the lock file
+    pub fn is_delete_only(&self) -> bool {
+        matches!(self, CargoLockAction::B)
+    }
+
+    /// Check if this is a no-op action
+    pub fn is_no_op(&self) -> bool {
+        matches!(self, CargoLockAction::C)
+    }
+
+    /// Check if this action requires file deletion
+    pub fn requires_deletion(&self) -> bool {
+        matches!(self, CargoLockAction::A | CargoLockAction::B)
+    }
+
+    /// Check if this action requires cargo clean
+    pub fn requires_clean(&self) -> bool {
+        matches!(self, CargoLockAction::A)
+    }
+
+    /// Get human-readable description
+    pub fn description(&self) -> &'static str {
+        match self {
+            CargoLockAction::A => "Delete target/.cargo-lock then run cargo clean",
+            CargoLockAction::B => "Only delete .cargo-lock but do not clean",
+            CargoLockAction::C => "Do nothing",
+        }
+    }
+
+    /// Convert to single letter representation
+    pub fn as_letter(&self) -> char {
+        match self {
+            CargoLockAction::A => 'A',
+            CargoLockAction::B => 'B',
+            CargoLockAction::C => 'C',
+        }
+    }
+
+    /// Parse from single letter (case insensitive)
+    pub fn from_letter(letter: char) -> Option<Self> {
+        match letter.to_ascii_uppercase() {
+            'A' => Some(CargoLockAction::A),
+            'B' => Some(CargoLockAction::B),
+            'C' => Some(CargoLockAction::C),
+            _ => None,
+        }
+    }
+
+    /// Parse from string representation (case insensitive, supports multiple formats)
+    pub fn from_string(s: &str) -> Option<Self> {
+        s.parse().ok()
+    }
+}
+
+impl std::str::FromStr for CargoLockAction {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.to_lowercase();
+        match s.as_str() {
+            "a" => Ok(CargoLockAction::A),
+            "delete-and-clean" | "delete_and_clean" => Ok(CargoLockAction::A),
+            "b" => Ok(CargoLockAction::B),
+            "delete-only" | "delete_only" => Ok(CargoLockAction::B),
+            "c" => Ok(CargoLockAction::C),
+            "no-op" | "noop" | "do-nothing" => Ok(CargoLockAction::C),
+            _ => Err(format!("Invalid cargo lock action: '{}'", s)),
+        }
+    }
+}
+
+impl std::fmt::Display for CargoLockAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CargoLockAction::A => write!(f, "Delete and clean (A)"),
+            CargoLockAction::B => write!(f, "Delete only (B)"),
+            CargoLockAction::C => write!(f, "Do nothing (C)"),
+        }
+    }
 }
 
 /// Fallback remediation request for stuck Cargo lock files
@@ -479,17 +657,7 @@ fn apply_dependency_section_args(
     section: &Option<DependencySection>,
 ) {
     if let Some(section) = section {
-        match section {
-            DependencySection::Dev => {
-                cmd.arg("--dev");
-            }
-            DependencySection::Build => {
-                cmd.arg("--build");
-            }
-            DependencySection::Target(target) => {
-                cmd.arg("--target").arg(target);
-            }
-        }
+        section.apply_to_command(cmd);
     }
 }
 
@@ -1268,7 +1436,7 @@ impl AsyncCargo {
                     .into_iter()
                     .map(|op_info| {
                         let status = match &op_info.state {
-                            crate::operation_monitor::OperationState::Completed => {
+                            state if state.is_success() => {
                                 if let Some(Ok(output)) = &op_info.result {
                                     // Provide placeholder if an implementation returned an empty Output: section
                                     let mut normalized = output.clone();
@@ -1305,7 +1473,7 @@ impl AsyncCargo {
                                     format!("Operation '{}' completed successfully (no detailed output available)", op_info.id)
                                 }
                             }
-                            crate::operation_monitor::OperationState::Failed => {
+                            state if state == &crate::operation_monitor::OperationState::Failed => {
                                 // Debug logging to see what result we actually have
                                 tracing::debug!("Failed operation '{}': result = {:?}", op_info.id, op_info.result);
 
@@ -1329,7 +1497,7 @@ impl AsyncCargo {
                                     format!("Operation '{}' failed (no detailed error output available)", op_info.id)
                                 }
                             }
-                            crate::operation_monitor::OperationState::Cancelled => {
+                            state if state == &crate::operation_monitor::OperationState::Cancelled => {
                                 format!(
                                     "OPERATION CANCELLED: '{}'\n\
                                     Command: {}\n\
@@ -1337,7 +1505,7 @@ impl AsyncCargo {
                                     op_info.id, op_info.command, op_info.description
                                 )
                             }
-                            crate::operation_monitor::OperationState::TimedOut => {
+                            state if state == &crate::operation_monitor::OperationState::TimedOut => {
                                 format!(
                                     "OPERATION TIMED OUT: '{}'\n\
                                     Command: {}\n\
@@ -1517,24 +1685,23 @@ impl AsyncCargo {
 
                     // Filter by state if specified
                     if let Some(ref state_filter) = req.state_filter {
-                        let matches_filter = match state_filter.to_lowercase().as_str() {
-                            "active" => op.is_active(),
-                            "completed" => matches!(
-                                op.state,
-                                crate::operation_monitor::OperationState::Completed
-                            ),
-                            "failed" => {
-                                matches!(op.state, crate::operation_monitor::OperationState::Failed)
+                        let matches_filter = if let Some(filter_state) =
+                            crate::operation_monitor::OperationState::from_filter_string(
+                                &state_filter.to_lowercase(),
+                            ) {
+                            op.state == filter_state
+                        } else {
+                            // Handle special filter cases not covered by from_filter_string
+                            match state_filter.to_lowercase().as_str() {
+                                "active" => op.is_active(),
+                                "completed" => op.state.is_success(),
+                                "failed" => {
+                                    op.state.is_failure()
+                                        && op.state
+                                            == crate::operation_monitor::OperationState::Failed
+                                }
+                                _ => true, // Unknown filter, include all
                             }
-                            "cancelled" => matches!(
-                                op.state,
-                                crate::operation_monitor::OperationState::Cancelled
-                            ),
-                            "timedout" => matches!(
-                                op.state,
-                                crate::operation_monitor::OperationState::TimedOut
-                            ),
-                            _ => true, // Unknown filter, include all
                         };
                         if !matches_filter {
                             return false;
@@ -1565,16 +1732,7 @@ impl AsyncCargo {
         &self,
         operation: &crate::operation_monitor::OperationInfo,
     ) -> String {
-        use crate::operation_monitor::OperationState;
-
-        let state_text = match operation.state {
-            OperationState::Pending => "PENDING",
-            OperationState::Running => "RUNNING",
-            OperationState::Completed => "COMPLETED",
-            OperationState::Failed => "FAILED",
-            OperationState::Cancelled => "CANCELLED",
-            OperationState::TimedOut => "TIMED_OUT",
-        };
+        let state_text = operation.state.as_status_string();
 
         let duration = operation.duration();
         let duration_str = if duration.as_secs() > 0 {
@@ -1624,13 +1782,13 @@ impl AsyncCargo {
         let lock_path_str = lock_path.display().to_string();
 
         match action {
-            CargoLockAction::C => {
-                tracing::info!(%lock_path_str, "Remediation choice C (do nothing)");
+            _ if action.is_no_op() => {
+                tracing::info!(%lock_path_str, "Remediation choice {} (do nothing)", action.as_letter());
                 Ok(format!(
                     "No action taken. If issues persist, consider deleting {lock_path_str} and optionally running cargo clean."
                 ))
             }
-            CargoLockAction::A | CargoLockAction::B => {
+            _ if action.requires_deletion() => {
                 // Cancel active ops in this directory before deletion
                 let cancelled = self.monitor.cancel_by_working_directory(&dir).await;
                 tracing::warn!(directory=%dir, cancelled, action=?action, "Cancelling operations before deleting .cargo-lock");
@@ -1656,7 +1814,7 @@ impl AsyncCargo {
                     format!("{lock_path_str} did not exist.")
                 };
 
-                if let CargoLockAction::A = action {
+                if action.requires_clean() {
                     // Run cargo clean
                     let clean_req = CleanRequest {
                         working_directory: dir.clone(),
@@ -1674,6 +1832,7 @@ impl AsyncCargo {
                     Ok(delete_note)
                 }
             }
+            _ => unreachable!("All CargoLockAction variants should be covered"),
         }
     }
 
@@ -5241,14 +5400,7 @@ impl AsyncCargo {
         }
         // Add dependency section args to command display
         if let Some(section) = &req.section {
-            match section {
-                DependencySection::Dev => cmd_args.push("--dev".to_string()),
-                DependencySection::Build => cmd_args.push("--build".to_string()),
-                DependencySection::Target(target) => {
-                    cmd_args.push("--target".to_string());
-                    cmd_args.push(target.clone());
-                }
-            }
+            cmd_args.extend(section.to_args());
         }
         let cmd_str = cmd_args.join(" ");
         let _ = callback
@@ -5369,14 +5521,7 @@ impl AsyncCargo {
 
         // Add dependency section args to command display
         if let Some(section) = &req.section {
-            match section {
-                DependencySection::Dev => cmd_args.push("--dev".to_string()),
-                DependencySection::Build => cmd_args.push("--build".to_string()),
-                DependencySection::Target(target) => {
-                    cmd_args.push("--target".to_string());
-                    cmd_args.push(target.clone());
-                }
-            }
+            cmd_args.extend(section.to_args());
         }
 
         let cmd_str = cmd_args.join(" ");

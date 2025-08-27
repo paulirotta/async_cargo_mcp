@@ -84,6 +84,51 @@ pub enum ShellError {
     WorkingDirectoryError(String),
 }
 
+impl ShellError {
+    /// Check if this error represents a potentially recoverable condition
+    pub fn is_recoverable(&self) -> bool {
+        matches!(
+            self,
+            ShellError::Timeout | ShellError::PoolFull | ShellError::ProcessDied
+        )
+    }
+
+    /// Check if this error indicates resource exhaustion
+    pub fn is_resource_exhaustion(&self) -> bool {
+        matches!(self, ShellError::PoolFull | ShellError::Timeout)
+    }
+
+    /// Check if this error is related to I/O operations
+    pub fn is_io_error(&self) -> bool {
+        matches!(
+            self,
+            ShellError::SpawnError(_) | ShellError::WorkingDirectoryError(_)
+        )
+    }
+
+    /// Get error category for programmatic handling
+    pub fn error_category(&self) -> &'static str {
+        match self {
+            ShellError::SpawnError(_) | ShellError::WorkingDirectoryError(_) => "IO",
+            ShellError::Timeout => "TIMEOUT",
+            ShellError::ProcessDied => "PROCESS",
+            ShellError::SerializationError(_) => "SERIALIZATION",
+            ShellError::PoolFull => "RESOURCE",
+        }
+    }
+
+    /// Get severity level for logging
+    pub fn severity_level(&self) -> &'static str {
+        match self {
+            ShellError::SpawnError(_)
+            | ShellError::ProcessDied
+            | ShellError::SerializationError(_)
+            | ShellError::WorkingDirectoryError(_) => "ERROR",
+            ShellError::Timeout | ShellError::PoolFull => "WARN", // Might be temporary
+        }
+    }
+}
+
 /// A single prewarmed shell process
 pub struct PrewarmedShell {
     /// Unique identifier for this shell

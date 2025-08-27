@@ -395,6 +395,8 @@ pub struct BumpVersionRequest {
     pub bump_type: String,
     /// Perform a dry run without making changes
     pub dry_run: Option<bool>,
+    /// Modify all packages in the workspace
+    pub workspace: Option<bool>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, schemars::JsonSchema)]
@@ -4428,6 +4430,11 @@ The bump-version tool requires cargo-edit to be installed.",
         let mut cmd = Command::new("cargo");
         cmd.arg("set-version").args(["--bump", &req.bump_type]);
 
+        // Add workspace flag if requested
+        if req.workspace.unwrap_or(false) {
+            cmd.arg("--workspace");
+        }
+
         // Add dry run flag if requested
         if req.dry_run.unwrap_or(false) {
             cmd.arg("--dry-run");
@@ -4456,8 +4463,13 @@ The bump-version tool requires cargo-edit to be installed.",
             } else {
                 ""
             };
+            let workspace_msg = if req.workspace.unwrap_or(false) {
+                " (workspace-wide)"
+            } else {
+                ""
+            };
             Ok(format!(
-                "Bump-version operation #{bump_id} completed successfully{working_dir_msg}{dry_run_msg}.\nOutput: {merged}"
+                "Bump-version operation #{bump_id} completed successfully{working_dir_msg}{workspace_msg}{dry_run_msg}.\nOutput: {merged}"
             ))
         } else {
             Err(format!(

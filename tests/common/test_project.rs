@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use anyhow::Result;
-use std::fs;
 use tempfile::TempDir;
+use tokio::fs;
 
 /// Options to customize a temporary Cargo test project.
 #[derive(Debug, Clone, Default)]
@@ -58,15 +58,29 @@ path = "src/bin/test_binary.rs"
 "#,
     );
 
-    fs::write(project_path.join("Cargo.toml"), cargo_toml)?;
+    // Prepare paths
+    let cargo_toml_path = project_path.join("Cargo.toml");
+    let src_dir = project_path.join("src");
 
-    // Create src directory
-    fs::create_dir_all(project_path.join("src"))?;
+    // Create src directory first (parents may not exist); after this we can write files under src concurrently
+    fs::create_dir_all(&src_dir).await?;
 
-    // Main/lib content variants
-    if opts.with_integration_tests {
-        // Library with unit tests and main
-        let lib_rs = r#"pub fn add(a: i32, b: i32) -> i32 { a + b }
+    // Build write tasks we can run concurrently
+    // 1) Write Cargo.toml
+    let write_cargo_toml = async {
+        fs::write(&cargo_toml_path, cargo_toml)
+            .await
+            .map_err(anyhow::Error::from)
+    };
+
+    // 2) Prepare and write src content (main or lib+main)
+    let src_main_path = src_dir.join("main.rs");
+    let src_lib_path = src_dir.join("lib.rs");
+
+    let write_src_files = async {
+        if opts.with_integration_tests {
+            // Write lib.rs and main.rs concurrently
+            let lib_rs = r#"pub fn add(a: i32, b: i32) -> i32 { a + b }
 
 #[cfg(test)]
 mod tests {
@@ -75,15 +89,42 @@ mod tests {
     fn test_add() { assert_eq!(add(2, 3), 5); }
 }
 "#;
-        fs::write(project_path.join("src").join("lib.rs"), lib_rs)?;
-        fs::write(
-            project_path.join("src").join("main.rs"),
-            "fn main() { println!(\"Hello, world!\"); }\n",
-        )?;
-        // Integration tests
-        let tests_dir = project_path.join("tests");
-        fs::create_dir_all(&tests_dir)?;
-        let integration = r#"use test_project::add;
+            let write_lib = fs::write(&src_lib_path, lib_rs);
+            let write_main = fs::write(
+                &src_main_path,
+                "fn main() { println!(\"Hello, world!\"); }\n",
+            );
+            tokio::try_join!(
+                async { write_lib.await.map_err(anyhow::Error::from) },
+                async { write_main.await.map_err(anyhow::Error::from) },
+            )?;
+        } else {
+            // Binary-only variants: prepare main.rs content
+            let main_content = if opts.with_formatting_issues {
+                // poor formatting on purpose
+                "fn main(){\nlet x=42;\n    let y =   43  ;\n        println!(\"Hello, world! {} {}\",x,y);\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\nfn it_works(  ) {\n        let result = 2+ 2;\n            assert_eq!( result,4 );\n    }\n}\n".to_string()
+            } else if opts.with_warning {
+                // unused variable warning
+                "fn main() {\n    let unused_variable = 42;\n    println!(\"Hello, test world!\");\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn it_works() {\n        let result = 2 + 2;\n        assert_eq!(result, 4);\n    }\n}\n".to_string()
+            } else {
+                // simple hello world
+                "fn main() {\n    println!(\"Hello, test world!\");\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn it_works() {\n        let result = 2 + 2;\n        assert_eq!(result, 4);\n    }\n}\n".to_string()
+            };
+            fs::write(&src_main_path, main_content)
+                .await
+                .map_err(anyhow::Error::from)?;
+        }
+        Ok(())
+    };
+
+    // 3) Optional: tests directory and integration test file
+    let write_tests = async {
+        if opts.with_integration_tests {
+            let tests_dir = project_path.join("tests");
+            fs::create_dir_all(&tests_dir)
+                .await
+                .map_err(anyhow::Error::from)?;
+            let integration = r#"use test_project::add;
 
 #[test]
 fn integration_test_add() { assert_eq!(add(10, 20), 30); }
@@ -91,30 +132,21 @@ fn integration_test_add() { assert_eq!(add(10, 20), 30); }
 #[test]
 fn integration_test_multiply() { assert_eq!(add(2, 3), 5); }
 "#;
-        fs::write(tests_dir.join("integration_tests.rs"), integration)?;
-    } else {
-        // Binary-only variants
-        let main_content = if opts.with_formatting_issues {
-            // poor formatting on purpose
-            "fn main(){\nlet x=42;\n    let y =   43  ;\n        println!(\"Hello, world! {} {}\",x,y);\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\nfn it_works(  ) {\n        let result = 2+ 2;\n            assert_eq!( result,4 );\n    }\n}\n"
-                .to_string()
-        } else if opts.with_warning {
-            // unused variable warning
-            "fn main() {\n    let unused_variable = 42;\n    println!(\"Hello, test world!\");\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn it_works() {\n        let result = 2 + 2;\n        assert_eq!(result, 4);\n    }\n}\n"
-            .to_string()
-        } else {
-            // simple hello world
-            "fn main() {\n    println!(\"Hello, test world!\");\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn it_works() {\n        let result = 2 + 2;\n        assert_eq!(result, 4);\n    }\n}\n"
-            .to_string()
-        };
-        fs::write(project_path.join("src").join("main.rs"), main_content)?;
-    }
+            fs::write(tests_dir.join("integration_tests.rs"), integration)
+                .await
+                .map_err(anyhow::Error::from)?;
+        }
+        Ok(())
+    };
 
-    // Optional bin for args example
-    if opts.with_binary_args_example {
-        let bin_dir = project_path.join("src").join("bin");
-        fs::create_dir_all(&bin_dir)?;
-        let test_binary_rs = r#"fn main() {
+    // 4) Optional: bin dir and example binary
+    let write_bin = async {
+        if opts.with_binary_args_example {
+            let bin_dir = src_dir.join("bin");
+            fs::create_dir_all(&bin_dir)
+                .await
+                .map_err(anyhow::Error::from)?;
+            let test_binary_rs = r#"fn main() {
     let args: Vec<String> = std::env::args().collect();
     println!("test_binary called with {} args:", args.len() - 1);
     for (i, arg) in args.iter().skip(1).enumerate() {
@@ -123,8 +155,15 @@ fn integration_test_multiply() { assert_eq!(add(2, 3), 5); }
     if args.len() > 1 && args[1] == "--special" { println!("SPECIAL_MODE_ACTIVATED"); }
 }
 "#;
-        fs::write(bin_dir.join("test_binary.rs"), test_binary_rs)?;
-    }
+            fs::write(bin_dir.join("test_binary.rs"), test_binary_rs)
+                .await
+                .map_err(anyhow::Error::from)?;
+        }
+        Ok(())
+    };
+
+    // Run independent tasks concurrently: write Cargo.toml, src files, tests (optional), bin (optional)
+    tokio::try_join!(write_cargo_toml, write_src_files, write_tests, write_bin)?;
 
     Ok(temp_dir)
 }

@@ -2,11 +2,13 @@
 
 pub mod callback_system;
 pub mod cargo_tools;
+pub mod constants;
 pub mod logging;
 pub mod mcp_callback;
 pub mod operation_monitor;
 pub mod shell_pool;
 pub mod terminal_output;
 pub mod test_cargo_tools;
+pub mod test_utils;
 pub mod timestamp;
 pub mod tool_hints;

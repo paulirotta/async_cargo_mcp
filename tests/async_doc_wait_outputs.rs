@@ -4,7 +4,7 @@
 
 use anyhow::Result;
 mod common;
-use async_cargo_mcp::tool_hints;
+use async_cargo_mcp::{test_utils, tool_hints};
 use common::test_project::create_basic_project;
 use rmcp::{
     ServiceExt,
@@ -46,10 +46,9 @@ async fn test_async_doc_then_wait_returns_full_output_and_path() -> Result<()> {
     // Extract the operation id and confirm preview() content appears
     let op_id = extract_operation_id(&first_text).expect("operation id should be present");
     let expected_hint = tool_hints::preview(&op_id, "documentation generation");
-    let expected_hint_debug = expected_hint.replace('\n', "\\n");
     assert!(
-        first_text.contains(&expected_hint) || first_text.contains(&expected_hint_debug),
-        "Initial async response must include preview() content for doc. Got: {first_text}"
+        test_utils::includes(&first_text, &expected_hint),
+        "Initial async response must include preview() content.\nExpected preview:\n{expected_hint}\nGot:\n{first_text}"
     );
 
     // Wait for completion and validate the output

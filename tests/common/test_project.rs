@@ -3,12 +3,13 @@
 use anyhow::Result;
 use tempfile::TempDir;
 use tokio::fs;
+use tokio::task::spawn_blocking;
 
 /// Options to customize a temporary Cargo test project.
 #[derive(Debug, Clone, Default)]
-pub struct TestProjectOptions<'a> {
+pub struct TestProjectOptions {
     /// Prefix for the temp dir name. A UUID will be appended automatically for uniqueness.
-    pub prefix: Option<&'a str>,
+    pub prefix: Option<String>,
     /// Create warnings in main (e.g., unused variable) for testing `cargo fix`.
     pub with_warning: bool,
     /// Add intentionally bad formatting to test `cargo fmt`.
@@ -21,12 +22,17 @@ pub struct TestProjectOptions<'a> {
 
 /// Create a temporary Cargo project with flexible content.
 /// Ensures unique directory via tempfile and uuid and never writes to the repo root.
-pub async fn create_test_cargo_project(opts: TestProjectOptions<'_>) -> Result<TempDir> {
+pub async fn create_test_cargo_project(opts: TestProjectOptions) -> Result<TempDir> {
     let uuid = uuid::Uuid::new_v4();
-    let prefix = opts.prefix.unwrap_or("cargo_mcp_test_");
-    let temp_dir = tempfile::Builder::new()
-        .prefix(&format!("{prefix}{uuid}_"))
-        .tempdir()?;
+    let prefix = opts.prefix.unwrap_or_else(|| "cargo_mcp_test_".to_string());
+    // TempDir creation is synchronous; use spawn_blocking to keep async threads unblocked under load.
+    let temp_dir = spawn_blocking(move || {
+        tempfile::Builder::new()
+            .prefix(&format!("{}{}_", prefix, uuid))
+            .tempdir()
+    })
+    .await?
+    .map_err(anyhow::Error::from)?;
     let project_path = temp_dir.path();
 
     // Always create Cargo.toml
@@ -203,4 +209,58 @@ pub async fn create_project_with_integration_tests() -> Result<TempDir> {
         ..Default::default()
     })
     .await
+}
+
+/// Create a simple multi-package workspace suitable for version bump tests
+pub async fn create_workspace_project() -> Result<TempDir> {
+    // TempDir creation in blocking thread
+    let temp = spawn_blocking(|| TempDir::new()).await??;
+    let temp_path = temp.path().to_path_buf();
+
+    // workspace Cargo.toml
+    let workspace_cargo_toml = r#"[workspace]
+members = ["package1", "package2"]
+resolver = "2"
+"#;
+    fs::write(temp_path.join("Cargo.toml"), workspace_cargo_toml).await?;
+
+    // package1
+    let package1_dir = temp_path.join("package1");
+    fs::create_dir_all(&package1_dir).await?;
+    let package1_cargo_toml = r#"[package]
+name = "package1"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+"#;
+    fs::write(package1_dir.join("Cargo.toml"), package1_cargo_toml).await?;
+    let package1_src = package1_dir.join("src");
+    fs::create_dir_all(&package1_src).await?;
+    fs::write(
+        package1_src.join("lib.rs"),
+        "pub fn hello() { println!(\"Hello from package1!\"); }",
+    )
+    .await?;
+
+    // package2
+    let package2_dir = temp_path.join("package2");
+    fs::create_dir_all(&package2_dir).await?;
+    let package2_cargo_toml = r#"[package]
+name = "package2"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+"#;
+    fs::write(package2_dir.join("Cargo.toml"), package2_cargo_toml).await?;
+    let package2_src = package2_dir.join("src");
+    fs::create_dir_all(&package2_src).await?;
+    fs::write(
+        package2_src.join("lib.rs"),
+        "pub fn hello() { println!(\"Hello from package2!\"); }",
+    )
+    .await?;
+
+    Ok(temp)
 }

@@ -1,6 +1,9 @@
 //! Integration tests for .cargo-lock remediation and timeout guidance
 
+#[path = "common/mod.rs"]
+mod common;
 use anyhow::Result;
+use common::test_project::create_basic_project;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
@@ -8,48 +11,16 @@ use rmcp::{
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use std::path::{Path, PathBuf};
-use tempfile::TempDir;
-use tokio::fs;
 use tokio::process::Command;
 
-async fn create_basic_project() -> Result<TempDir> {
-    let temp_dir = tempfile::Builder::new()
-        .prefix("cargo_mcp_lock_test_")
-        .rand_bytes(6)
-        .tempdir()?;
-
-    let project_path = temp_dir.path();
-
-    // Create Cargo.toml
-    fs::write(
-        project_path.join("Cargo.toml"),
-        r#"[package]
-name = "test_project"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#,
-    )
-    .await?;
-
-    // Create src directory and main.rs
-    fs::create_dir_all(project_path.join("src")).await?;
-    fs::write(
-        project_path.join("src").join("main.rs"),
-        r#"fn main() { println!("hi"); }"#,
-    )
-    .await?;
-
-    Ok(temp_dir)
-}
+// Use shared helper create_basic_project()
 
 async fn ensure_lock_async(project_dir: &Path) -> PathBuf {
     let lock_path = project_dir.join("target").join(".cargo-lock");
     if let Some(parent) = lock_path.parent() {
-        let _ = fs::create_dir_all(parent).await;
+        let _ = tokio::fs::create_dir_all(parent).await;
     }
-    let _ = fs::write(&lock_path, b"lock").await;
+    let _ = tokio::fs::write(&lock_path, b"lock").await;
     lock_path
 }
 

@@ -9,7 +9,7 @@ use rmcp::{
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
-use std::fs;
+use tokio::fs;
 use tokio::process::Command;
 
 #[tokio::test]
@@ -17,7 +17,7 @@ async fn test_build_failure_merges_stderr_into_output() -> Result<()> {
     let temp = create_basic_project().await?;
     let project_path = temp.path();
     // Break the code
-    fs::write(project_path.join("src/main.rs"), "fn main(){ let x = ; }")?;
+    fs::write(project_path.join("src/main.rs"), "fn main(){ let x = ; }").await?;
 
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(

@@ -3,6 +3,7 @@ use async_cargo_mcp::operation_monitor::{MonitorConfig, OperationMonitor};
 use async_cargo_mcp::shell_pool::{ShellPoolConfig, ShellPoolManager};
 use std::sync::Arc;
 use tempfile::TempDir;
+use tokio::fs;
 
 #[tokio::test]
 async fn test_synchronous_mode_fix() {
@@ -15,12 +16,16 @@ name = "test_sync"
 version = "0.1.0"
 edition = "2021"
 "#;
-    std::fs::write(temp_dir.path().join("Cargo.toml"), cargo_toml_content)
+    fs::write(temp_dir.path().join("Cargo.toml"), cargo_toml_content)
+        .await
         .expect("Failed to write Cargo.toml");
 
     // Create a simple main.rs
-    std::fs::create_dir_all(temp_dir.path().join("src")).expect("Failed to create src directory");
-    std::fs::write(temp_dir.path().join("src").join("main.rs"), "fn main() {}")
+    fs::create_dir_all(temp_dir.path().join("src"))
+        .await
+        .expect("Failed to create src directory");
+    fs::write(temp_dir.path().join("src").join("main.rs"), "fn main() {}")
+        .await
         .expect("Failed to write main.rs");
 
     // Test with synchronous mode enabled

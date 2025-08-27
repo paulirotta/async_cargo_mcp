@@ -8,8 +8,8 @@ use rmcp::{
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
-use std::fs;
 use tempfile::TempDir;
+use tokio::fs;
 use tokio::process::Command;
 
 /// Create a basic Cargo project in a temporary directory for testing
@@ -31,10 +31,11 @@ edition = "2021"
 
 [dependencies]
 "#,
-    )?;
+    )
+    .await?;
 
     // Create src directory
-    fs::create_dir_all(project_path.join("src"))?;
+    fs::create_dir_all(project_path.join("src")).await?;
 
     // Create main.rs
     fs::write(
@@ -51,7 +52,8 @@ mod tests {
     }
 }
 "#,
-    )?;
+    )
+    .await?;
 
     Ok(temp_dir)
 }

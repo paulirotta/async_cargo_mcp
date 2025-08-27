@@ -9,7 +9,7 @@ use rmcp::{
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
-use std::fs;
+use tokio::fs;
 use tokio::process::Command;
 
 fn extract_operation_id(s: &str) -> Option<String> {
@@ -40,7 +40,7 @@ async fn test_async_mixed_success_failure_wait_outputs() -> Result<()> {
     let fail_path = fail_proj.path().to_str().unwrap().to_string();
     let main_rs = format!("{}/src/main.rs", fail_path);
     let broken = "fn main() { let x = ; }";
-    fs::write(&main_rs, broken)?;
+    fs::write(&main_rs, broken).await?;
 
     let client = ()
         .serve(TokioChildProcess::new(Command::new("cargo").configure(

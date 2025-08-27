@@ -7,9 +7,9 @@ use rmcp::{
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
-use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
+use tokio::fs;
 use tokio::process::Command;
 
 async fn create_basic_project() -> Result<TempDir> {
@@ -30,22 +30,26 @@ edition = "2021"
 
 [dependencies]
 "#,
-    )?;
+    )
+    .await?;
 
     // Create src directory and main.rs
-    fs::create_dir_all(project_path.join("src"))?;
+    fs::create_dir_all(project_path.join("src")).await?;
     fs::write(
         project_path.join("src").join("main.rs"),
         r#"fn main() { println!("hi"); }"#,
-    )?;
+    )
+    .await?;
 
     Ok(temp_dir)
 }
 
-fn ensure_lock(project_dir: &Path) -> PathBuf {
+async fn ensure_lock_async(project_dir: &Path) -> PathBuf {
     let lock_path = project_dir.join("target").join(".cargo-lock");
-    fs::create_dir_all(lock_path.parent().unwrap()).unwrap();
-    fs::write(&lock_path, b"lock").unwrap();
+    if let Some(parent) = lock_path.parent() {
+        let _ = fs::create_dir_all(parent).await;
+    }
+    let _ = fs::write(&lock_path, b"lock").await;
     lock_path
 }
 
@@ -53,7 +57,7 @@ fn ensure_lock(project_dir: &Path) -> PathBuf {
 async fn wait_timeout_with_lock_detects_and_guides() -> Result<()> {
     let temp = create_basic_project().await?;
     let project_path = temp.path().to_path_buf();
-    let lock_path = ensure_lock(&project_path);
+    let lock_path = ensure_lock_async(&project_path).await;
 
     // Start server with small timeout and wait tool enabled
     let client = ()
@@ -100,7 +104,7 @@ async fn wait_timeout_with_lock_detects_and_guides() -> Result<()> {
 async fn remediation_tool_deletes_lock_and_optionally_cleans() -> Result<()> {
     let temp = create_basic_project().await?;
     let project_path = temp.path().to_path_buf();
-    let lock_path = ensure_lock(&project_path);
+    let lock_path = ensure_lock_async(&project_path).await;
 
     // Start server
     let client = ()
@@ -129,7 +133,7 @@ async fn remediation_tool_deletes_lock_and_optionally_cleans() -> Result<()> {
     );
 
     // Recreate lock and call action C (no-op)
-    let _ = ensure_lock(&project_path);
+    let _ = ensure_lock_async(&project_path).await;
     let res_c = client
         .call_tool(CallToolRequestParam {
             name: "cargo_lock_remediation".into(),

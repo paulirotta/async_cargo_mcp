@@ -8,8 +8,8 @@ use rmcp::{
     object,
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
-use std::fs;
 use tempfile::TempDir;
+use tokio::fs;
 use tokio::process::Command;
 
 /// Create a basic Rust project in a temporary directory
@@ -25,15 +25,16 @@ edition = "2021"
 
 [dependencies]
 "#;
-    fs::write(temp_path.join("Cargo.toml"), cargo_toml)?;
+    fs::write(temp_path.join("Cargo.toml"), cargo_toml).await?;
 
     // Create src directory and main.rs
     let src_dir = temp_path.join("src");
-    fs::create_dir_all(&src_dir)?;
+    fs::create_dir_all(&src_dir).await?;
     fs::write(
         src_dir.join("main.rs"),
         "fn main() { println!(\"Hello, world!\"); }",
-    )?;
+    )
+    .await?;
 
     Ok(temp)
 }
@@ -48,11 +49,11 @@ async fn create_workspace_project() -> Result<TempDir> {
 members = ["package1", "package2"]
 resolver = "2"
 "#;
-    fs::write(temp_path.join("Cargo.toml"), workspace_cargo_toml)?;
+    fs::write(temp_path.join("Cargo.toml"), workspace_cargo_toml).await?;
 
     // Create package1
     let package1_dir = temp_path.join("package1");
-    fs::create_dir_all(&package1_dir)?;
+    fs::create_dir_all(&package1_dir).await?;
     let package1_cargo_toml = r#"[package]
 name = "package1"
 version = "0.1.0"
@@ -60,17 +61,18 @@ edition = "2021"
 
 [dependencies]
 "#;
-    fs::write(package1_dir.join("Cargo.toml"), package1_cargo_toml)?;
+    fs::write(package1_dir.join("Cargo.toml"), package1_cargo_toml).await?;
     let package1_src = package1_dir.join("src");
-    fs::create_dir_all(&package1_src)?;
+    fs::create_dir_all(&package1_src).await?;
     fs::write(
         package1_src.join("lib.rs"),
         "pub fn hello() { println!(\"Hello from package1!\"); }",
-    )?;
+    )
+    .await?;
 
     // Create package2
     let package2_dir = temp_path.join("package2");
-    fs::create_dir_all(&package2_dir)?;
+    fs::create_dir_all(&package2_dir).await?;
     let package2_cargo_toml = r#"[package]
 name = "package2"
 version = "0.2.0"
@@ -78,13 +80,14 @@ edition = "2021"
 
 [dependencies]
 "#;
-    fs::write(package2_dir.join("Cargo.toml"), package2_cargo_toml)?;
+    fs::write(package2_dir.join("Cargo.toml"), package2_cargo_toml).await?;
     let package2_src = package2_dir.join("src");
-    fs::create_dir_all(&package2_src)?;
+    fs::create_dir_all(&package2_src).await?;
     fs::write(
         package2_src.join("lib.rs"),
         "pub fn hello() { println!(\"Hello from package2!\"); }",
-    )?;
+    )
+    .await?;
 
     Ok(temp)
 }

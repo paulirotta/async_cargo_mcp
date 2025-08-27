@@ -3337,23 +3337,22 @@ impl AsyncCargo {
             // Try to determine the crate name for the documentation path
             let crate_name = {
                 let cargo_toml_path = format!("{}/Cargo.toml", &req.working_directory);
-                std::fs::read_to_string(&cargo_toml_path)
-                    .ok()
-                    .and_then(|content| {
-                        content
-                            .lines()
-                            .find(|line| line.trim().starts_with("name"))
-                            .and_then(|line| {
-                                line.split('=')
-                                    .nth(1)?
-                                    .trim()
-                                    .trim_matches('"')
-                                    .split(' ')
-                                    .next()
-                                    .map(|s| s.replace('-', "_"))
-                            })
-                    })
-                    .unwrap_or_else(|| "unknown_crate".to_string())
+                match tokio::fs::read_to_string(&cargo_toml_path).await {
+                    Ok(content) => content
+                        .lines()
+                        .find(|line| line.trim().starts_with("name"))
+                        .and_then(|line| {
+                            line.split('=')
+                                .nth(1)?
+                                .trim()
+                                .trim_matches('"')
+                                .split(' ')
+                                .next()
+                                .map(|s| s.replace('-', "_"))
+                        })
+                        .unwrap_or_else(|| "unknown_crate".to_string()),
+                    Err(_) => "unknown_crate".to_string(),
+                }
             };
 
             let doc_path = format!(

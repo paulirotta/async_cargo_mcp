@@ -12,6 +12,7 @@ use rmcp::{
 };
 use std::env;
 use tempfile::TempDir;
+use tokio::fs;
 use tokio::process::Command;
 
 /// Test build command with missing Cargo.toml
@@ -521,8 +522,6 @@ async fn test_build_with_null_working_dir() -> Result<String> {
 }
 
 async fn create_minimal_project() -> Result<TempDir> {
-    use std::fs;
-
     let uuid = uuid::Uuid::new_v4();
     let temp_dir = tempfile::Builder::new()
         .prefix(&format!("cargo_mcp_minimal_{uuid}"))
@@ -536,16 +535,16 @@ version = "0.1.0"
 edition = "2024"
 "#;
 
-    fs::write(project_path.join("Cargo.toml"), cargo_toml_content)?;
+    fs::write(project_path.join("Cargo.toml"), cargo_toml_content).await?;
 
     // Create src directory
-    fs::create_dir(project_path.join("src"))?;
+    fs::create_dir(project_path.join("src")).await?;
 
     // Create lib.rs (minimal library)
     let lib_rs_content = r#"//! Minimal test library
 "#;
 
-    fs::write(project_path.join("src").join("lib.rs"), lib_rs_content)?;
+    fs::write(project_path.join("src").join("lib.rs"), lib_rs_content).await?;
 
     Ok(temp_dir)
 }

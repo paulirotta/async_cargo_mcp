@@ -35,3 +35,23 @@ pub const CONCURRENCY_HINT_TEMPLATE: &str = "CONCURRENCY HINT: You waited for '{
 pub const STATUS_POLLING_HINT_TEMPLATE: &str = "STATUS POLLING DETECTED: You've called status {count} times for operation '{operation_id}'. \
                     Instead of repeatedly polling, consider using 'wait' with enable_async_notification=true \
                     for automatic results via progress notifications.\n";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn async_addendum_contains_key_guidance() {
+        assert!(ASYNC_ADDENDUM.contains("async_cargo_mcp"));
+        assert!(ASYNC_ADDENDUM.contains("enable_async_notification"));
+        assert!(ASYNC_ADDENDUM.contains("wait"));
+    }
+
+    #[test]
+    fn templates_include_placeholders() {
+        assert!(TOOL_HINT_TEMPLATE.contains("{operation_type}"));
+        assert!(TOOL_HINT_TEMPLATE.contains("{operation_id}"));
+        assert!(CONCURRENCY_HINT_TEMPLATE.contains("{operation_id}"));
+        assert!(STATUS_POLLING_HINT_TEMPLATE.contains("{operation_id}"));
+    }
+}

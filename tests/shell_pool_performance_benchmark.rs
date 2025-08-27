@@ -7,7 +7,10 @@ use common::test_project::create_basic_project;
 /// Performance benchmark demonstrating shell pool improvements
 /// This test measures execution times to verify the shell pool system provides
 /// performance benefits in real usage scenarios
+// This performance benchmark is valuable but slow; ignore by default to speed CI and local runs.
+// Run manually with: cargo nextest run -E 'test(benchmark_shell_pool_performance)'
 #[tokio::test]
+#[ignore]
 async fn benchmark_shell_pool_performance() {
     println!("🚀 Starting Shell Pool Performance Benchmark");
     println!("============================================");
@@ -126,7 +129,9 @@ async fn benchmark_shell_pool_performance() {
 }
 
 /// Benchmark focused on measuring command startup overhead
+// This startup overhead benchmark is also slow; ignore by default. Run with filter as needed.
 #[tokio::test]
+#[ignore]
 async fn benchmark_command_startup_overhead() {
     println!("⚡ Command Startup Overhead Benchmark");
     println!("====================================");

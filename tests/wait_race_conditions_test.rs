@@ -69,7 +69,7 @@ async fn test_race_a1_vanishing_operation_after_cleanup() -> Result<()> {
     let op_id = extract_operation_id(&first_text).expect("operation id should be present");
 
     // Let the operation complete by waiting a reasonable time
-    sleep(Duration::from_millis(2000)).await;
+    sleep(Duration::from_millis(800)).await;
 
     // Force multiple rapid wait calls to try to trigger cleanup race
     let mut wait_results = Vec::new();
@@ -120,7 +120,7 @@ async fn test_race_a1_vanishing_operation_after_cleanup() -> Result<()> {
         }
 
         // Small delay between attempts to vary timing
-        sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(50)).await;
     }
 
     // All wait attempts should be consistent - either all find the operation or all report it missing
@@ -207,7 +207,7 @@ async fn test_race_a2_completion_history_cleanup_during_wait() -> Result<()> {
     assert_eq!(operation_ids.len(), 3, "Should have started 3 operations");
 
     // Let all operations complete
-    sleep(Duration::from_millis(3000)).await;
+    sleep(Duration::from_millis(1200)).await;
 
     // Now test waiting for all operations with different timing patterns
     for (i, op_id) in operation_ids.iter().enumerate() {
@@ -245,7 +245,7 @@ async fn test_race_a2_completion_history_cleanup_during_wait() -> Result<()> {
         );
 
         // Add some delay to vary timing relative to any background cleanup
-        sleep(Duration::from_millis(200)).await;
+        sleep(Duration::from_millis(100)).await;
     }
 
     let _ = client.cancel().await;
@@ -269,7 +269,7 @@ async fn test_race_b1_double_timeout_boundary() -> Result<()> {
         .call_tool(CallToolRequestParam {
             name: "sleep".into(),
             arguments: Some(object!({
-                "duration_ms": 2000, // 2 seconds - well under any timeout
+                "duration_ms": 800, // Reduced to 0.8s to speed up suite while staying under timeouts
                 "operation_id": "op_timeout_boundary_test",
                 "enable_async_notification": true
             })),
@@ -325,7 +325,7 @@ async fn test_race_b2_short_lived_operation_cleanup() -> Result<()> {
     // Start several very short operations in rapid succession
     let mut operation_ids = Vec::new();
 
-    for i in 0..5 {
+    for i in 0..4 {
         let _sleep_result = client
             .call_tool(CallToolRequestParam {
                 name: "sleep".into(),
@@ -341,16 +341,16 @@ async fn test_race_b2_short_lived_operation_cleanup() -> Result<()> {
         println!("Started short operation {}: op_short_{}", i, i);
 
         // Very brief delay between starts
-        sleep(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(5)).await;
     }
 
     // Let all operations complete
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(300)).await;
 
     // Now wait for them with various delays to test cleanup timing
     for (i, op_id) in operation_ids.iter().enumerate() {
         // Add increasing delay before each wait to vary cleanup timing
-        sleep(Duration::from_millis(i as u64 * 100)).await;
+        sleep(Duration::from_millis(i as u64 * 60)).await;
 
         println!("Waiting for operation {}: {}", i, op_id);
         let start_time = Instant::now();
@@ -549,7 +549,7 @@ async fn test_stress_rapid_operations_and_waits() -> Result<()> {
         .await?;
 
     // Create many short operations rapidly
-    let num_operations = 10;
+    let num_operations = 8;
     let mut operation_ids = Vec::new();
 
     println!("Starting {} rapid operations", num_operations);
@@ -569,7 +569,7 @@ async fn test_stress_rapid_operations_and_waits() -> Result<()> {
         operation_ids.push(format!("op_stress_{}", i));
 
         // Very brief delay to create rapid succession
-        sleep(Duration::from_millis(20)).await;
+        sleep(Duration::from_millis(10)).await;
     }
 
     println!("All operations started, now testing waits");

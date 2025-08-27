@@ -1,7 +1,10 @@
 //! Comprehensive tests for wait behavior and operation completion
 //! This file consolidates wait-related tests from individual files
 
+#[path = "common/mod.rs"]
+mod common;
 use anyhow::Result;
+use common::test_project::create_basic_project;
 use rmcp::{
     ServiceExt,
     model::CallToolRequestParam,
@@ -9,55 +12,7 @@ use rmcp::{
     transport::{ConfigureCommandExt, TokioChildProcess},
 };
 use std::time::Instant;
-use tempfile::TempDir;
-use tokio::fs;
 use tokio::process::Command;
-
-/// Create a basic Cargo project in a temporary directory for testing
-async fn create_basic_project() -> Result<TempDir> {
-    let temp_dir = tempfile::Builder::new()
-        .prefix("cargo_mcp_test_")
-        .rand_bytes(6)
-        .tempdir()?;
-
-    let project_path = temp_dir.path();
-
-    // Create Cargo.toml
-    fs::write(
-        project_path.join("Cargo.toml"),
-        r#"[package]
-name = "test_project"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#,
-    )
-    .await?;
-
-    // Create src directory
-    fs::create_dir_all(project_path.join("src")).await?;
-
-    // Create main.rs
-    fs::write(
-        project_path.join("src").join("main.rs"),
-        r#"fn main() {
-    println!("Hello, world!");
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
-"#,
-    )
-    .await?;
-
-    Ok(temp_dir)
-}
 /// Extract operation ID from tool response text
 fn extract_operation_id(s: &str) -> Option<String> {
     let lines: Vec<&str> = s.lines().collect();

@@ -2,31 +2,15 @@ use async_cargo_mcp::cargo_tools::AsyncCargo;
 use async_cargo_mcp::operation_monitor::{MonitorConfig, OperationMonitor};
 use async_cargo_mcp::shell_pool::{ShellPoolConfig, ShellPoolManager};
 use std::sync::Arc;
-use tempfile::TempDir;
-use tokio::fs;
+mod common;
+use common::test_project::create_basic_project;
 
 #[tokio::test]
 async fn test_synchronous_mode_fix() {
-    // Create a temporary directory for testing
-    let temp_dir = TempDir::new().expect("Failed to create temp dir");
-
-    // Create a minimal Cargo.toml for testing
-    let cargo_toml_content = r#"[package]
-name = "test_sync"
-version = "0.1.0"
-edition = "2021"
-"#;
-    fs::write(temp_dir.path().join("Cargo.toml"), cargo_toml_content)
+    // Create a temporary directory for testing via shared helper (non-blocking TempDir creation)
+    let _temp_dir = create_basic_project()
         .await
-        .expect("Failed to write Cargo.toml");
-
-    // Create a simple main.rs
-    fs::create_dir_all(temp_dir.path().join("src"))
-        .await
-        .expect("Failed to create src directory");
-    fs::write(temp_dir.path().join("src").join("main.rs"), "fn main() {}")
-        .await
-        .expect("Failed to write main.rs");
+        .expect("Failed to create temp project");
 
     // Test with synchronous mode enabled
     let shell_pool_manager = Arc::new(ShellPoolManager::new(ShellPoolConfig::default()));

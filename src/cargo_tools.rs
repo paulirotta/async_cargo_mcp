@@ -5,13 +5,12 @@ use crate::shell_pool::{ShellCommand, ShellPoolConfig, ShellPoolManager};
 use crate::terminal_output::TerminalOutput;
 use crate::timestamp;
 use rmcp::{
-    ErrorData, RoleServer, ServerHandler,
-    handler::server::{router::tool::ToolRouter, tool::Parameters},
-    model::*,
-    schemars,
-    service::RequestContext,
-    tool, tool_handler, tool_router,
+    ErrorData, RoleServer, ServerHandler, handler::server::router::tool::ToolRouter, model::*,
+    schemars, service::RequestContext, tool, tool_handler, tool_router,
 };
+// Updated for rmcp 0.6.3: Parameters moved (previous tool::Parameters is now private)
+// Use public re-exported Parameters wrapper (module path changed in rmcp 0.6.x)
+use rmcp::handler::server::wrapper::Parameters;
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -720,9 +719,10 @@ impl AsyncCargo {
     )]
     async fn sleep(
         &self,
-        Parameters(req): Parameters<SleepRequest>,
+        params: Parameters<SleepRequest>,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        let req = params.0;
         self.ensure_enabled("sleep")?;
         let operation_id = req
             .operation_id
@@ -1207,9 +1207,10 @@ impl AsyncCargo {
     )]
     async fn wait(
         &self,
-        Parameters(req): Parameters<WaitRequest>,
+        params: Parameters<WaitRequest>,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        let req = params.0;
         // In synchronous mode, do not offer wait
         if self.synchronous_mode {
             let msg = "'wait' is not available in synchronous mode. Synchronous mode runs operations to completion and returns results directly. Switch to async mode to use 'wait', or prefer 'status' for non-blocking checks.";
@@ -1608,9 +1609,10 @@ impl AsyncCargo {
     )]
     async fn status(
         &self,
-        Parameters(req): Parameters<StatusRequest>,
+        params: Parameters<StatusRequest>,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
+        let req = params.0;
         // Track status calls per operation to detect polling patterns
         let mut guidance_message = None;
         if let Some(operation_id) = &req.operation_id {
@@ -1684,14 +1686,14 @@ impl AsyncCargo {
 
                     // Filter by state if specified
                     if let Some(ref state_filter) = req.state_filter {
+                        let sf_lower = state_filter.to_lowercase();
                         let matches_filter = if let Some(filter_state) =
-                            crate::operation_monitor::OperationState::from_filter_string(
-                                &state_filter.to_lowercase(),
-                            ) {
+                            crate::operation_monitor::OperationState::from_filter_string(&sf_lower)
+                        {
                             op.state == filter_state
                         } else {
                             // Handle special filter cases not covered by from_filter_string
-                            match state_filter.to_lowercase().as_str() {
+                            match sf_lower.as_str() {
                                 "active" => op.is_active(),
                                 "completed" => op.state.is_success(),
                                 "failed" => {

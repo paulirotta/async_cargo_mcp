@@ -214,7 +214,7 @@ pub async fn create_project_with_integration_tests() -> Result<TempDir> {
 /// Create a simple multi-package workspace suitable for version bump tests
 pub async fn create_workspace_project() -> Result<TempDir> {
     // TempDir creation in blocking thread
-    let temp = spawn_blocking(|| TempDir::new()).await??;
+    let temp = spawn_blocking(TempDir::new).await??;
     let temp_path = temp.path().to_path_buf();
 
     // workspace Cargo.toml
